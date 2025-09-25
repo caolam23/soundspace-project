@@ -1,0 +1,302 @@
+/* Import Font Awesome nếu bạn chưa có trong index.html */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+.auth-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background-color: #121212; /* nền đen phủ full */
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+h1 {
+  font-weight: bold;
+  margin: 0;
+}
+
+p {
+  font-size: 14px;
+  font-weight: 100;
+  line-height: 20px;
+  letter-spacing: 0.5px;
+  margin: 20px 0 30px;
+}
+
+span {
+  font-size: 12px;
+}
+
+a {
+  color: #ccc;
+  font-size: 14px;
+  text-decoration: none;
+  margin: 15px 0;
+}
+
+button {
+  border-radius: 20px;
+  border: 1px solid #8A2BE2;
+  background-color: #8A2BE2;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 12px 45px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: transform 80ms ease-in;
+  cursor: pointer;
+}
+
+button:active {
+  transform: scale(0.95);
+}
+
+button:focus {
+  outline: none;
+}
+
+button.ghost {
+  background-color: transparent;
+  border-color: #FFFFFF;
+}
+
+form {
+  background-color: #1e1e1e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 0 50px;
+  height: 100%;
+  text-align: center;
+  color: white;
+}
+
+input {
+  background-color: #333;
+  border: none;
+  padding: 12px 15px;
+  margin: 8px 0;
+  width: 92%;
+  border-radius: 8px;
+  color: white;
+}
+
+input::placeholder {
+    color: #888;
+}
+
+.container {
+  background-color: #1e1e1e;
+  border-radius: 10px;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.25), 
+              0 10px 10px rgba(0,0,0,0.22);
+  position: relative;
+  overflow: hidden;
+  width: 900px;
+  max-width: 100%;
+  min-height: 550px;
+}
+
+.form-container {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  transition: all 0.6s ease-in-out;
+}
+
+.sign-in-container {
+  left: 0;
+  width: 50%;
+  z-index: 2;
+}
+
+.sign-up-container {
+  left: 0;
+  width: 50%;
+  opacity: 0;
+  z-index: 1;
+}
+
+/* --- HIỆU ỨNG TRƯỢT CHO FORM KHI .right-panel-active ĐƯỢỢC THÊM VÀO --- */
+.container.right-panel-active .sign-in-container {
+  transform: translateX(100%);
+}
+
+.container.right-panel-active .sign-up-container {
+  transform: translateX(100%);
+  opacity: 1;
+  z-index: 5;
+  animation: show 0.6s;
+}
+
+@keyframes show {
+  0%, 49.99% {
+    opacity: 0;
+    z-index: 1;
+  }
+  
+  50%, 100% {
+    opacity: 1;
+    z-index: 5;
+  }
+}
+
+/* --- PHẦN OVERLAY (PANEL MÀU TÍM) --- */
+.overlay-container {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 100%;
+  overflow: hidden;
+  transition: transform 0.6s ease-in-out;
+  z-index: 100;
+}
+
+.container.right-panel-active .overlay-container{
+  transform: translateX(-100%);
+}
+
+.overlay {
+  background: #8A2BE2;
+  background: linear-gradient(to right, #7b25c9, #8A2BE2);
+  color: #FFFFFF;
+  position: relative;
+  left: -100%;
+  height: 100%;
+  width: 200%;
+  transform: translateX(0);
+  transition: transform 0.6s ease-in-out;
+}
+
+.container.right-panel-active .overlay {
+  transform: translateX(50%);
+}
+
+
+.overlay-panel {
+  position: absolute;
+  display: flex;
+  align-items: center; /* Thuộc tính này sẽ được ghi đè ở dưới */
+  justify-content: center;
+  flex-direction: column;
+  padding: 0 40px;
+  text-align: center; /* Thuộc tính này sẽ được ghi đè ở dưới */
+  top: 0;
+  height: 100%;
+  width: 50%;
+  transform: translateX(0);
+  transition: transform 0.6s ease-in-out;
+}
+
+/* --- Chỉnh sửa cho panel "Welcome Back!" (Bên trái) --- */
+.overlay-left {
+  align-items: flex-start; /* Đẩy cả khối (h1, p, button) sang trái */
+  text-align: left;       /* Căn lề chữ bên trong sang trái */
+  /* Giữ lại hiệu ứng trượt */
+  transform: translateX(-20%);
+}
+
+.container.right-panel-active .overlay-left {
+  transform: translateX(0);
+}
+
+/* --- Chỉnh sửa cho panel "Welcome, SoundSpace" (Bên phải) --- */
+/* --- TÌM VÀ THAY THẾ ĐOẠN CODE NÀY TRONG FILE CSS CỦA BẠN --- */
+
+
+/* --- Tùy chỉnh cho panel "Welcome, SoundSpace" (bên phải) --- */
+.overlay-right {
+  right: 0;
+  align-items: flex-end;
+  text-align: right;
+  /* THAY ĐỔI: Tăng padding bên trái để chữ không bị dính vào cạnh */
+  padding: 0 40px 0 60px; /* top | right | bottom | left */
+  transform: translateX(0);
+}
+
+.container.right-panel-active .overlay-right {
+  transform: translateX(20%);
+}
+
+
+.overlay-right .panel__subtitle {
+  /* THAY ĐỔI: Bỏ max-width và giảm nhẹ cỡ chữ để tránh xuống dòng không cần thiết */
+  max-width: none;
+  font-size: 0.95rem; /* Cỡ chữ ~15.2px, bạn có thể điều chỉnh */
+  font-style: normal; /* Bỏ in nghiêng nếu bạn đã thêm trước đó */
+}
+
+/* --- ICON MẠNG XÃ HỘI --- */
+.social-container {
+  margin: 20px 0;
+}
+
+.social-container .social {
+  border: 1px solid #DDDDDD;
+  border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 5px;
+  height: 40px;
+  width: 40px;
+  cursor: pointer;
+  color: #ccc;
+  transition: color 0.3s, border-color 0.3s;
+}
+
+.social-container .social:hover {
+    color: white;
+    border-color: white;
+}
+
+.error-message {
+    color: #ff4d4d;
+    font-size: 14px;
+    margin-top: 10px;
+}
+/* THÊM VÀO CUỐI FILE AuthPage.css */
+
+/* Giữ wrapper bằng với input thường */
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+  margin: 8px 0; /* giống input */
+  display: flex;
+  align-items: center;
+}
+
+/* Input bên trong wrapper phải chiếm full chiều ngang */
+.password-input-wrapper input {
+  width: 100%;
+  margin: 0;
+  padding-right: 40px; /* chừa chỗ cho icon bên phải */
+  box-sizing: border-box;
+}
+
+/* Icon mắt nằm trong input */
+.password-input-wrapper i {
+  position: absolute;
+  top: 50%;
+  right: 12px;   /* icon nằm trong input */
+  transform: translateY(-50%);
+  color: #888;
+  cursor: pointer;
+}
+
+
+.password-input-wrapper i:hover {
+  color: #ccc;
+}
