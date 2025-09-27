@@ -1,0 +1,308 @@
+/* src/pages/AuthPage.css */
+
+/* Import Font Awesome nếu bạn chưa có trong index.html */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+.auth-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #121212; /* nền đen phủ full */
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ================================ */
+/* == CÁC THẺ CHUNG TRONG COMPONENT == */
+/* ================================ */
+
+.auth-page__title,
+.auth-page__panel-title {
+  font-weight: bold;
+  margin: 0;
+  color: white;
+}
+
+.auth-page__panel-subtitle {
+  font-size: 14px;
+  font-weight: 100;
+  line-height: 20px;
+  letter-spacing: 0.5px;
+  margin: 20px 0 30px;
+}
+
+.auth-page__subtitle {
+  font-size: 12px;
+  color: #ccc;
+}
+
+.auth-page__link {
+  color: #ccc;
+  font-size: 14px;
+  text-decoration: none;
+  margin: 15px 0;
+}
+
+.auth-page__button {
+  border-radius: 20px;
+  border: 1px solid #8A2BE2;
+  background-color: #8A2BE2;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 12px 45px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: transform 80ms ease-in;
+  cursor: pointer;
+}
+
+.auth-page__button:active {
+  transform: scale(0.95);
+}
+
+.auth-page__button:focus {
+  outline: none;
+}
+
+.auth-page__button--ghost {
+  background-color: transparent;
+  border-color: #FFFFFF;
+}
+
+.auth-page__form {
+  background-color: #1e1e1e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 0 50px;
+  height: 100%;
+  text-align: center;
+  color: white;
+}
+
+.auth-page__input {
+  background-color: #333;
+  border: none;
+  padding: 12px 15px;
+  margin: 8px 0;
+  width: 100%; /* Sửa lại để input chiếm full width của parent */
+  border-radius: 8px;
+  color: white;
+  box-sizing: border-box; /* Quan trọng để padding không làm tăng width */
+}
+
+.auth-page__input::placeholder {
+    color: #888;
+}
+
+/* ======================= */
+/* == CONTAINER CHÍNH == */
+/* ======================= */
+
+.auth-page__container {
+  background-color: #1e1e1e;
+  border-radius: 10px;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.25), 
+              0 10px 10px rgba(0,0,0,0.22);
+  position: relative;
+  overflow: hidden;
+  width: 900px;
+  max-width: 100%;
+  min-height: 550px;
+}
+
+.auth-page__form-container {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  transition: all 0.6s ease-in-out;
+}
+
+.auth-page__form-container--login {
+  left: 0;
+  width: 50%;
+  z-index: 2;
+}
+
+.auth-page__form-container--register {
+  left: 0;
+  width: 50%;
+  opacity: 0;
+  z-index: 1;
+}
+
+/* =============================== */
+/* == HIỆU ỨNG TRƯỢT KHI ACTIVE == */
+/* =============================== */
+
+.auth-page__container--register-active .auth-page__form-container--login {
+  transform: translateX(100%);
+}
+
+.auth-page__container--register-active .auth-page__form-container--register {
+  transform: translateX(100%);
+  opacity: 1;
+  z-index: 5;
+  animation: show 0.6s;
+}
+
+@keyframes show {
+  0%, 49.99% {
+    opacity: 0;
+    z-index: 1;
+  }
+  
+  50%, 100% {
+    opacity: 1;
+    z-index: 5;
+  }
+}
+
+/* ================================= */
+/* == PHẦN OVERLAY (PANEL MÀU TÍM) == */
+/* ================================= */
+
+.auth-page__overlay-container {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 100%;
+  overflow: hidden;
+  transition: transform 0.6s ease-in-out;
+  z-index: 100;
+}
+
+.auth-page__container--register-active .auth-page__overlay-container {
+  transform: translateX(-100%);
+}
+
+.auth-page__overlay {
+  background: #8A2BE2;
+  background: linear-gradient(to right, #7b25c9, #8A2BE2);
+  color: #FFFFFF;
+  position: relative;
+  left: -100%;
+  height: 100%;
+  width: 200%;
+  transform: translateX(0);
+  transition: transform 0.6s ease-in-out;
+}
+
+.auth-page__container--register-active .auth-page__overlay {
+  transform: translateX(50%);
+}
+
+.auth-page__overlay-panel {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 0 40px;
+  text-align: center;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  transform: translateX(0);
+  transition: transform 0.6s ease-in-out;
+}
+
+.auth-page__overlay-panel--left {
+  align-items: flex-start;
+  text-align: left;
+  transform: translateX(-20%);
+}
+
+.auth-page__container--register-active .auth-page__overlay-panel--left {
+  transform: translateX(0);
+}
+
+.auth-page__overlay-panel--right {
+  right: 0;
+  align-items: flex-end;
+  text-align: right;
+  padding: 0 40px 0 60px;
+  transform: translateX(0);
+}
+
+.auth-page__container--register-active .auth-page__overlay-panel--right {
+  transform: translateX(20%);
+}
+
+.auth-page__overlay-panel--right .auth-page__panel-subtitle {
+  max-width: none;
+  font-size: 0.95rem;
+  font-style: normal;
+}
+
+/* ========================= */
+/* == CÁC THÀNH PHẦN KHÁC == */
+/* ========================= */
+
+.auth-page__social-container {
+  margin: 20px 0;
+}
+
+.auth-page__social-icon {
+  border: 1px solid #DDDDDD;
+  border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 5px;
+  height: 40px;
+  width: 40px;
+  cursor: pointer;
+  color: #ccc;
+  transition: color 0.3s, border-color 0.3s;
+}
+
+.auth-page__social-icon:hover {
+    color: white;
+    border-color: white;
+}
+
+.auth-page__error-message {
+    color: #ff4d4d;
+    font-size: 14px;
+    margin: 10px 0 0 0; /* Sửa lại margin cho gọn */
+    min-height: 1.2em; /* Giữ khoảng trống để layout không bị giật */
+}
+
+.auth-page__password-wrapper {
+  position: relative;
+  width: 100%;
+  margin: 8px 0; /* giống input */
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Căn giữa input bên trong */
+}
+
+.auth-page__password-wrapper .auth-page__input {
+  /* input đã có width: 100% ở trên */
+  margin: 0;
+  padding-right: 40px;
+}
+
+.auth-page__password-toggle-icon {
+  position: absolute;
+  top: 50%;
+  right: 15px; /* Điều chỉnh vị trí icon */
+  transform: translateY(-50%);
+  color: #888;
+  cursor: pointer;
+}
+
+.auth-page__password-toggle-icon:hover {
+  color: #ccc;
+}
