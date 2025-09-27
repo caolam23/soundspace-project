@@ -1,0 +1,173 @@
+/* Thanh header responsive */
+.AdminPanel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: white;
+  border-bottom: 1px solid #ddd;
+  width: 100%;              /* Thay đổi từ 1100px thành 100% */
+  min-width: 320px;         /* Giới hạn tối thiểu cho mobile */
+  height: 80px;
+  margin: 0 auto;           /* Căn giữa thay vì margin-left: auto */
+  box-sizing: border-box;   /* Đảm bảo padding được tính trong width */
+}
+
+/* Wrapper chính cũng cần responsive */
+.AdminPanel__wrapper {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* --- SEARCH responsive --- */
+.AdminPanel__searchWrapper {
+  flex: 1 1 auto;       /* chiếm hết khoảng trống còn lại */
+  min-width: 180px;
+    margin-left: 280px;
+}
+
+.AdminPanel__searchIcon {
+  position: absolute;
+  left: 312px;
+  color: #999;
+  font-size: 16px;
+  z-index: 1;
+  transform: translateY(20px); /* đẩy xuống 3px */
+}
+
+.AdminPanel__searchInput {
+  padding: 8px 12px 8px 36px;
+  width: 100%;              /* Thay từ 300px thành 100% */
+  max-width: 300px;         /* Giới hạn tối đa */
+  min-width: 180px;         /* Giới hạn tối thiểu */
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  outline: none;
+  font-size: 14px;
+  background-color: #fff;
+  color: #333;
+  transition: border 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.AdminPanel__searchInput::placeholder {
+  color: #999;
+}
+
+/* --- ACTIONS wrapper --- */
+.AdminPanel__actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;                /* Khoảng cách giữa bell và user info */
+  flex-shrink: 0;           /* Không cho shrink */
+}
+
+/* --- BELL NOTIFICATION --- */
+.AdminPanel__bellBtn {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+}
+
+.AdminPanel__bellIcon {
+  color: #cdd1d7;
+}
+
+/* --- USER INFO responsive --- */
+.AdminPanel__userInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translateY(-2px);
+  min-width: 120px;         /* Đảm bảo không bị crush quá nhiều */
+}
+
+.AdminPanel__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;           /* Avatar không bị shrink */
+}
+
+.AdminPanel__defaultAvatar {
+  color: #8b5cf6;
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.AdminPanel__username {
+  font-size: 13px;
+  font-weight: 500;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  color: #111827;
+  white-space: nowrap;      /* Không cho xuống dòng */
+  overflow: hidden;         /* Ẩn text dài */
+  text-overflow: ellipsis;  /* Hiển thị ... khi text dài */
+  max-width: 100px;         /* Giới hạn độ dài username */
+}
+
+.AdminPanel__role {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+}
+
+/* Media queries cho các màn hình nhỏ */
+@media (max-width: 768px) {
+  .AdminPanel__header {
+    padding: 10px 15px;
+    height: 70px;
+    gap: 10px;
+  }
+  
+  .AdminPanel__searchInput {
+    max-width: 200px;
+    min-width: 150px;
+  }
+  
+  .AdminPanel__username {
+    max-width: 80px;
+    font-size: 12px;
+  }
+  
+  .AdminPanel__role {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .AdminPanel__header {
+    padding: 8px 12px;
+    height: 60px;
+    flex-wrap: nowrap;        /* Không cho wrap */
+  }
+  
+  .AdminPanel__searchInput {
+    max-width: 150px;
+    min-width: 120px;
+    font-size: 13px;
+  }
+  
+  .AdminPanel__userInfo {
+    gap: 8px;
+  }
+  
+  .AdminPanel__username {
+    max-width: 60px;
+    font-size: 11px;
+  }
+  
+  .AdminPanel__role {
+    display: none;            /* Ẩn role trên mobile rất nhỏ */
+  }
+  
+  .AdminPanel__avatar,
+  .AdminPanel__defaultAvatar {
+    width: 30px;
+    height: 30px;
+    font-size: 28px;
+  }
+}
