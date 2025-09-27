@@ -26,9 +26,20 @@ export default function AuthPage() {
         identifier: loginForm.identifier,
         password: loginForm.password,
       });
-      localStorage.setItem('token', res.data.token);
+
+      const { token, user } = res.data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('role', user.role); // lưu role
+
       alert('Đăng nhập thành công!');
-      navigate('/');
+
+      // Chuyển trang theo role
+      if (user.role === 'admin') {
+        navigate('/admin'); // admin panel
+      } else {
+        navigate('/'); // user thường
+      }
+
     } catch (err) {
       setLoginError(err.response?.data?.msg || 'Tên đăng nhập hoặc mật khẩu không đúng.');
     }
