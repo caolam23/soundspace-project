@@ -14,7 +14,7 @@ import AdminLayout from "../pages/AdminLayout"; // Layout mới
 import Dashboard from "../pages/admin/Dashboard"; // Ví dụ
 import Users from "../pages/admin/Users";
 import Settings from "../pages/admin/Settings";
-
+import QuanLyPhong from "../pages/admin/QuanLyPhong"; // Import page quản lý phòng
 // Components
 import AdminRoute from "../components/AdminRoute";
 
@@ -33,6 +33,7 @@ export default function AppRouter() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="quanlyphong" element={<QuanLyPhong />} />
         {/* Thêm route con khác ở đây */}
       </Route>
     </Routes>

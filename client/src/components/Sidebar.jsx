@@ -40,7 +40,7 @@ export default function Sidebar() {
           </NavLink>
         </li>
         <li>
-          <NavLink to="/admin/rooms" className={({ isActive }) => isActive ? 'Sidebar__link active' : 'Sidebar__link'}>
+          <NavLink to="/admin/quanlyphong" className={({ isActive }) => isActive ? 'Sidebar__link active' : 'Sidebar__link'}>
             <Home size={18} /> <span>Quản lý Phòng</span>
           </NavLink>
         </li>
