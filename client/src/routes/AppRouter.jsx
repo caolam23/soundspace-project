@@ -6,9 +6,14 @@ import { Routes, Route } from "react-router-dom";
 import App from "../App";
 import LandingPage from "../pages/LandingPage";
 import GuestRoom from "../pages/GuestRoom";
-import AuthPage from "../pages/AuthPage";      // Login + Register
+import AuthPage from "../pages/AuthPage";
 import AuthSuccess from "../pages/AuthSuccess";
-import AdminPanel from "../pages/AdminPanel";
+import AdminLayout from "../pages/AdminLayout"; // Layout mới
+
+// Pages con cho admin
+import Dashboard from "../pages/admin/Dashboard"; // Ví dụ
+import Users from "../pages/admin/Users";
+import Settings from "../pages/admin/Settings";
 
 // Components
 import AdminRoute from "../components/AdminRoute";
@@ -16,26 +21,20 @@ import AdminRoute from "../components/AdminRoute";
 export default function AppRouter() {
   return (
     <Routes>
-      {/* Trang mặc định mở đầu tiên */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/guest-room" element={<GuestRoom />} />
-
-      {/* App chính */}
       <Route path="/app" element={<App />} />
-
-      {/* Auth */}
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/auth-success" element={<AuthSuccess />} />
 
-      {/* Admin (được bảo vệ bởi AdminRoute) */}
-      <Route
-        path="/admin"
-        element={
-          <AdminRoute>
-            <AdminPanel />
-          </AdminRoute>
-        }
-      />
+      {/* Admin routes: Nested dưới layout */}
+      <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+        <Route index element={<Dashboard />} /> {/* Default: /admin -> Dashboard */}
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="users" element={<Users />} />
+        <Route path="settings" element={<Settings />} />
+        {/* Thêm route con khác ở đây */}
+      </Route>
     </Routes>
   );
 }

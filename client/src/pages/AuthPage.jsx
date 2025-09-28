@@ -19,31 +19,31 @@ export default function AuthPage() {
     setLoginError('');
   };
 
-  const handleLoginSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await axios.post('http://localhost:8800/api/auth/login', {
-        identifier: loginForm.identifier,
-        password: loginForm.password,
-      });
+   const handleLoginSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const res = await axios.post('http://localhost:8800/api/auth/login', {
+      identifier: loginForm.identifier,
+      password: loginForm.password,
+    });
 
-      const { token, user } = res.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('role', user.role); // lưu role
+    const { token, user } = res.data;
+    localStorage.setItem('token', token);
+    localStorage.setItem('role', user.role); // lưu role
 
-      alert('Đăng nhập thành công!');
+    alert('Đăng nhập thành công!');
 
-      // Chuyển trang theo role
-      if (user.role === 'admin') {
-        navigate('/admin'); // admin panel
-      } else {
-        navigate('/'); // user thường
-      }
-
-    } catch (err) {
-      setLoginError(err.response?.data?.msg || 'Tên đăng nhập hoặc mật khẩu không đúng.');
+    // Chuyển trang theo role
+    if (user.role === 'admin') {
+      navigate('/admin'); // admin panel
+    } else {
+      navigate('/'); // user thường
     }
-  };
+
+  } catch (err) {
+    setLoginError(err.response?.data?.msg || 'Tên đăng nhập hoặc mật khẩu không đúng.');
+  }
+};
   
   // State và handlers cho Form Đăng ký
   const [registerForm, setRegisterForm] = useState({ username: '', email: '', password: '', confirmPassword: '' });
