@@ -1,40 +1,153 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Users.css";
 import { User, Edit, Lock, Unlock, Trash2 } from "lucide-react";
 
-// Mock data
-const recentUsers = [
-  { id: 1, name: "Alice", email: "alice@example.com", role: "Admin", status: "active", joinDate: "20/09/2025" },
-  { id: 2, name: "Bob", email: "bob@example.com", role: "Host", status: "active", joinDate: "18/09/2025" },
-  { id: 3, name: "Charlie", email: "charlie@example.com", role: "Listener", status: "banned", joinDate: "15/09/2025" },
-  { id: 4, name: "David", email: "david@example.com", role: "Listener", status: "active", joinDate: "10/09/2025" },
-  { id: 5, name: "Eva", email: "eva@example.com", role: "Host", status: "active", joinDate: "08/09/2025" },
-  { id: 6, name: "Frank", email: "frank@example.com", role: "Admin", status: "banned", joinDate: "05/09/2025" },
-  { id: 7, name: "Grace", email: "grace@example.com", role: "Listener", status: "active", joinDate: "01/09/2025" },
-  { id: 8, name: "Henry", email: "henry@example.com", role: "Host", status: "active", joinDate: "25/08/2025" },
-  { id: 9, name: "Ivy", email: "ivy@example.com", role: "Listener", status: "banned", joinDate: "22/08/2025" },
-  { id: 10, name: "Jack", email: "jack@example.com", role: "Admin", status: "active", joinDate: "20/08/2025" },
-  { id: 11, name: "Kate", email: "kate@example.com", role: "Host", status: "active", joinDate: "15/08/2025" },
-  { id: 12, name: "Leo", email: "leo@example.com", role: "Listener", status: "active", joinDate: "12/08/2025" },
-  { id: 13, name: "Mia", email: "mia@example.com", role: "Admin", status: "banned", joinDate: "10/08/2025" },
-  { id: 14, name: "Noah", email: "noah@example.com", role: "Listener", status: "active", joinDate: "07/08/2025" },
-  { id: 15, name: "Olivia", email: "olivia@example.com", role: "Host", status: "active", joinDate: "05/08/2025" },
-  { id: 16, name: "Paul", email: "paul@example.com", role: "Admin", status: "active", joinDate: "01/08/2025" },
-  { id: 17, name: "Quinn", email: "quinn@example.com", role: "Listener", status: "banned", joinDate: "28/07/2025" },
-  { id: 18, name: "Rachel", email: "rachel@example.com", role: "Host", status: "active", joinDate: "25/07/2025" },
-  { id: 19, name: "Sam", email: "sam@example.com", role: "Listener", status: "active", joinDate: "22/07/2025" },
-  { id: 20, name: "Tina", email: "tina@example.com", role: "Admin", status: "active", joinDate: "20/07/2025" },
-];
-
 const Users = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [jumpPage, setJumpPage] = useState(1);
+  const [filters, setFilters] = useState({
+    role: 'all',
+    status: 'all'
+  });
+  
   const usersPerPage = 5;
-  const totalPages = Math.ceil(recentUsers.length / usersPerPage);
 
-  // Lấy user theo trang
+  // Fetch users từ API
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8800/api/users');
+      
+      if (!response.ok) {
+        throw new Error('Không thể tải danh sách users');
+      }
+      
+      const data = await response.json();
+      setUsers(data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching users:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load users khi component mount
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Xử lý xóa user
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa user này?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8800/api/users/${userId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Không thể xóa user');
+      }
+      
+      // Refresh danh sách sau khi xóa
+      await fetchUsers();
+      alert('Xóa user thành công!');
+    } catch (err) {
+      alert('Lỗi khi xóa user: ' + err.message);
+    }
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN');
+  };
+
+  // Convert role để hiển thị
+  const getRoleDisplay = (role, currentRole) => {
+    // Ưu tiên role (vai trò chính) thay vì currentRole
+    const displayRole = role || currentRole;
+    switch (displayRole) {
+      case 'admin': return 'Admin';
+      case 'host': return 'Host';        // Chủ phòng
+      case 'listener': return 'Listener'; // Người nghe trong phòng
+      case 'user': return 'User';         // Người dùng đã tạo tài khoản
+      default: return 'User';
+    }
+  };
+
+  // Convert status để hiển thị  
+  const getStatusDisplay = (status, isBlocked, reportCount) => {
+    if (isBlocked) return 'locked';              // Bị khóa
+    if (reportCount > 0) return 'reported';      // Bị báo cáo
+    if (status === 'online') return 'active';    // Hoạt động
+    if (status === 'offline') return 'offline';  // Đã off
+    return 'active';
+  };
+
+  // Filter users
+  const filteredUsers = users.filter(user => {
+    // Ưu tiên role (vai trò chính) cho filter
+    const userRole = (user.role || user.currentRole).toLowerCase();
+    const roleMatch = filters.role === 'all' || 
+                     (filters.role === 'admin' && userRole === 'admin') ||
+                     (filters.role === 'host' && userRole === 'host') ||
+                     (filters.role === 'listener' && userRole === 'listener') ||
+                     (filters.role === 'user' && userRole === 'user');
+    
+    let statusMatch = true;
+    if (filters.status !== 'all') {
+      const userStatus = getStatusDisplay(user.status, user.isBlocked, user.reportCount);
+      statusMatch = filters.status === 'active' ? userStatus === 'active' : 
+                   filters.status === 'offline' ? userStatus === 'offline' :
+                   filters.status === 'locked' ? userStatus === 'locked' :
+                   filters.status === 'reported' ? userStatus === 'reported' :
+                   true;
+    }
+    
+    return roleMatch && statusMatch;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
   const startIndex = (currentPage - 1) * usersPerPage;
-  const currentUsers = recentUsers.slice(startIndex, startIndex + usersPerPage);
+  const currentUsers = filteredUsers.slice(startIndex, startIndex + usersPerPage);
+
+  // Reset về trang 1 khi filter thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+    setJumpPage(1);
+  }, [filters]);
+
+  if (loading) {
+    return (
+      <div className="users-wrapper">
+        <div className="users-header">
+          <h2 className="users-title">Đang tải...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="users-wrapper">
+        <div className="users-header">
+          <h2 className="users-title">Lỗi: {error}</h2>
+          <button onClick={fetchUsers} className="users-addBtn">
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="users-wrapper">
@@ -49,17 +162,27 @@ const Users = () => {
         {/* Filters */}
         <div className="users-filterBar">
           <div className="users-filters">
-            <select className="users-select">
-              <option>Tất cả vai trò</option>
-              <option>Admin</option>
-              <option>Host</option>
-              <option>Listener</option>
+            <select 
+              className="users-select"
+              value={filters.role}
+              onChange={(e) => setFilters(prev => ({...prev, role: e.target.value}))}
+            >
+              <option value="all">Tất cả vai trò</option>
+              <option value="admin">Admin</option>
+              <option value="host">Host (Chủ phòng)</option>
+              <option value="listener">Listener (Người nghe)</option>
+              <option value="user">User (Người dùng)</option>
             </select>
-            <select className="users-select">
-              <option>Tất cả trạng thái</option>
-              <option>Hoạt động</option>
-              <option>Bị khóa</option>
-              <option>Bị cấm</option>
+            <select 
+              className="users-select"
+              value={filters.status}
+              onChange={(e) => setFilters(prev => ({...prev, status: e.target.value}))}
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="active">Hoạt động</option>
+              <option value="offline">Đã offline</option>
+              <option value="locked">Bị khóa</option>
+              <option value="reported">Bị báo cáo</option>
             </select>
           </div>
         </div>
@@ -77,72 +200,83 @@ const Users = () => {
               </tr>
             </thead>
             <tbody>
-              {currentUsers.map(user => (
-                <tr key={user.id}>
-                  {/* User info */}
-                  <td>
-                    <div className="users-userInfo">
-                      <div className="users-avatar">
-                        <User className="users-avatarIcon" />
+              {currentUsers.map(user => {
+                const displayRole = getRoleDisplay(user.role, user.currentRole);
+                const displayStatus = getStatusDisplay(user.status, user.isBlocked, user.reportCount);
+                
+                return (
+                  <tr key={user._id}>
+                    {/* User info */}
+                    <td>
+                      <div className="users-userInfo">
+                        <div className="users-avatar">
+                          <User className="users-avatarIcon" />
+                        </div>
+                        <div className="users-userText">
+                          <div className="users-name">{user.username || 'Không có tên'}</div>
+                          <div className="users-email">{user.email}</div>
+                        </div>
                       </div>
-                      <div className="users-userText">
-                        <div className="users-name">{user.name}</div>
-                        <div className="users-email">{user.email}</div>
+                    </td>
+
+                    {/* Role */}
+                    <td>
+                      <span
+                        className={`users-role ${
+                          displayRole === "Admin"
+                            ? "users-roleAdmin"
+                            : displayRole === "Host"
+                            ? "users-roleHost"
+                            : "users-roleListener"
+                        }`}
+                      >
+                        {displayRole}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td>
+                      <span
+                        className={`users-status ${
+                          displayStatus === "active"
+                            ? "users-statusActive"
+                            : "users-statusBanned"
+                        }`}
+                      >
+                        {displayStatus === "active" ? "Hoạt động" :
+                         displayStatus === "offline" ? "Đã offline" :
+                         displayStatus === "locked" ? "Bị khóa" :
+                         displayStatus === "reported" ? "Bị báo cáo" : "Không xác định"}
+                      </span>
+                    </td>
+
+                    {/* Join date */}
+                    <td>{formatDate(user.createdAt)}</td>
+
+                    {/* Actions */}
+                    <td>
+                      <div className="users-actions">
+                        <button className="users-btn users-editBtn">
+                          <Edit className="users-icon" />
+                        </button>
+                        <button className="users-btn users-lockBtn">
+                          {displayStatus === "active" || displayStatus === "offline" ? (
+                            <Lock className="users-icon" />
+                          ) : (
+                            <Unlock className="users-icon" />
+                          )}
+                        </button>
+                        <button 
+                          className="users-btn users-deleteBtn"
+                          onClick={() => handleDeleteUser(user._id)}
+                        >
+                          <Trash2 className="users-icon" />
+                        </button>
                       </div>
-                    </div>
-                  </td>
-
-                  {/* Role */}
-                  <td>
-                    <span
-                      className={`users-role ${
-                        user.role === "Admin"
-                          ? "users-roleAdmin"
-                          : user.role === "Host"
-                          ? "users-roleHost"
-                          : "users-roleListener"
-                      }`}
-                    >
-                      {user.role}
-                    </span>
-                  </td>
-
-                  {/* Status */}
-                  <td>
-                    <span
-                      className={`users-status ${
-                        user.status === "active"
-                          ? "users-statusActive"
-                          : "users-statusBanned"
-                      }`}
-                    >
-                      {user.status === "active" ? "Hoạt động" : "Bị cấm"}
-                    </span>
-                  </td>
-
-                  {/* Join date */}
-                  <td>{user.joinDate}</td>
-
-                  {/* Actions */}
-                  <td>
-                    <div className="users-actions">
-                      <button className="users-btn users-editBtn">
-                        <Edit className="users-icon" />
-                      </button>
-                      <button className="users-btn users-lockBtn">
-                        {user.status === "active" ? (
-                          <Lock className="users-icon" />
-                        ) : (
-                          <Unlock className="users-icon" />
-                        )}
-                      </button>
-                      <button className="users-btn users-deleteBtn">
-                        <Trash2 className="users-icon" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

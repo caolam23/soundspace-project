@@ -14,14 +14,14 @@ function createApp() {
   app.use(express.json());
   app.use(cookieParser());
   app.use(passport.initialize());
-  app.use('/api/admin', require('./routes/admin'));
 
   // passport config
   require('./config/passport');
 
   // routes
-  const authRoutes = require('./routes/auth');
-  app.use('/api/auth', authRoutes);
+  app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/admin', require('./routes/admin'));
+  app.use('/api/users', require('./routes/userRoutes'));
 
   // test route
   app.get('/', (req, res) => res.send('SoundSpace Server is running!'));
