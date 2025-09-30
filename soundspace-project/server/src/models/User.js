@@ -5,7 +5,8 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: false },
   email: { type: String, required: true, unique: true, index: true },
   password: { type: String, required: false }, // hashed password for local login
-  role: { type: String, enum: ['user','admin'], default: 'user' }
+  role: { type: String, enum: ['user','admin'], default: 'user' },
+  avatar: { type: String, default: '/images/default-avatar.png' }// 👈 thêm avatar
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

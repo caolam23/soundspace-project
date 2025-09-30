@@ -1,14 +1,16 @@
 // src/pages/AuthPage.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
+import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import './AuthPage.css'; // Quan trọng: Đảm bảo bạn sẽ cập nhật file CSS này
+import './AuthPage.css';
+
 
 export default function AuthPage() {
   const [isRegisterActive, setIsRegisterActive] = useState(false);
   const navigate = useNavigate();
-
+  const { loginSuccess } = useContext(AuthContext);
   // State và handlers cho Form Đăng nhập
   const [loginForm, setLoginForm] = useState({ identifier: '', password: '' });
   const [loginError, setLoginError] = useState('');
@@ -30,14 +32,14 @@ export default function AuthPage() {
       const { token, user } = res.data;
       localStorage.setItem('token', token);
       localStorage.setItem('role', user.role); // lưu role
-
+      loginSuccess(token, user);
       alert('Đăng nhập thành công!');
 
       // Chuyển trang theo role
       if (user.role === 'admin') {
         navigate('/admin'); // admin panel
       } else {
-        navigate('/'); // user thường
+        navigate('/user-home');
       }
 
     } catch (err) {
@@ -57,34 +59,39 @@ export default function AuthPage() {
   };
 
   const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const { username, email, password, confirmPassword } = registerForm;
-    if (username.length < 3 || username.length > 20) {
-        setRegisterError('Username phải có từ 3–20 ký tự.');
-        return;
-    }
-    if (email.length > 60) {
-        setRegisterError('Email không được vượt quá 60 ký tự.');
-        return;
-    }
-    if (password.length < 8 || password.length > 20) {
-        setRegisterError('Mật khẩu phải có từ 8–20 ký tự.');
-        return;
-    }
-    if (password !== confirmPassword) {
-        setRegisterError('Mật khẩu xác nhận không khớp!');
-        return;
-    }
+  const { username, email, password, confirmPassword } = registerForm;
+  if (username.length < 3 || username.length > 20) {
+      setRegisterError('Username phải có từ 3–20 ký tự.');
+      return;
+  }
+  if (email.length > 60) {
+      setRegisterError('Email không được vượt quá 60 ký tự.');
+      return;
+  }
+  if (password.length < 8 || password.length > 20) {
+      setRegisterError('Mật khẩu phải có từ 8–20 ký tự.');
+      return;
+  }
+  if (password !== confirmPassword) {
+      setRegisterError('Mật khẩu xác nhận không khớp!');
+      return;
+  }
 
-    try {
-      const res = await axios.post('http://localhost:8800/api/auth/register', registerForm);
-      alert(res.data.msg);
-      setIsRegisterActive(false);
-    } catch (err) {
-      setRegisterError(err.response?.data?.msg || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
-    }
-  };
+  try {
+    const res = await axios.post('http://localhost:8800/api/auth/register', registerForm);
+    
+    // ✅ Thông báo và chuyển sang form login
+    alert(res.data.msg || 'Đăng ký thành công! Vui lòng đăng nhập.');
+    setIsRegisterActive(false);          // chuyển sang form login
+    setRegisterForm({ username: '', email: '', password: '', confirmPassword: '' }); // reset form
+
+  } catch (err) {
+    setRegisterError(err.response?.data?.msg || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+  }
+};
+
 
   const googleLogin = () => {
     window.location.href = 'http://localhost:8800/api/auth/google';
