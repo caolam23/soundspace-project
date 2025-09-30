@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   googleId: { type: String, default: null },
   username: { type: String, trim: true },
   email: { type: String, required: true, unique: true, index: true },
-  password: { type: String },
+  password: { type: String,required: false },
 
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   currentRole: { type: String, enum: ['user', 'host', 'listener'], default: 'user' },
@@ -13,7 +13,8 @@ const userSchema = new mongoose.Schema({
   status: { type: String, enum: ['online', 'offline', 'blocked', 'reported'], default: 'offline' },
   reportCount: { type: Number, default: 0 },
   isBlocked: { type: Boolean, default: false },
-  lastActiveAt: { type: Date, default: Date.now }
+  lastActiveAt: { type: Date, default: Date.now },
+  avatar: { type: String, default: '/images/default-avatar.png' }// 👈 thêm avatar
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

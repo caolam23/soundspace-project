@@ -1,6 +1,6 @@
 // src/App.jsx
 import React from "react";
-import { useSocket } from "./context/SocketContext";
+import { useSocket } from "./contexts/SocketContext";
 
 function App() {
   const socket = useSocket();

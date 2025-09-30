@@ -1,7 +1,7 @@
-const express = require('express');
+const express = require('express'); 
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const passport = require('passport');
+const passport = require('passport'); // GIỮ LẠI
 
 function createApp() {
   const app = express();
@@ -13,16 +13,17 @@ function createApp() {
   }));
   app.use(express.json());
   app.use(cookieParser());
+  app.use(express.static('public'));
   app.use(passport.initialize());
 
-  // passport config
+  // passport config (chỉ require để chạy config, KHÔNG gán biến)
   require('./config/passport');
 
   // routes
-  app.use('/api/auth', require('./routes/auth'));
   app.use('/api/admin', require('./routes/admin'));
+  app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/rooms', require('./routes/room.js'));
   app.use('/api/users', require('./routes/userRoutes'));
-
   // test route
   app.get('/', (req, res) => res.send('SoundSpace Server is running!'));
 
