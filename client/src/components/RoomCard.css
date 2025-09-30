@@ -1,0 +1,22 @@
+.btn-join-session {
+  display: inline-block; /* để nút vừa chữ */
+  padding: 6px 16px;     /* cân đối ngang dọc */
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  background: #8a2be2;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  white-space: nowrap;
+  width: auto;           /* không cho full ngang */
+  min-width: unset;      /* xóa min-width nếu có */
+  max-width: max-content;/* nút chỉ theo chữ */
+}
+
+.btn-join-session:hover {
+  background: #7326b8;
+  transform: translateY(-2px);
+}
