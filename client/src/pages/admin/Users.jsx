@@ -2,10 +2,11 @@ import React, { useState, useEffect, useContext } from "react";
 import "./Users.css";
 import { User, Edit, Lock, Unlock, Trash2, Ban } from "lucide-react";
 import ChuyenTrang from "../../components/ChuyenTrang";
-import { AuthContext } from "../../contexts/AuthContext"; // 🔥 Import để lấy socket
+import { AuthContext } from "../../contexts/AuthContext";
+import AddUserModal from "../../components/AddUserModal"; // 🔥 Import modal
 
 const Users = () => {
-  const { socket } = useContext(AuthContext); // 🔥 Lấy socket từ context
+  const { socket } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,6 +16,7 @@ const Users = () => {
     role: 'all',
     status: 'all'
   });
+  const [isModalOpen, setIsModalOpen] = useState(false); // 🔥 State cho modal
   
   const usersPerPage = 5;
 
@@ -39,7 +41,7 @@ const Users = () => {
     fetchUsers();
   }, []);
 
-  // 🔥 Thêm useEffect để lắng nghe socket realtime
+  // Lắng nghe socket realtime
   useEffect(() => {
     if (!socket) return;
 
@@ -55,14 +57,17 @@ const Users = () => {
       );
     };
 
-    // Đăng ký listener
     socket.on('user-status-changed', handleUserStatusChanged);
 
-    // Cleanup khi component unmount
     return () => {
       socket.off('user-status-changed', handleUserStatusChanged);
     };
   }, [socket]);
+
+  // 🔥 Handler khi thêm user thành công
+  const handleUserAdded = () => {
+    fetchUsers(); // Refresh danh sách
+  };
 
   // Xử lý khóa/mở khóa user
   const handleLockUser = async (userId, isBlocked, role) => {
@@ -138,7 +143,6 @@ const Users = () => {
     return roleMatch && statusMatch;
   });
 
-  // Pagination
   const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
   const startIndex = (currentPage - 1) * usersPerPage;
   const currentUsers = filteredUsers.slice(startIndex, startIndex + usersPerPage);
@@ -165,7 +169,12 @@ const Users = () => {
       {/* Header */}
       <div className="users-header">
         <h2 className="users-title">Quản lý Users</h2>
-        <button className="users-addBtn">Thêm User mới</button>
+        <button 
+          className="users-addBtn"
+          onClick={() => setIsModalOpen(true)} // 🔥 Mở modal
+        >
+          Thêm User mới
+        </button>
       </div>
 
       <div className="users-card">
@@ -289,6 +298,13 @@ const Users = () => {
           />
         </div>
       </div>
+
+      {/* 🔥 Modal thêm user */}
+      <AddUserModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onUserAdded={handleUserAdded}
+      />
     </div>
   );
 };
