@@ -11,6 +11,7 @@ export const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [blockModal, setBlockModal] = useState({ show: false, message: '' });
 
   // ==============================
   // Hàm dùng ngay sau login/register
@@ -67,15 +68,30 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     fetchUser();
 
-    // Không disconnect socket ở đây (singleton dùng chung).
-    // Logout sẽ lo việc disconnect.
-    return () => {};
+    // Listen for user-blocked event
+    if (socket) {
+      socket.on('user-blocked', (data) => {
+        if (data.blocked) {
+          setBlockModal({ show: true, message: data.message });
+        }
+      });
+    }
+    return () => {
+      if (socket) socket.off('user-blocked');
+    };
   }, []);
 
   // ==============================
   // Đăng xuất
   // ==============================
   const logout = () => {
+    // 🔥 Emit logout event trước khi disconnect
+    const userId = user?._id || user?.id;
+    if (userId && socket && socket.connected) {
+      socket.emit('user-logout', userId);
+      console.log("👋 Emitted user-logout for userId:", userId);
+    }
+
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     setUser(null);
@@ -93,6 +109,24 @@ export const AuthProvider = ({ children }) => {
       value={{ user, loading, loginSuccess, logout, fetchUser, socket }}
     >
       {children}
+      {blockModal.show && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(0,0,0,0.4)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{ background: 'white', padding: 32, borderRadius: 12, boxShadow: '0 2px 16px #0002', maxWidth: 400, textAlign: 'center' }}>
+            <h2 style={{ color: '#dc2626', marginBottom: 16 }}>Tài khoản của bạn đã bị chặn</h2>
+            <p style={{ marginBottom: 24 }}>{blockModal.message || 'Nếu có thắc mắc vui lòng liên hệ với quản trị viên.'}</p>
+            <button
+              style={{ padding: '8px 24px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer' }}
+              onClick={() => {
+                setBlockModal({ show: false, message: '' });
+                logout();
+              }}
+            >OK</button>
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 };

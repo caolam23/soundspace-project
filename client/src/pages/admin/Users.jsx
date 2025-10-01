@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import "./Users.css";
-import { User, Edit, Lock, Unlock, Trash2 } from "lucide-react";
+import { User, Edit, Lock, Unlock, Trash2, Ban } from "lucide-react";
+import ChuyenTrang from "../../components/ChuyenTrang";
+import { AuthContext } from "../../contexts/AuthContext"; // 🔥 Import để lấy socket
 
 const Users = () => {
+  const { socket } = useContext(AuthContext); // 🔥 Lấy socket từ context
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,11 +23,7 @@ const Users = () => {
     try {
       setLoading(true);
       const response = await fetch('http://localhost:8800/api/users');
-      
-      if (!response.ok) {
-        throw new Error('Không thể tải danh sách users');
-      }
-      
+      if (!response.ok) throw new Error('Không thể tải danh sách users');
       const data = await response.json();
       setUsers(data);
       setError(null);
@@ -36,27 +35,67 @@ const Users = () => {
     }
   };
 
-  // Load users khi component mount
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  // Xử lý xóa user
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa user này?')) {
+  // 🔥 Thêm useEffect để lắng nghe socket realtime
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleUserStatusChanged = ({ userId, status, lastActiveAt }) => {
+      console.log(`🔄 Realtime update: User ${userId} status changed to ${status}`);
+      
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user._id === userId 
+            ? { ...user, status, lastActiveAt }
+            : user
+        )
+      );
+    };
+
+    // Đăng ký listener
+    socket.on('user-status-changed', handleUserStatusChanged);
+
+    // Cleanup khi component unmount
+    return () => {
+      socket.off('user-status-changed', handleUserStatusChanged);
+    };
+  }, [socket]);
+
+  // Xử lý khóa/mở khóa user
+  const handleLockUser = async (userId, isBlocked, role) => {
+    if (role === 'admin') {
+      alert('Không thể chặn tài khoản admin!');
       return;
     }
+    if (!window.confirm(`Bạn có chắc chắn muốn ${isBlocked ? 'mở khóa' : 'chặn'} user này?`)) {
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:8800/api/users/${userId}/toggle-lock`, {
+        method: 'PUT',
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Không thể thay đổi trạng thái chặn');
+      }
+      await fetchUsers();
+      alert(`User đã được ${isBlocked ? 'mở khóa' : 'chặn'} thành công!`);
+    } catch (err) {
+      alert('Lỗi khi thay đổi trạng thái chặn: ' + err.message);
+    }
+  };
 
+  // Xử lý xóa user
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa user này?')) return;
     try {
       const response = await fetch(`http://localhost:8800/api/users/${userId}`, {
         method: 'DELETE',
       });
-      
-      if (!response.ok) {
-        throw new Error('Không thể xóa user');
-      }
-      
-      // Refresh danh sách sau khi xóa
+      if (!response.ok) throw new Error('Không thể xóa user');
       await fetchUsers();
       alert('Xóa user thành công!');
     } catch (err) {
@@ -64,54 +103,38 @@ const Users = () => {
     }
   };
 
-  // Format date
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('vi-VN');
   };
 
-  // Convert role để hiển thị
   const getRoleDisplay = (role, currentRole) => {
-    // Ưu tiên role (vai trò chính) thay vì currentRole
     const displayRole = role || currentRole;
     switch (displayRole) {
       case 'admin': return 'Admin';
-      case 'host': return 'Host';        // Chủ phòng
-      case 'listener': return 'Listener'; // Người nghe trong phòng
-      case 'user': return 'User';         // Người dùng đã tạo tài khoản
+      case 'host': return 'Host';
+      case 'listener': return 'Listener';
+      case 'user': return 'User';
       default: return 'User';
     }
   };
 
-  // Convert status để hiển thị  
   const getStatusDisplay = (status, isBlocked, reportCount) => {
-    if (isBlocked) return 'locked';              // Bị khóa
-    if (reportCount > 0) return 'reported';      // Bị báo cáo
-    if (status === 'online') return 'active';    // Hoạt động
-    if (status === 'offline') return 'offline';  // Đã off
+    if (isBlocked) return 'locked';
+    if (reportCount > 0) return 'reported';
+    if (status === 'online') return 'active';
+    if (status === 'offline') return 'offline';
     return 'active';
   };
 
-  // Filter users
   const filteredUsers = users.filter(user => {
-    // Ưu tiên role (vai trò chính) cho filter
     const userRole = (user.role || user.currentRole).toLowerCase();
-    const roleMatch = filters.role === 'all' || 
-                     (filters.role === 'admin' && userRole === 'admin') ||
-                     (filters.role === 'host' && userRole === 'host') ||
-                     (filters.role === 'listener' && userRole === 'listener') ||
-                     (filters.role === 'user' && userRole === 'user');
-    
+    const roleMatch = filters.role === 'all' || filters.role === userRole;
     let statusMatch = true;
     if (filters.status !== 'all') {
       const userStatus = getStatusDisplay(user.status, user.isBlocked, user.reportCount);
-      statusMatch = filters.status === 'active' ? userStatus === 'active' : 
-                   filters.status === 'offline' ? userStatus === 'offline' :
-                   filters.status === 'locked' ? userStatus === 'locked' :
-                   filters.status === 'reported' ? userStatus === 'reported' :
-                   true;
+      statusMatch = filters.status === userStatus;
     }
-    
     return roleMatch && statusMatch;
   });
 
@@ -120,31 +143,19 @@ const Users = () => {
   const startIndex = (currentPage - 1) * usersPerPage;
   const currentUsers = filteredUsers.slice(startIndex, startIndex + usersPerPage);
 
-  // Reset về trang 1 khi filter thay đổi
   useEffect(() => {
     setCurrentPage(1);
     setJumpPage(1);
   }, [filters]);
 
   if (loading) {
-    return (
-      <div className="users-wrapper">
-        <div className="users-header">
-          <h2 className="users-title">Đang tải...</h2>
-        </div>
-      </div>
-    );
+    return <div className="users-wrapper"><h2 className="users-title">Đang tải...</h2></div>;
   }
-
   if (error) {
     return (
       <div className="users-wrapper">
-        <div className="users-header">
-          <h2 className="users-title">Lỗi: {error}</h2>
-          <button onClick={fetchUsers} className="users-addBtn">
-            Thử lại
-          </button>
-        </div>
+        <h2 className="users-title">Lỗi: {error}</h2>
+        <button onClick={fetchUsers} className="users-addBtn">Thử lại</button>
       </div>
     );
   }
@@ -157,7 +168,6 @@ const Users = () => {
         <button className="users-addBtn">Thêm User mới</button>
       </div>
 
-      {/* Card */}
       <div className="users-card">
         {/* Filters */}
         <div className="users-filterBar">
@@ -169,9 +179,9 @@ const Users = () => {
             >
               <option value="all">Tất cả vai trò</option>
               <option value="admin">Admin</option>
-              <option value="host">Host (Chủ phòng)</option>
-              <option value="listener">Listener (Người nghe)</option>
-              <option value="user">User (Người dùng)</option>
+              <option value="host">Host</option>
+              <option value="listener">Listener</option>
+              <option value="user">User</option>
             </select>
             <select 
               className="users-select"
@@ -203,67 +213,54 @@ const Users = () => {
               {currentUsers.map(user => {
                 const displayRole = getRoleDisplay(user.role, user.currentRole);
                 const displayStatus = getStatusDisplay(user.status, user.isBlocked, user.reportCount);
-                
                 return (
                   <tr key={user._id}>
-                    {/* User info */}
                     <td>
                       <div className="users-userInfo">
-                        <div className="users-avatar">
-                          <User className="users-avatarIcon" />
-                        </div>
+                        <div className="users-avatar"><User className="users-avatarIcon" /></div>
                         <div className="users-userText">
                           <div className="users-name">{user.username || 'Không có tên'}</div>
                           <div className="users-email">{user.email}</div>
                         </div>
                       </div>
                     </td>
-
-                    {/* Role */}
                     <td>
-                      <span
-                        className={`users-role ${
-                          displayRole === "Admin"
-                            ? "users-roleAdmin"
-                            : displayRole === "Host"
-                            ? "users-roleHost"
-                            : "users-roleListener"
-                        }`}
-                      >
+                      <span className={`users-role ${
+                        displayRole === "Admin"
+                          ? "users-roleAdmin"
+                          : displayRole === "Host"
+                          ? "users-roleHost"
+                          : "users-roleListener"
+                      }`}>
                         {displayRole}
                       </span>
                     </td>
-
-                    {/* Status */}
                     <td>
-                      <span
-                        className={`users-status ${
-                          displayStatus === "active"
-                            ? "users-statusActive"
-                            : "users-statusBanned"
-                        }`}
-                      >
+                      <span className={`users-status ${
+                        displayStatus === "active"
+                          ? "users-statusActive"
+                          : "users-statusBanned"
+                      }`}>
                         {displayStatus === "active" ? "Hoạt động" :
                          displayStatus === "offline" ? "Đã offline" :
                          displayStatus === "locked" ? "Bị khóa" :
                          displayStatus === "reported" ? "Bị báo cáo" : "Không xác định"}
                       </span>
                     </td>
-
-                    {/* Join date */}
                     <td>{formatDate(user.createdAt)}</td>
-
-                    {/* Actions */}
                     <td>
                       <div className="users-actions">
-                        <button className="users-btn users-editBtn">
-                          <Edit className="users-icon" />
-                        </button>
-                        <button className="users-btn users-lockBtn">
-                          {displayStatus === "active" || displayStatus === "offline" ? (
-                            <Lock className="users-icon" />
+                        <button className="users-btn users-editBtn"><Edit className="users-icon" /></button>
+                         <button
+                          className={`users-btn users-lockBtn ${displayStatus === "locked" ? "users-unlockBtn" : ""}`}
+                          onClick={() => handleLockUser(user._id, user.isBlocked, user.role)}
+                          disabled={user.role === 'admin'}
+                          title={user.role === 'admin' ? 'Không thể chặn admin' : displayStatus === 'locked' ? 'Mở khóa user' : 'Chặn user'}
+                        >
+                          {displayStatus === "locked" ? (
+                            <Ban className="users-icon" style={{ color: '#dc2626' }} />
                           ) : (
-                            <Unlock className="users-icon" />
+                            <Lock className="users-icon" />
                           )}
                         </button>
                         <button 
@@ -282,88 +279,15 @@ const Users = () => {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="users-pagination">
-            <button
-              onClick={() => {
-                const newPage = Math.max(currentPage - 1, 1);
-                setCurrentPage(newPage);
-                setJumpPage(newPage);
-              }}
-              disabled={currentPage === 1}
-              className="users-pageBtn"
-            >
-              &lt; Trước
-            </button>
-
-            {[...Array(totalPages)].map((_, i) => {
-              const page = i + 1;
-              if (
-                page === 1 ||
-                page === totalPages ||
-                (page >= currentPage - 1 && page <= currentPage + 1)
-              ) {
-                return (
-                  <button
-                    key={page}
-                    onClick={() => {
-                      setCurrentPage(page);
-                      setJumpPage(page);
-                    }}
-                    className={`users-pageBtn ${
-                      currentPage === page ? "users-activePage" : ""
-                    }`}
-                  >
-                    {page}
-                  </button>
-                );
-              } else if (
-                (page === 2 && currentPage > 3) ||
-                (page === totalPages - 1 && currentPage < totalPages - 2)
-              ) {
-                return <span key={page}>...</span>;
-              }
-              return null;
-            })}
-
-            <button
-              onClick={() => {
-                const newPage = Math.min(currentPage + 1, totalPages);
-                setCurrentPage(newPage);
-                setJumpPage(newPage);
-              }}
-              disabled={currentPage === totalPages}
-              className="users-pageBtn"
-            >
-              Sau &gt;
-            </button>
-
-            <div className="users-quickJump">
-              Chuyển đến trang:
-              <input
-                type="number"
-                min="1"
-                max={totalPages}
-                value={jumpPage}
-                onChange={(e) => {
-                  let page = parseInt(e.target.value);
-                  if (isNaN(page)) page = "";
-                  setJumpPage(page);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    let page = parseInt(jumpPage);
-                    if (isNaN(page)) page = 1;
-                    page = Math.max(1, Math.min(totalPages, page));
-                    setCurrentPage(page);
-                    setJumpPage(page);
-                  }
-                }}
-              />
-              of {totalPages}
-            </div>
-          </div>
-        )}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "1rem" }}>
+          <ChuyenTrang
+            totalPages={totalPages}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            jumpPage={jumpPage}
+            setJumpPage={setJumpPage}
+          />
+        </div>
       </div>
     </div>
   );

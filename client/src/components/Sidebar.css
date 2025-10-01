@@ -89,3 +89,27 @@
     display: none;
   }
 }
+/* Logout button */
+.Sidebar__logout {
+  margin-top: auto; /* đẩy nút xuống cuối sidebar */
+}
+
+.Sidebar__logoutBtn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.Sidebar__logoutBtn:hover {
+  background: #ede9fe;
+  color: #6b46c1;
+}
+
+.Sidebar__logoutBtn:active {
+  background: #e9d8fd;
+  color: #553c9a;
+  font-weight: 600;
+  border-left: 4px solid #805ad5;
+}

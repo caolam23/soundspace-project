@@ -1,6 +1,6 @@
 // src/components/Sidebar.jsx
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Users,
   Home,
@@ -9,11 +9,23 @@ import {
   BarChart3,
   Settings,
   Shield,
-  TrendingUp
+  TrendingUp,
+  LogOut
 } from 'lucide-react';
 import './Sidebar.css';
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Xóa token hoặc session (nếu có)
+    localStorage.removeItem("token");
+    // Chuyển hướng về trang auth
+    navigate("/auth");
+    // hoặc nếu bạn muốn reload hẳn:
+    // window.location.href = "http://localhost:5173/auth";
+  };
+
   return (
     <div className="Sidebar__wrapper">
       {/* Logo */}
@@ -65,6 +77,13 @@ export default function Sidebar() {
           </NavLink>
         </li>
       </ul>
+
+      {/* Logout */}
+      <div className="Sidebar__logout">
+        <button onClick={handleLogout} className="Sidebar__link Sidebar__logoutBtn">
+          <LogOut size={18} /> <span>Đăng xuất</span>
+        </button>
+      </div>
     </div>
   );
 }

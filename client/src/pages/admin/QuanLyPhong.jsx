@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "./QuanLyPhong.css";
 import { Music, Eye, Trash2, X } from "lucide-react";
+import ChuyenTrang from "../../components/ChuyenTrang"; 
 
 const QuanLyPhong = () => {
   // Mock data phòng
@@ -129,66 +130,17 @@ const QuanLyPhong = () => {
             </tbody>
           </table>
         </div>
+      </div> {/* ✅ Đóng QuanLyPhong-card */}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="QuanLyPhong-pagination">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="QuanLyPhong-pageBtn"
-            >
-              &lt; Trước
-            </button>
-
-            {[...Array(totalPages)].map((_, i) => {
-              const page = i + 1;
-              if (
-                page === 1 ||
-                page === totalPages ||
-                (page >= currentPage - 1 && page <= currentPage + 1)
-              ) {
-                return (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`QuanLyPhong-pageBtn ${currentPage === page ? "active" : ""}`}
-                  >
-                    {page}
-                  </button>
-                );
-              } else if (
-                (page === 2 && currentPage > 3) ||
-                (page === totalPages - 1 && currentPage < totalPages - 2)
-              ) {
-                return <span key={page}>...</span>;
-              }
-              return null;
-            })}
-
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="QuanLyPhong-pageBtn"
-            >
-              Sau &gt;
-            </button>
-
-            <div className="QuanLyPhong-quickJump">
-              Chuyển đến trang:
-              <input
-                type="number"
-                min="1"
-                max={totalPages}
-                value={jumpPage}
-                onChange={(e) => setJumpPage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleJump()}
-                onBlur={handleJump}
-              />
-              of {totalPages}
-            </div>
-          </div>
-        )}
+      {/* Pagination thay bằng component */}
+      <div style={{ display: "flex", justifyContent: "center", marginTop: "1rem" }}>
+        <ChuyenTrang
+          totalPages={totalPages}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          jumpPage={jumpPage}
+          setJumpPage={setJumpPage}
+        />      
       </div>
 
       {/* Modal xem chi tiết */}
