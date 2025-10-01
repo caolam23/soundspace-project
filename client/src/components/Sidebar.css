@@ -1,0 +1,115 @@
+.Sidebar__wrapper {
+  width: 250px;
+  height: 100vh;
+  background: #faf5ff; /* tím nhạt */
+  border-right: 1px solid #e9d8fd;
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Logo */
+.Sidebar__logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.Sidebar__logoIcon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(to bottom right, #805ad5, #6b46c1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.Sidebar__title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #1a202c;
+}
+
+.Sidebar__subtitle {
+  font-size: 12px;
+  color: #6b46c1;
+}
+
+/* Menu */
+.Sidebar__menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+}
+
+.Sidebar__menu li {
+  margin-bottom: 10px;
+}
+
+.Sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: #4a5568; /* gray-700 */
+  padding: 12px 14px;
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s, border-left 0.2s;
+}
+
+.Sidebar__link:hover {
+  background: #ede9fe;
+  color: #6b46c1;
+}
+
+.Sidebar__link.active {
+  background: #e9d8fd;
+  color: #553c9a;
+  font-weight: 600;
+  border-left: 4px solid #805ad5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .Sidebar__wrapper {
+    width: 70px;
+    padding: 10px;
+  }
+  .Sidebar__title,
+  .Sidebar__subtitle,
+  .Sidebar__link span {
+    display: none;
+  }
+}
+/* Logout button */
+.Sidebar__logout {
+  margin-top: auto; /* đẩy nút xuống cuối sidebar */
+}
+
+.Sidebar__logoutBtn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.Sidebar__logoutBtn:hover {
+  background: #ede9fe;
+  color: #6b46c1;
+}
+
+.Sidebar__logoutBtn:active {
+  background: #e9d8fd;
+  color: #553c9a;
+  font-weight: 600;
+  border-left: 4px solid #805ad5;
+}

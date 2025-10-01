@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap');
 /* --- Nền Toàn Trang --- */
 #landing-page::before {
   content: "";
@@ -139,7 +141,6 @@
   padding: 40px 0;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap');
 
 .landing-page .hero-section__title {
   font-family: 'Montserrat', sans-serif;
@@ -205,8 +206,6 @@
   margin: 0 auto 25px auto;
   font-size: 1.5rem;
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap');
 
 .landing-page .feature-card__title {
   font-family: 'Poppins', sans-serif;

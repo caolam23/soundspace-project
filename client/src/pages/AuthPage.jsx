@@ -14,6 +14,7 @@ export default function AuthPage() {
   // State và handlers cho Form Đăng nhập
   const [loginForm, setLoginForm] = useState({ identifier: '', password: '' });
   const [loginError, setLoginError] = useState('');
+  const [blockedMessage, setBlockedMessage] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   const handleLoginChange = (e) => {
@@ -43,10 +44,22 @@ export default function AuthPage() {
       }
 
     } catch (err) {
-      setLoginError(err.response?.data?.msg || 'Tên đăng nhập hoặc mật khẩu không đúng.');
+        if (err.response?.status === 403 && err.response?.data?.msg?.includes('chặn')) {
+        setBlockedMessage('Tài khoản đã bị chặn và không thể đăng nhập.');
+      } else {
+        setLoginError(err.response?.data?.msg || 'Tên đăng nhập hoặc mật khẩu không đúng.');
+      }
     }
   };
   
+   // Check for Google OAuth blocked redirect
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('blocked')) {
+      setBlockedMessage('Tài khoản đã bị chặn và không thể đăng nhập.');
+    }
+  }, []);
+
   // State và handlers cho Form Đăng ký
   const [registerForm, setRegisterForm] = useState({ username: '', email: '', password: '', confirmPassword: '' });
   const [registerError, setRegisterError] = useState('');
@@ -156,6 +169,7 @@ export default function AuthPage() {
 
             <a className="auth-page__link" href="#">Forgot your password?</a>
             {loginError && <p className="auth-page__error-message">{loginError}</p>}
+            {blockedMessage && <p className="auth-page__error-message" style={{ color: 'red', fontWeight: 'bold' }}>{blockedMessage}</p>}
             <button className="auth-page__button" type="submit">Login</button>
           </form>
         </div>

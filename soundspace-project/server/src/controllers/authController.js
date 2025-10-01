@@ -37,7 +37,7 @@ exports.login = async (req, res) => {
 
     const user = await User.findOne({ $or: [{ email: identifier }, { username: identifier }] });
     if (!user || !user.password) return res.status(400).json({ msg: 'Người dùng không tồn tại hoặc chưa đăng ký bằng mật khẩu' });
-
+    if (user.isBlocked) return res.status(403).json({ msg: 'Tài khoản đã bị chặn và không thể đăng nhập.' });
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(400).json({ msg: 'Sai mật khẩu' });
 
@@ -62,12 +62,19 @@ exports.login = async (req, res) => {
 // =======================
 // Google OAuth start
 // =======================
+
 exports.googleAuth = passport.authenticate('google', { scope: ['profile', 'email'] });
 
 // Callback từ Google
 exports.googleCallback = [
   passport.authenticate('google', { session: false, failureRedirect: `${process.env.CLIENT_URL}/login` }),
-  (req, res) => {
+  async (req, res) => {
+    // Check if user is blocked
+    const user = await User.findById(req.user._id);
+    if (user && user.isBlocked) {
+      // Redirect to login page with blocked message
+      return res.redirect(`${process.env.CLIENT_URL}/login?blocked=1`);
+    }
     const token = jwt.sign(
       { id: req.user._id, role: req.user.role },
       process.env.JWT_SECRET,
