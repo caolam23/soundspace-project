@@ -1,17 +1,23 @@
 // src/routes/AppRouter.jsx
 import React, { useContext } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { AuthContext } from "../contexts/AuthContext";
+import { AuthContext } from "../contexts/AuthContext"; // 
 
 // Pages
-import App from "../App"; 
+import App from "../App";
 import LandingPage from "../pages/LandingPage";
 import GuestRoom from "../pages/GuestRoom";
 import AuthPage from "../pages/AuthPage";
 import AuthSuccess from "../pages/AuthSuccess";
 import UserHomePage from "../pages/UserHomePage";
-import AdminPanel from "../pages/AdminPanel";
 import RoomPage from "../pages/RoomPage";
+
+// Admin
+import AdminLayout from "../pages/AdminLayout"; 
+import Dashboard from "../pages/admin/Dashboard";
+import Users from "../pages/admin/Users";
+import Settings from "../pages/admin/Settings";
+import QuanLyPhong from "../pages/admin/QuanLyPhong";
 
 // Component bảo vệ route User
 const UserRoute = ({ children }) => {
@@ -30,7 +36,7 @@ const AdminRoute = ({ children }) => {
 export default function AppRouter() {
   return (
     <Routes>
-      {/* Route cho khách */}
+      {/* Public routes */}
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/guest-room" element={<GuestRoom />} />
 
@@ -38,7 +44,7 @@ export default function AppRouter() {
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/auth-success" element={<AuthSuccess />} />
 
-      {/* Route cho user */}
+      {/* User routes */}
       <Route path="/user-home" element={<UserHomePage />} />
       <Route path="/home" element={<UserHomePage />} />
 
@@ -55,7 +61,6 @@ export default function AppRouter() {
         }
       />
 
-      {/* App chính */}
       <Route
         path="/app"
         element={
@@ -65,15 +70,21 @@ export default function AppRouter() {
         }
       />
 
-      {/* Route bảo vệ cho Admin */}
+      {/* Admin routes (có thể dùng Layout hoặc Panel) */}
       <Route
         path="/admin"
         element={
           <AdminRoute>
-            <AdminPanel />
+            <AdminLayout />
           </AdminRoute>
         }
-      />
+      >
+        <Route index element={<Dashboard />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="users" element={<Users />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="quanlyphong" element={<QuanLyPhong />} />
+      </Route>
 
       {/* Redirect mặc định */}
       <Route path="*" element={<Navigate to="/" />} />

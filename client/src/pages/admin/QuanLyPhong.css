@@ -1,0 +1,206 @@
+.QuanLyPhong-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.QuanLyPhong-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.QuanLyPhong-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.QuanLyPhong-card {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  border: 1px solid #f3f4f6;
+}
+
+.QuanLyPhong-filters {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  gap: 1rem;
+}
+
+.QuanLyPhong-select,
+.QuanLyPhong-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  outline: none;
+}
+
+.QuanLyPhong-select:focus,
+.QuanLyPhong-input:focus {
+  box-shadow: 0 0 0 2px #a78bfa;
+}
+
+.QuanLyPhong-tableWrapper {
+  overflow-x: auto;
+}
+
+.QuanLyPhong-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.QuanLyPhong-thead {
+  background-color: #f9fafb;
+}
+
+.QuanLyPhong-thead th {
+  padding: 0.75rem 1.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.QuanLyPhong-tbody {
+  background-color: #ffffff;
+  border-top: 1px solid #e5e7eb;
+}
+
+.QuanLyPhong-tr:hover {
+  background-color: #f9fafb;
+}
+
+.QuanLyPhong-td {
+  padding: 1rem 1.5rem;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.QuanLyPhong-roomName {
+  display: flex;
+  align-items: center;
+}
+
+.QuanLyPhong-iconWrapper {
+  width: 2.5rem;
+  height: 2.5rem;
+  background-color: #ede9fe;
+  border-radius: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.QuanLyPhong-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #7c3aed;
+}
+
+.QuanLyPhong-roomText {
+  margin-left: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+.QuanLyPhong-status {
+  display: inline-flex;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+}
+
+.QuanLyPhong-active {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.QuanLyPhong-reported {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.QuanLyPhong-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.QuanLyPhong-eyeBtn,
+.QuanLyPhong-trashBtn {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.QuanLyPhong-eyeBtn {
+  color: #2563eb;
+}
+
+.QuanLyPhong-eyeBtn:hover {
+  background-color: #eff6ff;
+}
+
+.QuanLyPhong-trashBtn {
+  color: #dc2626;
+}
+
+.QuanLyPhong-trashBtn:hover {
+  background-color: #fef2f2;
+}
+
+/* Pagination wrapper */
+.QuanLyPhong-pagination {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-family: "Inter", sans-serif;
+}
+
+.QuanLyPhong-modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.QuanLyPhong-modal {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.QuanLyPhong-modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.QuanLyPhong-closeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.QuanLyPhong-modalContent p {
+  margin: 10px 0;
+}

@@ -19,10 +19,18 @@ function createApp() {
   // passport config (chỉ require để chạy config, KHÔNG gán biến)
   require('./config/passport');
 
+  // middleware to attach io and userSockets to req
+  app.use((req, res, next) => {
+    req.io = app.get('io');
+    req.io.userSockets = app.get('userSockets');
+    next();
+  });
+
   // routes
   app.use('/api/admin', require('./routes/admin'));
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api/rooms', require('./routes/room.js'));
+  app.use('/api/users', require('./routes/userRoutes'));
   // test route
   app.get('/', (req, res) => res.send('SoundSpace Server is running!'));
 

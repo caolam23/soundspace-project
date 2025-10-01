@@ -1,0 +1,187 @@
+/* src/pages/AdminLayout.css */
+
+/* Thanh header responsive */
+.AdminLayout__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: white;
+  border-bottom: 1px solid #ddd;
+  width: 100%;
+  min-width: 320px;
+  height: 80px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Wrapper chính */
+.AdminLayout__wrapper {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.AdminLayout__content {
+  flex: 1; /* Chiếm hết phần còn lại bên phải sidebar */
+  margin-left: 250px; /* Bù cho width của sidebar */
+  background: #fff;
+}
+
+.AdminLayout__main {
+  padding: 20px;
+  /* Nội dung chính ở đây */
+}
+
+/* --- SEARCH responsive --- */
+.AdminLayout__searchWrapper {
+  flex: 1 1 auto;
+  min-width: 180px;
+  position: relative;
+}
+
+.AdminLayout__searchIcon {
+  position: absolute;
+  left: 15px;
+  color: #999;
+  font-size: 16px;
+  z-index: 1;
+  transform: translateY(9px);
+}
+
+.AdminLayout__searchInput {
+  padding: 8px 12px 8px 36px;
+  width: 100%;
+  max-width: 300px;
+  min-width: 180px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  outline: none;
+  font-size: 14px;
+  background-color: #fff;
+  color: #333;
+  transition: border 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.AdminLayout__searchInput::placeholder {
+  color: #999;
+}
+
+/* --- ACTIONS wrapper --- */
+.AdminLayout__actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-shrink: 0;
+}
+
+/* --- BELL NOTIFICATION --- */
+.AdminLayout__bellBtn {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+}
+
+.AdminLayout__bellIcon {
+  color: #cdd1d7;
+}
+
+/* --- USER INFO responsive --- */
+.AdminLayout__userInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translateY(-2px);
+  min-width: 120px;
+}
+
+.AdminLayout__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.AdminLayout__defaultAvatar {
+  color: #8b5cf6;
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.AdminLayout__username {
+  font-size: 13px;
+  font-weight: 500;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+.AdminLayout__role {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+}
+
+/* Media queries cho các màn hình nhỏ */
+@media (max-width: 768px) {
+  .AdminLayout__header {
+    padding: 10px 15px;
+    height: 70px;
+    gap: 10px;
+  }
+  
+  .AdminLayout__searchInput {
+    max-width: 200px;
+    min-width: 150px;
+  }
+  
+  .AdminLayout__username {
+    max-width: 80px;
+    font-size: 12px;
+  }
+  
+  .AdminLayout__role {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .AdminLayout__header {
+    padding: 8px 12px;
+    height: 60px;
+    flex-wrap: nowrap;
+  }
+  
+  .AdminLayout__searchInput {
+    max-width: 150px;
+    min-width: 120px;
+    font-size: 13px;
+  }
+  
+  .AdminLayout__userInfo {
+    gap: 8px;
+  }
+  
+  .AdminLayout__username {
+    max-width: 60px;
+    font-size: 11px;
+  }
+  
+  .AdminLayout__role {
+    display: none;
+  }
+  
+  .AdminLayout__avatar,
+  .AdminLayout__defaultAvatar {
+    width: 30px;
+    height: 30px;
+    font-size: 28px;
+  }
+}
