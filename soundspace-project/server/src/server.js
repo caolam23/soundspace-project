@@ -1,4 +1,4 @@
-// server/src/server.js
+// server/src/server.js 
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -7,7 +7,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const createApp = require('./app');
 const Room = require('./models/room.js');
-const User = require('./models/User'); // 👈 User model để quản lý online/offline
+const User = require('./models/User');
 
 // 1. Kết nối Database
 connectDB();
@@ -25,35 +25,39 @@ app.use(express.json());
 // 4. Tạo HTTP server từ Express
 const server = http.createServer(app);
 
-// 5. Cấu hình Socket.IO
+// 5. Cấu hình Socket.IO (thêm pingInterval, pingTimeout)
 const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
-    methods: ["GET", "POST"],
-    credentials: true
-  }
+  cors: {
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+  pingInterval: 10000, // Gửi ping mỗi 10 giây
+  pingTimeout: 5000,   // Nếu sau 5 giây không trả lời -> disconnect (PHẢI NHỎ HƠN pingInterval)
 });
 
-// 6. Lưu trữ map giữa userId và socketId
+// 6. Map lưu userId -> Set(socketId)
 const userSockets = new Map();
 
-// 7. Lắng nghe kết nối Socket.IO
+// 7. Socket.IO logic
 io.on('connection', (socket) => {
   console.log(`🔌 User Connected: ${socket.id}`);
 
-  // Khi user login xong sẽ gửi userId để đăng ký
+  // --- Register user ---
   socket.on('register-user', async (userId) => {
-    userSockets.set(userId, socket.id);
-    console.log(`✅ User ${userId} registered with socket ${socket.id}`);
+    if (!userSockets.has(userId)) {
+      userSockets.set(userId, new Set());
+    }
+    userSockets.get(userId).add(socket.id);
+
+    console.log("🔥 userSockets Map:", [...userSockets.entries()]);
     
-    // Cập nhật trạng thái online trong DB
     try {
       await User.findByIdAndUpdate(userId, { 
         status: 'online',
         lastActiveAt: Date.now()
       });
 
-      // Broadcast cho admin
       io.emit('user-status-changed', { 
         userId, 
         status: 'online',
@@ -65,15 +69,16 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Khi user logout (manual logout)
+  // --- Logout ---
   socket.on('user-logout', async (userId) => {
     try {
+      // Xóa toàn bộ socketId của user này
+      userSockets.delete(userId);
+
       await User.findByIdAndUpdate(userId, { 
         status: 'offline',
         lastActiveAt: Date.now()
       });
-      
-      userSockets.delete(userId);
       
       io.emit('user-status-changed', { 
         userId, 
@@ -87,7 +92,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Khi user vào phòng
+  // --- Join room ---
   socket.on('join-room', async (roomId) => {
     try {
       socket.join(roomId);
@@ -110,17 +115,18 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Khi guest gửi yêu cầu tham gia (manual)
+  // --- Guest request to join ---
   socket.on('request-to-join', async ({ roomId, requester }) => {
     try {
       const room = await Room.findById(roomId);
       if (!room) return;
 
-      const hostSocketId = userSockets.get(room.owner.toString());
-      if (hostSocketId) {
-        io.to(hostSocketId).emit('new-join-request', { requester, roomId });
+      const hostSockets = userSockets.get(room.owner.toString());
+      if (hostSockets) {
+        hostSockets.forEach(socketId => {
+          io.to(socketId).emit('new-join-request', { requester, roomId });
+        });
       }
-      io.to(roomId).emit("new-join-request", { requester, roomId });
 
       console.log(`📩 Yêu cầu tham gia từ ${requester.username} gửi tới host ${room.owner}`);
     } catch (err) {
@@ -128,14 +134,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Host phản hồi yêu cầu
+  // --- Host respond ---
   socket.on('respond-to-request', async ({ requesterId, roomId, accepted }) => {
     try {
       const room = await Room.findById(roomId);
       if (!room) return;
 
       const reqIdStr = String(requesterId);
-      const requesterSocketId = userSockets.get(reqIdStr);
+      const requesterSockets = userSockets.get(reqIdStr);
 
       if (accepted) {
         if (!room.members.some(m => m.toString() === reqIdStr)) {
@@ -147,8 +153,10 @@ io.on('connection', (socket) => {
           .populate('owner', 'username avatar')
           .populate('members', 'username avatar');
 
-        if (requesterSocketId) {
-          io.to(requesterSocketId).emit('join-request-accepted', { roomId, room: populatedRoom });
+        if (requesterSockets) {
+          requesterSockets.forEach(socketId => {
+            io.to(socketId).emit('join-request-accepted', { roomId, room: populatedRoom });
+          });
         }
 
         const owner = populatedRoom.owner;
@@ -161,8 +169,10 @@ io.on('connection', (socket) => {
         });
 
       } else {
-        if (requesterSocketId) {
-          io.to(requesterSocketId).emit('join-request-denied', { message: 'Yêu cầu tham gia đã bị từ chối.' });
+        if (requesterSockets) {
+          requesterSockets.forEach(socketId => {
+            io.to(socketId).emit('join-request-denied', { message: 'Yêu cầu tham gia đã bị từ chối.' });
+          });
         }
       }
     } catch (err) {
@@ -170,7 +180,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Khi user rời phòng
+  // --- Leave room ---
   socket.on('leave-room', async ({ roomId, userId }) => {
     socket.leave(roomId);
     try {
@@ -189,27 +199,31 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Ngắt kết nối (đóng tab, mất mạng, v.v.)
+  // --- Disconnect ---
   socket.on('disconnect', async () => {
-    for (let [userId, socketId] of userSockets.entries()) {
-      if (socketId === socket.id) {
-        try {
-          await User.findByIdAndUpdate(userId, { 
-            status: 'offline',
-            lastActiveAt: Date.now()
-          });
+    for (let [userId, sockets] of userSockets.entries()) {
+      if (sockets.has(socket.id)) {
+        sockets.delete(socket.id);
+        console.log(`❌ Socket ${socket.id} removed from user ${userId}`);
 
+        if (sockets.size === 0) {
           userSockets.delete(userId);
-          
-          io.emit('user-status-changed', { 
-            userId, 
-            status: 'offline',
-            lastActiveAt: Date.now()
-          });
+          try {
+            await User.findByIdAndUpdate(userId, { 
+              status: 'offline',
+              lastActiveAt: Date.now()
+            });
 
-          console.log(`❌ User ${userId} disconnected - status set to OFFLINE`);
-        } catch (error) {
-          console.error('❌ Error updating disconnect status:', error);
+            io.emit('user-status-changed', { 
+              userId, 
+              status: 'offline',
+              lastActiveAt: Date.now()
+            });
+
+            console.log(`❌ User ${userId} disconnected - status set to OFFLINE`);
+          } catch (error) {
+            console.error('❌ Error updating disconnect status:', error);
+          }
         }
         break;
       }

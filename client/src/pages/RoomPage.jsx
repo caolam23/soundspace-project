@@ -1,4 +1,3 @@
-// client/src/pages/RoomPage.jsx
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -18,6 +17,11 @@ import {
 } from "react-feather";
 import "./RoomPage.css";
 
+// Thư viện UI
+import Swal from "sweetalert2";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 function RoomPage() {
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -30,6 +34,10 @@ function RoomPage() {
   const [activeTab, setActiveTab] = useState("chat");
 
   const isHost = user && room && user._id === room.owner._id;
+
+  socket.onAny((event, ...args) => {
+    console.log("📡 Received event:", event, args);
+  });
 
   // ======================
   // API end room
@@ -53,15 +61,21 @@ function RoomPage() {
   // Host xử lý join-request
   // ======================
   const handleNewJoinRequest = useCallback(
-    ({ requester, roomId: requestedRoomId }) => {
+    async ({ requester, roomId: requestedRoomId }) => {
       if (roomId === requestedRoomId) {
-        const accept = window.confirm(
-          `Người dùng "${requester.username}" muốn tham gia phòng. Bạn có chấp nhận không?`
-        );
+        const result = await Swal.fire({
+          title: "Yêu cầu tham gia",
+          text: `Người dùng "${requester.username}" muốn tham gia phòng.`,
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonText: "Chấp nhận",
+          cancelButtonText: "Từ chối",
+        });
+
         socket.emit("respond-to-request", {
           requesterId: requester._id,
           roomId: requestedRoomId,
-          accepted: accept,
+          accepted: result.isConfirmed,
         });
       }
     },
@@ -76,7 +90,7 @@ function RoomPage() {
 
     socket.connect();
 
-    // Đăng ký user → socketId (map để server quản lý)
+    // Đăng ký user → socketId
     if (user && user._id) {
       socket.emit("register-user", user._id);
     }
@@ -94,7 +108,7 @@ function RoomPage() {
         const fetchedRoom = res.data;
         setRoom(fetchedRoom);
 
-        // đảm bảo owner luôn có trong members list
+        // đảm bảo owner luôn đứng đầu danh sách
         const owner = fetchedRoom.owner ? [fetchedRoom.owner] : [];
         const otherMembers = (fetchedRoom.members || []).filter(
           (m) => m._id !== fetchedRoom.owner?._id
@@ -104,11 +118,9 @@ function RoomPage() {
         // Kiểm tra user có phải host
         if (user._id === fetchedRoom.owner._id) {
           currentUserIsHost = true;
-          // Host không cần join API, emit socket trực tiếp
           socket.emit("join-room", roomId);
           socket.on("new-join-request", handleNewJoinRequest);
         } else {
-          // Nếu là member bình thường, gọi API join
           try {
             await axios.post(
               `http://localhost:8800/api/rooms/${roomId}/join`,
@@ -121,7 +133,7 @@ function RoomPage() {
               "❌ Lỗi join phòng:",
               err.response?.data?.msg || err.message
             );
-            alert(err.response?.data?.msg || "Lỗi khi tham gia phòng");
+            toast.error(err.response?.data?.msg || "Lỗi khi tham gia phòng");
           }
         }
       } catch (err) {
@@ -138,7 +150,6 @@ function RoomPage() {
     // Socket events
     // ======================
     const handleUpdateMembers = (updatedMembers) => {
-      // luôn đảm bảo owner đứng đầu danh sách
       if (room && room.owner) {
         const owner = [room.owner];
         const others = updatedMembers.filter(
@@ -150,11 +161,12 @@ function RoomPage() {
       }
     };
 
-    const handleUserJoined = ({ username }) =>
-      alert(`${username} vừa tham gia phòng!`);
+    const handleUserJoined = ({ username }) => {
+      toast.success(`${username} vừa tham gia phòng!`);
+    };
 
     const handleRoomEnded = (data) => {
-      if (!currentUserIsHost) alert(data.message);
+      if (!currentUserIsHost) toast.info(data.message);
       navigate("/home");
     };
 
@@ -179,10 +191,7 @@ function RoomPage() {
   // Guest listener accept/deny
   // ======================
   useEffect(() => {
-    const handleJoinRequestAccepted = ({
-      roomId: acceptedRoomId,
-      room: roomPayload,
-    }) => {
+    const handleJoinRequestAccepted = ({ roomId: acceptedRoomId, room: roomPayload }) => {
       if (acceptedRoomId !== roomId) return;
 
       const populatedRoom = roomPayload;
@@ -194,11 +203,11 @@ function RoomPage() {
       setMembers([...owner, ...otherMembers]);
 
       socket.emit("join-room", roomId);
-      alert("Bạn đã được chủ phòng chấp nhận — đang vào phòng!");
+      toast.success("Bạn đã được chủ phòng chấp nhận — đang vào phòng!");
     };
 
     const handleJoinRequestDenied = ({ message }) => {
-      alert(message || "Yêu cầu tham gia bị từ chối.");
+      toast.error(message || "Yêu cầu tham gia bị từ chối.");
       navigate("/home");
     };
 
@@ -211,45 +220,49 @@ function RoomPage() {
     };
   }, [roomId, navigate]);
 
-  // ✅ [SỬA ĐỔI] - Cơ chế CHẶN người dùng thoát trang cho Host
+  // ✅ Chặn host tắt tab/back mà không kết thúc live
   useEffect(() => {
     if (!isHost) return;
 
-    // --- Xử lý ĐÓNG TAB / TẢI LẠI TRANG ---
     const handleBeforeUnload = (event) => {
       event.preventDefault();
-      event.returnValue = ""; 
+      event.returnValue = "";
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
-    // --- Xử lý NHẤN NÚT BACK của trình duyệt ---
-    // Đẩy một state vào history để bắt sự kiện back từ trang này
     window.history.pushState(null, "", window.location.href);
-    const handlePopState = (event) => {
-        // Khi người dùng nhấn back, hiển thị cảnh báo và đẩy họ lại trang cũ
-        alert("Vui lòng nhấn nút 'Kết thúc' để dừng buổi live.");
-        window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      toast.warning("Vui lòng nhấn nút 'Kết thúc' để dừng buổi live.");
+      window.history.pushState(null, "", window.location.href);
     };
     window.addEventListener("popstate", handlePopState);
 
-    // Dọn dẹp listener khi component unmount
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       window.removeEventListener("popstate", handlePopState);
     };
   }, [isHost]);
 
-
+  // ======================
+  // Host kết thúc phòng
+  // ======================
   const handleEndRoom = async () => {
-    if (window.confirm("Bạn có chắc chắn muốn kết thúc live không?")) {
+    const result = await Swal.fire({
+      title: "Xác nhận",
+      text: "Bạn có chắc chắn muốn kết thúc live không?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Kết thúc",
+      cancelButtonText: "Hủy",
+    });
+
+    if (result.isConfirmed) {
       const success = await endRoomAPI();
       if (success) {
-        alert("Buổi live đã được kết thúc.");
-        // Sau khi kết thúc thành công, ta không cần chặn người dùng nữa
-        // nên có thể điều hướng an toàn
+        Swal.fire("Đã kết thúc", "Buổi live đã được kết thúc.", "success");
         navigate("/home");
       } else {
-        alert("Đã có lỗi xảy ra, không thể kết thúc phòng. Vui lòng thử lại.");
+        Swal.fire("Lỗi", "Không thể kết thúc phòng. Vui lòng thử lại.", "error");
       }
     }
   };
