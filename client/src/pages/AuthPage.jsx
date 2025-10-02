@@ -4,13 +4,18 @@ import React, { useState, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import ChangePasswordModal from '../components/ChangePasswordModal'; // 🔥 Import modal
 import './AuthPage.css';
-
 
 export default function AuthPage() {
   const [isRegisterActive, setIsRegisterActive] = useState(false);
   const navigate = useNavigate();
   const { loginSuccess } = useContext(AuthContext);
+  
+  // 🔥 State cho modal đổi password
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [pendingUser, setPendingUser] = useState(null);
+
   // State và handlers cho Form Đăng nhập
   const [loginForm, setLoginForm] = useState({ identifier: '', password: '' });
   const [loginError, setLoginError] = useState('');
@@ -31,28 +36,55 @@ export default function AuthPage() {
       });
 
       const { token, user } = res.data;
+      
+      // 🔥 Kiểm tra nếu user cần đổi password
+      if (user.requirePasswordChange) {
+        // Lưu thông tin tạm để xử lý sau khi đổi password
+        localStorage.setItem('token', token);
+        localStorage.setItem('role', user.role);
+        setPendingUser(user);
+        setShowChangePasswordModal(true);
+        return;
+      }
+
+      // Login bình thường
       localStorage.setItem('token', token);
-      localStorage.setItem('role', user.role); // lưu role
+      localStorage.setItem('role', user.role);
       loginSuccess(token, user);
       alert('Đăng nhập thành công!');
 
       // Chuyển trang theo role
       if (user.role === 'admin') {
-        navigate('/admin'); // admin panel
+        navigate('/admin');
       } else {
         navigate('/user-home');
       }
 
     } catch (err) {
-        if (err.response?.status === 403 && err.response?.data?.msg?.includes('chặn')) {
+      if (err.response?.status === 403 && err.response?.data?.msg?.includes('chặn')) {
         setBlockedMessage('Tài khoản đã bị chặn và không thể đăng nhập.');
       } else {
         setLoginError(err.response?.data?.msg || 'Tên đăng nhập hoặc mật khẩu không đúng.');
       }
     }
   };
+
+  // 🔥 Handler khi đổi password thành công
+  const handlePasswordChangeSuccess = () => {
+    if (pendingUser) {
+      loginSuccess(localStorage.getItem('token'), pendingUser);
+      alert('Đổi mật khẩu thành công! Chào mừng bạn đến với SoundSpace.');
+      
+      // Chuyển trang theo role
+      if (pendingUser.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/user-home');
+      }
+    }
+  };
   
-   // Check for Google OAuth blocked redirect
+  // Check for Google OAuth blocked redirect
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('blocked')) {
@@ -61,7 +93,12 @@ export default function AuthPage() {
   }, []);
 
   // State và handlers cho Form Đăng ký
-  const [registerForm, setRegisterForm] = useState({ username: '', email: '', password: '', confirmPassword: '' });
+  const [registerForm, setRegisterForm] = useState({ 
+    username: '', 
+    email: '', 
+    password: '', 
+    confirmPassword: '' 
+  });
   const [registerError, setRegisterError] = useState('');
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -72,130 +109,228 @@ export default function AuthPage() {
   };
 
   const handleRegisterSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const { username, email, password, confirmPassword } = registerForm;
-  if (username.length < 3 || username.length > 20) {
+    const { username, email, password, confirmPassword } = registerForm;
+    if (username.length < 3 || username.length > 20) {
       setRegisterError('Username phải có từ 3–20 ký tự.');
       return;
-  }
-  if (email.length > 60) {
+    }
+    if (email.length > 60) {
       setRegisterError('Email không được vượt quá 60 ký tự.');
       return;
-  }
-  if (password.length < 8 || password.length > 20) {
+    }
+    if (password.length < 8 || password.length > 20) {
       setRegisterError('Mật khẩu phải có từ 8–20 ký tự.');
       return;
-  }
-  if (password !== confirmPassword) {
+    }
+    if (password !== confirmPassword) {
       setRegisterError('Mật khẩu xác nhận không khớp!');
       return;
-  }
+    }
 
-  try {
-    const res = await axios.post('http://localhost:8800/api/auth/register', registerForm);
-    
-    // ✅ Thông báo và chuyển sang form login
-    alert(res.data.msg || 'Đăng ký thành công! Vui lòng đăng nhập.');
-    setIsRegisterActive(false);          // chuyển sang form login
-    setRegisterForm({ username: '', email: '', password: '', confirmPassword: '' }); // reset form
+    try {
+      const res = await axios.post('http://localhost:8800/api/auth/register', registerForm);
+      
+      alert(res.data.msg || 'Đăng ký thành công! Vui lòng đăng nhập.');
+      setIsRegisterActive(false);
+      setRegisterForm({ username: '', email: '', password: '', confirmPassword: '' });
 
-  } catch (err) {
-    setRegisterError(err.response?.data?.msg || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
-  }
-};
-
+    } catch (err) {
+      setRegisterError(err.response?.data?.msg || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+    }
+  };
 
   const googleLogin = () => {
     window.location.href = 'http://localhost:8800/api/auth/google';
   };
 
   return (
-    <div className="auth-page">
-      <div 
-        className={`auth-page__container ${isRegisterActive ? 'auth-page__container--register-active' : ''}`} 
-        id="container"
-      >
-        
-        {/* ======================= */}
-        {/* == FORM ĐĂNG KÝ == */}
-        {/* ======================= */}
-        <div className="auth-page__form-container auth-page__form-container--register">
-          <form className="auth-page__form" onSubmit={handleRegisterSubmit}>
-            <h1 className="auth-page__title">Create Account</h1>
-            <div className="auth-page__social-container">
-                <div className="auth-page__social-icon" onClick={googleLogin}><i className="fab fa-google"></i></div>
-                <div className="auth-page__social-icon"><i className="fab fa-facebook-f"></i></div>
-                <div className="auth-page__social-icon"><i className="fab fa-github"></i></div>
-            </div>
-            <span className="auth-page__subtitle">or use your email for registration</span>
+    <>
+      <div className="auth-page">
+        <div 
+          className={`auth-page__container ${isRegisterActive ? 'auth-page__container--register-active' : ''}`} 
+          id="container"
+        >
+          
+          {/* ======================= */}
+          {/* == FORM ĐĂNG KÝ == */}
+          {/* ======================= */}
+          <div className="auth-page__form-container auth-page__form-container--register">
+            <form className="auth-page__form" onSubmit={handleRegisterSubmit}>
+              <h1 className="auth-page__title">Create Account</h1>
+              <div className="auth-page__social-container">
+                <div className="auth-page__social-icon" onClick={googleLogin}>
+                  <i className="fab fa-google"></i>
+                </div>
+                <div className="auth-page__social-icon">
+                  <i className="fab fa-facebook-f"></i>
+                </div>
+                <div className="auth-page__social-icon">
+                  <i className="fab fa-github"></i>
+                </div>
+              </div>
+              <span className="auth-page__subtitle">or use your email for registration</span>
 
-            <input className="auth-page__input" name="username" placeholder="Username (3-20 characters)" minLength="3" maxLength="20" value={registerForm.username} onChange={handleRegisterChange} required />
-            <input className="auth-page__input" type="email" name="email" placeholder="Email (max 60 characters)" maxLength="60" value={registerForm.email} onChange={handleRegisterChange} required />
-            
-            <div className="auth-page__password-wrapper">
-              <input className="auth-page__input" type={showRegisterPassword ? 'text' : 'password'} name="password" placeholder="Password (8-20 characters)" minLength="8" maxLength="20" value={registerForm.password} onChange={handleRegisterChange} required />
-              <i className={`fa auth-page__password-toggle-icon ${showRegisterPassword ? 'fa-eye-slash' : 'fa-eye'}`} onClick={() => setShowRegisterPassword(!showRegisterPassword)}></i>
-            </div>
-            
-            <div className="auth-page__password-wrapper">
-              <input className="auth-page__input" type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" placeholder="Confirm Password" value={registerForm.confirmPassword} onChange={handleRegisterChange} required />
-              <i className={`fa auth-page__password-toggle-icon ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`} onClick={() => setShowConfirmPassword(!showConfirmPassword)}></i>
-            </div>
-            
-            {registerError && <p className="auth-page__error-message">{registerError}</p>}
-            <button className="auth-page__button" type="submit" style={{marginTop: '10px'}}>Register</button>
-          </form>
-        </div>
+              <input 
+                className="auth-page__input" 
+                name="username" 
+                placeholder="Username (3-20 characters)" 
+                minLength="3" 
+                maxLength="20" 
+                value={registerForm.username} 
+                onChange={handleRegisterChange} 
+                required 
+              />
+              <input 
+                className="auth-page__input" 
+                type="email" 
+                name="email" 
+                placeholder="Email (max 60 characters)" 
+                maxLength="60" 
+                value={registerForm.email} 
+                onChange={handleRegisterChange} 
+                required 
+              />
+              
+              <div className="auth-page__password-wrapper">
+                <input 
+                  className="auth-page__input" 
+                  type={showRegisterPassword ? 'text' : 'password'} 
+                  name="password" 
+                  placeholder="Password (8-20 characters)" 
+                  minLength="8" 
+                  maxLength="20" 
+                  value={registerForm.password} 
+                  onChange={handleRegisterChange} 
+                  required 
+                />
+                <i 
+                  className={`fa auth-page__password-toggle-icon ${showRegisterPassword ? 'fa-eye-slash' : 'fa-eye'}`} 
+                  onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                ></i>
+              </div>
+              
+              <div className="auth-page__password-wrapper">
+                <input 
+                  className="auth-page__input" 
+                  type={showConfirmPassword ? 'text' : 'password'} 
+                  name="confirmPassword" 
+                  placeholder="Confirm Password" 
+                  value={registerForm.confirmPassword} 
+                  onChange={handleRegisterChange} 
+                  required 
+                />
+                <i 
+                  className={`fa auth-page__password-toggle-icon ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`} 
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                ></i>
+              </div>
+              
+              {registerError && <p className="auth-page__error-message">{registerError}</p>}
+              <button className="auth-page__button" type="submit" style={{marginTop: '10px'}}>
+                Register
+              </button>
+            </form>
+          </div>
 
-        {/* ======================= */}
-        {/* == FORM ĐĂNG NHẬP == */}
-        {/* ======================= */}
-        <div className="auth-page__form-container auth-page__form-container--login">
-          <form className="auth-page__form" onSubmit={handleLoginSubmit}>
-            <h1 className="auth-page__title">Login</h1>
-            <div className="auth-page__social-container">
-                <div className="auth-page__social-icon" onClick={googleLogin}><i className="fab fa-google"></i></div>
-                <div className="auth-page__social-icon"><i className="fab fa-facebook-f"></i></div>
-                <div className="auth-page__social-icon"><i className="fab fa-github"></i></div>
-            </div>
-            <span className="auth-page__subtitle">or use your account</span>
-            <input className="auth-page__input" name="identifier" placeholder="Username or Email" value={loginForm.identifier} onChange={handleLoginChange} required/>
-            
-            <div className="auth-page__password-wrapper">
-              <input className="auth-page__input" type={showLoginPassword ? 'text' : 'password'} name="password" placeholder="Password" value={loginForm.password} onChange={handleLoginChange} required/>
-              <i className={`fa auth-page__password-toggle-icon ${showLoginPassword ? 'fa-eye-slash' : 'fa-eye'}`} onClick={() => setShowLoginPassword(!showLoginPassword)}></i>
-            </div>
+          {/* ======================= */}
+          {/* == FORM ĐĂNG NHẬP == */}
+          {/* ======================= */}
+          <div className="auth-page__form-container auth-page__form-container--login">
+            <form className="auth-page__form" onSubmit={handleLoginSubmit}>
+              <h1 className="auth-page__title">Login</h1>
+              <div className="auth-page__social-container">
+                <div className="auth-page__social-icon" onClick={googleLogin}>
+                  <i className="fab fa-google"></i>
+                </div>
+                <div className="auth-page__social-icon">
+                  <i className="fab fa-facebook-f"></i>
+                </div>
+                <div className="auth-page__social-icon">
+                  <i className="fab fa-github"></i>
+                </div>
+              </div>
+              <span className="auth-page__subtitle">or use your account</span>
+              <input 
+                className="auth-page__input" 
+                name="identifier" 
+                placeholder="Username or Email" 
+                value={loginForm.identifier} 
+                onChange={handleLoginChange} 
+                required
+              />
+              
+              <div className="auth-page__password-wrapper">
+                <input 
+                  className="auth-page__input" 
+                  type={showLoginPassword ? 'text' : 'password'} 
+                  name="password" 
+                  placeholder="Password" 
+                  value={loginForm.password} 
+                  onChange={handleLoginChange} 
+                  required
+                />
+                <i 
+                  className={`fa auth-page__password-toggle-icon ${showLoginPassword ? 'fa-eye-slash' : 'fa-eye'}`} 
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                ></i>
+              </div>
 
-            <a className="auth-page__link" href="#">Forgot your password?</a>
-            {loginError && <p className="auth-page__error-message">{loginError}</p>}
-            {blockedMessage && <p className="auth-page__error-message" style={{ color: 'red', fontWeight: 'bold' }}>{blockedMessage}</p>}
-            <button className="auth-page__button" type="submit">Login</button>
-          </form>
-        </div>
-        
-        {/* ======================= */}
-        {/* == PANEL TRƯỢT (OVERLAY) == */}
-        {/* ======================= */}
-        <div className="auth-page__overlay-container">
-          <div className="auth-page__overlay">
-            <div className="auth-page__overlay-panel auth-page__overlay-panel--left">
-              <h1 className="auth-page__panel-title">Welcome Back!</h1>
-              <p className="auth-page__panel-subtitle">Already have an account? Login and enjoy the music!</p>
-              <button className="auth-page__button auth-page__button--ghost" onClick={() => setIsRegisterActive(false)}>Login</button>
-            </div>
-            <div className="auth-page__overlay-panel auth-page__overlay-panel--right">
-              <h1 className="auth-page__panel-title">Welcome, SoundSpace</h1>
-              <p className="auth-page__panel-subtitle">
-                Don't have an account?
-                <br />
-                Enter your details and start your journey with us
-              </p>
-              <button className="auth-page__button auth-page__button--ghost" onClick={() => setIsRegisterActive(true)}>Register</button>
+              <a className="auth-page__link" href="#">Forgot your password?</a>
+              {loginError && <p className="auth-page__error-message">{loginError}</p>}
+              {blockedMessage && (
+                <p className="auth-page__error-message" style={{ color: 'red', fontWeight: 'bold' }}>
+                  {blockedMessage}
+                </p>
+              )}
+              <button className="auth-page__button" type="submit">Login</button>
+            </form>
+          </div>
+          
+          {/* ======================= */}
+          {/* == PANEL TRƯỢT (OVERLAY) == */}
+          {/* ======================= */}
+          <div className="auth-page__overlay-container">
+            <div className="auth-page__overlay">
+              <div className="auth-page__overlay-panel auth-page__overlay-panel--left">
+                <h1 className="auth-page__panel-title">Welcome Back!</h1>
+                <p className="auth-page__panel-subtitle">
+                  Already have an account? Login and enjoy the music!
+                </p>
+                <button 
+                  className="auth-page__button auth-page__button--ghost" 
+                  onClick={() => setIsRegisterActive(false)}
+                >
+                  Login
+                </button>
+              </div>
+              <div className="auth-page__overlay-panel auth-page__overlay-panel--right">
+                <h1 className="auth-page__panel-title">Welcome, SoundSpace</h1>
+                <p className="auth-page__panel-subtitle">
+                  Don't have an account?
+                  <br />
+                  Enter your details and start your journey with us
+                </p>
+                <button 
+                  className="auth-page__button auth-page__button--ghost" 
+                  onClick={() => setIsRegisterActive(true)}
+                >
+                  Register
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* 🔥 Modal đổi password bắt buộc */}
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => {}} // Không cho đóng nếu bắt buộc
+        onSuccess={handlePasswordChangeSuccess}
+        isRequired={true}
+      />
+    </>
   );
 }
