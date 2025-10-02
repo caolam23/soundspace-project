@@ -1,3 +1,4 @@
+// server/src/controllers/authController.js
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
@@ -38,11 +39,13 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ $or: [{ email: identifier }, { username: identifier }] });
     if (!user || !user.password) return res.status(400).json({ msg: 'Người dùng không tồn tại hoặc chưa đăng ký bằng mật khẩu' });
     if (user.isBlocked) return res.status(403).json({ msg: 'Tài khoản đã bị chặn và không thể đăng nhập.' });
+    
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(400).json({ msg: 'Sai mật khẩu' });
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
+    // 🔥 Kiểm tra nếu user cần đổi password
     res.json({
       msg: 'Đăng nhập thành công',
       token,
@@ -51,7 +54,8 @@ exports.login = async (req, res) => {
         email: user.email,
         username: user.username,
         role: user.role,
-        avatar: user.avatar || '/default-avatar.png'
+        avatar: user.avatar || '/default-avatar.png',
+        requirePasswordChange: user.requirePasswordChange || false // 🔥 Trả về trạng thái
       }
     });
   } catch (err) {
@@ -72,7 +76,6 @@ exports.googleCallback = [
     // Check if user is blocked
     const user = await User.findById(req.user._id);
     if (user && user.isBlocked) {
-      // Redirect to login page with blocked message
       return res.redirect(`${process.env.CLIENT_URL}/login?blocked=1`);
     }
     const token = jwt.sign(

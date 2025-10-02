@@ -2,16 +2,14 @@
 
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const { sendWelcomeEmail } = require('../services/emailService'); // 🔥 Import email service
 
-// [POST] /api/users/create - Tạo user mới bởi admin
+// [POST] /api/users/create - Tạo user mới (chỉ admin hoặc user)
 exports.createUser = async (req, res) => {
   try {
-    // Đảm bảo req.body tồn tại
-    if (!req.body) {
-      return res.status(400).json({ message: 'Request body trống' });
-    }
+    if (!req.body) return res.status(400).json({ message: 'Request body trống' });
 
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, sendWelcomeEmail: shouldSendEmail, requirePasswordChange } = req.body;
 
     // Validation cơ bản
     if (!username || !email || !password) {
@@ -25,35 +23,48 @@ exports.createUser = async (req, res) => {
 
     if (existingUser) {
       return res.status(400).json({
-        message: existingUser.email === email
-          ? 'Email đã được sử dụng'
-          : 'Username đã được sử dụng'
+        message: existingUser.email === email ? 'Email đã được sử dụng' : 'Username đã được sử dụng'
       });
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Chỉ cho phép tạo 'admin' hoặc 'user' trong role
+    const finalRole = role === 'admin' ? 'admin' : 'user';
+
     // Tạo user mới
     const newUser = new User({
       username,
       email,
       password: hashedPassword,
-      role: role || 'user',
+      role: finalRole, // Lưu vào role
+      currentRole: 'user', // currentRole mặc định là 'user'
       status: 'offline',
-      currentRole: role || 'user',
-      isBlocked: false
+      isBlocked: false,
+      requirePasswordChange: requirePasswordChange || false
     });
 
     await newUser.save();
 
+    // Gửi email chào mừng nếu được yêu cầu
+    if (shouldSendEmail) {
+      try {
+        await sendWelcomeEmail(email, username, password); // Gửi password gốc (chưa hash)
+        console.log('✅ Welcome email sent to:', email);
+      } catch (emailError) {
+        console.error('❌ Failed to send welcome email:', emailError);
+      }
+    }
+
     res.status(201).json({
-      message: 'Tạo user thành công',
+      message: `Tạo ${finalRole} thành công`,
       user: {
         id: newUser._id,
         username: newUser.username,
         email: newUser.email,
-        role: newUser.role
+        role: newUser.role,
+        requirePasswordChange: newUser.requirePasswordChange
       }
     });
 
@@ -62,6 +73,7 @@ exports.createUser = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
 };
+
 
 // [GET] /api/users - Lấy tất cả user
 exports.getAllUsers = async (req, res) => {
@@ -119,6 +131,48 @@ exports.toggleLockUser = async (req, res) => {
 
   } catch (err) {
     console.error('Error toggling lock:', err);
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+
+// 🔥 [PUT] /api/users/change-password - Đổi password (cho user bắt buộc đổi)
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id; // Từ middleware verifyToken
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Cần cung cấp mật khẩu hiện tại và mật khẩu mới' });
+    }
+
+    if (newPassword.length < 8 || newPassword.length > 20) {
+      return res.status(400).json({ message: 'Mật khẩu mới phải có từ 8-20 ký tự' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User không tồn tại' });
+    }
+
+    // Kiểm tra mật khẩu hiện tại
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Mật khẩu hiện tại không đúng' });
+    }
+
+    // Hash mật khẩu mới
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Cập nhật password và bỏ cờ requirePasswordChange
+    user.password = hashedPassword;
+    user.requirePasswordChange = false;
+    user.passwordChangedAt = new Date();
+    await user.save();
+
+    res.json({ message: 'Đổi mật khẩu thành công' });
+
+  } catch (err) {
+    console.error('Error changing password:', err);
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
 };

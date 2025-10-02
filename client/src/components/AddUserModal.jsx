@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import './AddUserModal.css';
 import { X, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
   const [formData, setFormData] = useState({
@@ -77,8 +78,8 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
       }
 
       const data = await response.json();
-      alert('Tạo user thành công!');
-      
+      toast.success(`${formData.role === 'admin' ? 'Admin' : 'User'} đã được tạo thành công!`);
+
       // Reset form
       setFormData({
         username: '',
@@ -182,8 +183,6 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
               required
             >
               <option value="user">User</option>
-              <option value="host">Host</option>
-              <option value="listener">Listener</option>
               <option value="admin">Admin</option>
             </select>
           </div>
