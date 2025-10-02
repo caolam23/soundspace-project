@@ -174,11 +174,12 @@ exports.requestJoinRoom = async (req, res) => {
       },
       roomId: room._id.toString(),
     };
-
-    const hostSocketId = userSockets.get(room.owner.toString());
-    if (hostSocketId) {
-      io.to(hostSocketId).emit('new-join-request', payload);
-      console.log(`📩 Sent new-join-request to host socket ${hostSocketId}`);
+    const hostSockets = userSockets.get(room.owner.toString());
+    if (hostSockets && hostSockets.size > 0) {
+      hostSockets.forEach(socketId => {
+        io.to(socketId).emit('new-join-request', payload);
+        console.log(`📩 Sent new-join-request to host socket ${socketId}`);
+      });
     } else {
       console.log(`ℹ️ Host socket not found for user ${room.owner.toString()}`);
     }
