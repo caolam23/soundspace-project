@@ -3,65 +3,73 @@ const { customAlphabet } = require('nanoid');
 
 // Helper: Populate owner + members
 const populateRoom = async (roomId) => {
-  return Room.findById(roomId)
-    .populate('owner', 'username avatar')
-    .populate('members', 'username avatar');
+  return Room.findById(roomId)
+    .populate('owner', 'username avatar')
+    .populate('members', 'username avatar');
 };
 
 // ==========================
 // TẠO PHÒNG MỚI
 // ==========================
 exports.createRoom = async (req, res) => {
-  try {
-    const { name, description, privacy } = req.body;
-    const ownerId = req.user.id;
+  try {
+    const { name, description, privacy } = req.body;
+    const ownerId = req.user.id;
 
-    if (!req.file) {
-      return res.status(400).json({ msg: 'Vui lòng tải lên ảnh bìa.' });
-    }
+    if (!req.file) {
+      return res.status(400).json({ msg: 'Vui lòng tải lên ảnh bìa.' });
+    }
 
-    const roomDetails = {
-      name,
-      description,
-      privacy,
-      coverImage: req.file.path,
-      owner: ownerId,
-      members: [ownerId],
-      status: 'waiting'
-    };
+    const roomDetails = {
+      name,
+      description,
+      privacy,
+      coverImage: req.file.path,
+      owner: ownerId,
+      members: [ownerId],
+      status: 'waiting' // Hoặc 'live' nếu bạn muốn live ngay
+    };
 
-    if (privacy === 'private') {
-      const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 6);
-      roomDetails.roomCode = nanoid();
-    }
+    if (privacy === 'private') {
+      const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 6);
+      roomDetails.roomCode = nanoid();
+    }
 
-    let newRoom = new Room(roomDetails);
-    await newRoom.save();
+    let newRoom = new Room(roomDetails);
+    await newRoom.save();
 
-    newRoom = await populateRoom(newRoom._id);
-    res.status(201).json({ msg: 'Tạo phòng thành công!', room: newRoom });
-  } catch (err) {
-    console.error("❌ Lỗi khi tạo phòng:", err);
-    res.status(500).json({ msg: 'Lỗi server', error: err.message });
-  }
+    newRoom = await populateRoom(newRoom._id);
+
+    // ✨ =================== THÊM MỚI =================== ✨
+    const io = req.app.get('io');
+    io.emit('room-created', newRoom); // Gửi thông tin phòng mới đến tất cả client
+    console.log(`📢 Emitted 'room-created' for room: ${newRoom.name}`);
+    // ✨ ================================================= ✨
+
+    res.status(201).json({ msg: 'Tạo phòng thành công!', room: newRoom });
+  } catch (err) {
+    console.error("❌ Lỗi khi tạo phòng:", err);
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+  }
 };
+
 
 // ==========================
 // LẤY CÁC PHÒNG ĐANG HOẠT ĐỘNG
 // ==========================
 exports.getActiveRooms = async (req, res) => {
-  try {
-    const activeRooms = await Room.find({ status: { $ne: 'ended' } })
-      .populate('owner', 'username avatar')
-      .sort({ createdAt: -1 });
+  try {
+    // Sửa lại query một chút để đảm bảo chỉ lấy phòng 'waiting' và 'live'
+    const activeRooms = await Room.find({ status: { $in: ['waiting', 'live'] } })
+      .populate('owner', 'username avatar')
+      .sort({ createdAt: -1 });
 
-    res.status(200).json(activeRooms);
-  } catch (err) {
-    console.error("❌ Lỗi getActiveRooms:", err);
-    res.status(500).json({ msg: 'Lỗi server', error: err.message });
-  }
+    res.status(200).json(activeRooms);
+  } catch (err) {
+    console.error("❌ Lỗi getActiveRooms:", err);
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+  }
 };
-
 // ==========================
 // BẮT ĐẦU PHIÊN LIVE
 // ==========================
@@ -87,29 +95,37 @@ exports.startSession = async (req, res) => {
 // KẾT THÚC PHIÊN LIVE
 // ==========================
 exports.endSession = async (req, res) => {
-  try {
-    const room = await Room.findById(req.params.roomId);
-    if (!room) return res.status(404).json({ msg: 'Không tìm thấy phòng.' });
+  try {
+    const roomId = req.params.roomId;
+    const room = await Room.findById(roomId);
+    if (!room) return res.status(404).json({ msg: 'Không tìm thấy phòng.' });
 
-    if (room.owner.toString() !== req.user.id) {
-      return res.status(403).json({ msg: 'Bạn không có quyền kết thúc phiên.' });
-    }
+    if (room.owner.toString() !== req.user.id) {
+      return res.status(403).json({ msg: 'Bạn không có quyền kết thúc phiên.' });
+    }
 
-    room.status = 'ended';
-    await room.save();
+    room.status = 'ended';
+    await room.save();
 
-    const io = req.app.get('io');
-    io.to(req.params.roomId).emit('room-ended', {
-      message: 'Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.'
-    });
+    const io = req.app.get('io');
 
-    res.status(200).json({ msg: 'Phiên đã kết thúc!', room });
-  } catch (err) {
-    console.error("❌ Lỗi endSession:", err);
-    res.status(500).json({ msg: 'Lỗi server', error: err.message });
-  }
+    // Thông báo cho những người trong phòng (giữ nguyên)
+    io.to(roomId).emit('room-ended', {
+      message: 'Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.'
+    });
+
+    // ✨ =================== THÊM MỚI =================== ✨
+    // Gửi sự kiện để trang chủ xóa phòng này khỏi danh sách
+    io.emit('room-ended-homepage', { roomId: roomId });
+    console.log(`📢 Emitted 'room-ended-homepage' for room ID: ${roomId}`);
+    // ✨ ================================================= ✨
+
+    res.status(200).json({ msg: 'Phiên đã kết thúc!', room });
+  } catch (err) {
+    console.error("❌ Lỗi endSession:", err);
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+  }
 };
-
 // ==========================
 // THAM GIA PHÒNG
 // ==========================
