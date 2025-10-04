@@ -182,14 +182,18 @@ exports.requestJoinRoom = async (req, res) => {
 
     const io = req.app.get('io');
     const userSockets = req.app.get('userSockets');
+    
     const payload = {
       requester: {
-        _id: req.user.id,
+        _id: req.user.id, // ⚠️ Đảm bảo đây là string
         username: req.user.username,
         avatar: req.user.avatar,
       },
       roomId: room._id.toString(),
     };
+    
+    console.log('📤 Sending join request:', payload); // DEBUG
+    
     const hostSockets = userSockets.get(room.owner.toString());
     if (hostSockets && hostSockets.size > 0) {
       hostSockets.forEach(socketId => {
@@ -200,7 +204,6 @@ exports.requestJoinRoom = async (req, res) => {
       console.log(`ℹ️ Host socket not found for user ${room.owner.toString()}`);
     }
 
-    io.to(room._id.toString()).emit('new-join-request', payload);
     res.status(200).json({ msg: 'Yêu cầu tham gia đã được gửi đi.' });
   } catch (err) {
     console.error("❌ Lỗi requestJoinRoom:", err);
