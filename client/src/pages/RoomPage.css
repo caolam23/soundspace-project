@@ -393,3 +393,83 @@
 .roompage-chat-input .roompage-btn-icon:hover {
     color: var(--text-primary);
 }
+
+/* ========================= */
+/* Join requests box */
+/* ========================= */
+.join-requests-container {
+        position: fixed;
+        right: 28px;
+        top: 72px;
+        width: 420px; /* tăng độ rộng để hiển thị thông tin đầy đủ */
+        max-width: calc(100vw - 56px);
+        max-height: 80vh; /* tăng chiều cao tối đa để chứa nhiều yêu cầu hơn */
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border: 1px solid rgba(255,255,255,0.04);
+    backdrop-filter: blur(6px);
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+/* Responsive: nếu cửa sổ nhỏ, làm box chiếm gần hết chiều ngang */
+@media (max-width: 800px) {
+    .join-requests-container {
+        right: 16px;
+        left: 16px;
+        width: auto;
+        max-height: 70vh;
+    }
+}
+.join-requests-container h3 {
+    font-size: 1rem;
+    margin-bottom: 8px;
+    color: var(--accent);
+}
+.join-requests-container ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.join-request-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.01);
+}
+.join-request-info { display: flex; gap: 8px; align-items: center; }
+.join-request-info img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+.join-request-username { font-weight: 700; }
+.join-request-meta { font-size: 0.8rem; color: var(--text-secondary); }
+.join-request-actions { display: flex; gap: 8px; }
+.btn { padding: 6px 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; }
+.btn-accept { background: var(--spotify-green); color: #fff; }
+.btn-deny { background: transparent; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.04); }
+
+/* Status badges shown inline next to request actions */
+.join-request-status {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.join-request-status.pending { background: rgba(255,255,255,0.02); color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.02); }
+.join-request-status.accepted { background: rgba(138,43,226,0.12); color: var(--accent); border: 1px solid rgba(138,43,226,0.18); }
+.join-request-status.denied { background: rgba(200,30,30,0.08); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.12); }
+
+/* Host feedback small box */
+.host-feedback {
+    position: fixed;
+    right: 28px;
+    bottom: 28px;
+    background: rgba(255,255,255,0.03);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.04);
+    z-index: 1600;
+}

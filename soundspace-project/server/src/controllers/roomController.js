@@ -176,15 +176,13 @@ exports.requestJoinRoom = async (req, res) => {
     };
     const hostSockets = userSockets.get(room.owner.toString());
     if (hostSockets && hostSockets.size > 0) {
-      hostSockets.forEach(socketId => {
-        io.to(socketId).emit('new-join-request', payload);
-        console.log(`📩 Sent new-join-request to host socket ${socketId}`);
-      });
+      // Notify only one of the host's sockets (first) to avoid duplicate prompts
+      const firstSocketId = hostSockets.values().next().value;
+      io.to(firstSocketId).emit('new-join-request', payload);
+      console.log(`📩 Sent new-join-request to host socket ${firstSocketId}`);
     } else {
       console.log(`ℹ️ Host socket not found for user ${room.owner.toString()}`);
     }
-
-    io.to(room._id.toString()).emit('new-join-request', payload);
     res.status(200).json({ msg: 'Yêu cầu tham gia đã được gửi đi.' });
   } catch (err) {
     console.error("❌ Lỗi requestJoinRoom:", err);

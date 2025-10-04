@@ -133,36 +133,9 @@ function UserHomePage() {
     // SOCKET LISTENERS
     // ==============================
     useEffect(() => {
+        // Intentionally not registering 'new-join-request' here to avoid duplicate host prompts.
+        // RoomPage handles join requests UI when the host is inside the room.
         if (!socket) return;
-
-        // Host nhận yêu cầu tham gia mới
-        socket.on('new-join-request', ({ requester, roomId }) => {
-            const accept = window.confirm(
-                `Người dùng "${requester.username}" muốn tham gia phòng của bạn. Đồng ý?`
-            );
-            socket.emit('respond-to-request', {
-                requesterId: requester.id,
-                roomId: roomId,
-                accepted: accept
-            });
-        });
-
-        // Người yêu cầu nhận kết quả
-        socket.on('join-request-accepted', ({ roomId }) => {
-            alert('Yêu cầu được chấp nhận! Bạn sẽ được chuyển vào phòng.');
-            navigate(`/room/${roomId}`);
-        });
-
-        socket.on('join-request-denied', ({ message }) => {
-            alert(message || 'Yêu cầu tham gia bị từ chối.');
-        });
-
-        // Cleanup
-        return () => {
-            socket.off('new-join-request');
-            socket.off('join-request-accepted');
-            socket.off('join-request-denied');
-        };
     }, [socket, navigate]);
 
     if (!user) {

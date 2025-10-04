@@ -122,10 +122,11 @@ io.on('connection', (socket) => {
       if (!room) return;
 
       const hostSockets = userSockets.get(room.owner.toString());
-      if (hostSockets) {
-        hostSockets.forEach(socketId => {
-          io.to(socketId).emit('new-join-request', { requester, roomId });
-        });
+      if (hostSockets && hostSockets.size > 0) {
+        // If the host has multiple connected sockets (multiple tabs/devices),
+        // only notify one of them to avoid duplicate prompts.
+        const firstSocketId = hostSockets.values().next().value;
+        io.to(firstSocketId).emit('new-join-request', { requester, roomId });
       }
 
       console.log(`📩 Yêu cầu tham gia từ ${requester.username} gửi tới host ${room.owner}`);
