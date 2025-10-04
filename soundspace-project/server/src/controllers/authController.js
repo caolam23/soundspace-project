@@ -19,10 +19,12 @@ exports.register = async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({ username, email, password: hashed });
 
-    return res.json({
-      msg: 'Đăng ký thành công',
-      user: { id: user._id, email: user.email, username: user.username, role: user.role }
-    });
+    // ...
+  return res.json({
+    msg: 'Đăng ký thành công',
+    user: { _id: user._id, email: user.email, username: user.username, role: user.role }
+  });
+// ...
   } catch (err) {
     return res.status(500).json({ msg: 'Lỗi server', error: err.message });
   }
@@ -50,7 +52,7 @@ exports.login = async (req, res) => {
       msg: 'Đăng nhập thành công',
       token,
       user: {
-        id: user._id,
+        _id: user._id,
         email: user.email,
         username: user.username,
         role: user.role,

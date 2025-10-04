@@ -1,34 +1,32 @@
-// src/contexts/SocketContext.jsx
+// src/context/SocketContext.jsx
 import React, { createContext, useContext, useEffect } from "react";
 import socket from "../services/socket";
-import { useAuth } from "./AuthContext"; // cần lấy user từ context
 
 const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
-  const { user } = useAuth();
-
   useEffect(() => {
-    if (!user) return;
-
+    // Kết nối socket
     socket.connect();
 
-    socket.on("connect", () => {
+    function onConnect() {
       console.log(`✅ Connected to server with id: ${socket.id}`);
-      // 🔥 Đăng ký user ngay sau khi connect
-      socket.emit("register-user", user._id);
-    });
+    }
 
-    socket.on("disconnect", () => {
+    function onDisconnect() {
       console.log("❌ Disconnected from server");
-    });
+    }
 
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+
+    // Cleanup
     return () => {
-      socket.off("connect");
-      socket.off("disconnect");
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
       socket.disconnect();
     };
-  }, [user]);
+  }, []);
 
   return (
     <SocketContext.Provider value={socket}>
@@ -37,4 +35,5 @@ export const SocketProvider = ({ children }) => {
   );
 };
 
+// Hook tiện lợi
 export const useSocket = () => useContext(SocketContext);
