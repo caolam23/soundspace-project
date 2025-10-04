@@ -284,11 +284,11 @@ socket.on('join-room', async (roomId) => {
 
       // send request to host sockets
       const hostSockets = userSockets.get(toId(room.owner));
-      if (hostSockets) {
-        hostSockets.forEach(sid => {
-          io.to(sid).emit('new-join-request', { requester, roomId });
-          console.log(`[REQUEST-JOIN] Sent join request to host socket ${sid}`);
-        });
+      if (hostSockets && hostSockets.size > 0) {
+        // If the host has multiple connected sockets (multiple tabs/devices),
+        // only notify one of them to avoid duplicate prompts.
+        const firstSocketId = hostSockets.values().next().value;
+        io.to(firstSocketId).emit('new-join-request', { requester, roomId });
       } else {
         console.log(`[REQUEST-JOIN] Host sockets not found for user ${room.owner}`);
       }

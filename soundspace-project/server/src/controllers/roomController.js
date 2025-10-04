@@ -196,10 +196,10 @@ exports.requestJoinRoom = async (req, res) => {
     
     const hostSockets = userSockets.get(room.owner.toString());
     if (hostSockets && hostSockets.size > 0) {
-      hostSockets.forEach(socketId => {
-        io.to(socketId).emit('new-join-request', payload);
-        console.log(`📩 Sent new-join-request to host socket ${socketId}`);
-      });
+     // Notify only one of the host's sockets (first) to avoid duplicate prompts
+      const firstSocketId = hostSockets.values().next().value;
+      io.to(firstSocketId).emit('new-join-request', payload);
+      console.log(`📩 Sent new-join-request to host socket ${firstSocketId}`);
     } else {
       console.log(`ℹ️ Host socket not found for user ${room.owner.toString()}`);
     }

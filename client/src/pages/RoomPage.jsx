@@ -30,9 +30,24 @@ function RoomPage() {
 
   const [room, setRoom] = useState(null);
   const [members, setMembers] = useState([]);
+  const [joinRequests, setJoinRequests] = useState([]);
+  const [hostFeedback, setHostFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("chat");
+
+   // Log socket events for debugging but register once per component lifecycle
+  useEffect(() => {
+    const anyHandler = (event, ...args) => {
+      console.log("📡 Received event:", event, args);
+    };
+
+    socket.onAny(anyHandler);
+
+    return () => {
+      socket.offAny(anyHandler);
+    };
+  }, []);
 
   // Giữ roomRef luôn đồng bộ
   useEffect(() => {
@@ -62,27 +77,41 @@ function RoomPage() {
   // ======================
   // Host xử lý join-request
   // ======================
-  const handleNewJoinRequest = useCallback(
-    async ({ requester, roomId: requestedRoomId }) => {
-      if (roomId === requestedRoomId) {
-        const result = await Swal.fire({
-          title: "Yêu cầu tham gia",
-          text: `Người dùng "${requester.username}" muốn tham gia phòng.`,
-          icon: "question",
-          showCancelButton: true,
-          confirmButtonText: "Chấp nhận",
-          cancelButtonText: "Từ chối",
-        });
+const handleNewJoinRequest = useCallback(
+  ({ requester, roomId: requestedRoomId }) => {
+    if (roomId === requestedRoomId) {
+      // Deduplicate by requester id
+      setJoinRequests((prev) => {
+        if (prev.some((r) => r.requester._id === requester._id)) return prev;
+        return [...prev, { requester, roomId: requestedRoomId, status: "pending" }];
+      });
+    }
+  },
+  [roomId]
+);
 
-        socket.emit("respond-to-request", {
-          requesterId: requester._id,
-          roomId: requestedRoomId,
-          accepted: result.isConfirmed,
-        });
-      }
-    },
-    [roomId, socket]
-  );
+   // Accept / Deny handlers for host UI
+  const respondToRequest = useCallback((requesterId, accepted) => {
+    // Emit to server
+    socket.emit("respond-to-request", {
+      requesterId,
+      roomId,
+      accepted,
+    });
+
+    // Update only the matched request's status so it shows inline
+    setJoinRequests((prev) =>
+      prev.map((r) =>
+        r.requester._id === requesterId ? { ...r, status: accepted ? "accepted" : "denied" } : r
+      )
+    );
+
+    // Optionally remove the request after a short delay to keep the list clean
+    setTimeout(() => {
+      setJoinRequests((prev) => prev.filter((r) => r.requester._id !== requesterId));
+    }, 5000);
+  }, [roomId]);
+
 
   // ======================
   // useEffect chính
@@ -378,7 +407,47 @@ function RoomPage() {
       </header>
       
        <main className="roompage-main">
+        {/* Join requests box for host */}
+        {isHost && joinRequests.length > 0 && (
+          <div className="join-requests-container">
+            <h3>Yêu cầu tham gia</h3>
+            <ul>
+                {joinRequests.map((r) => (
+                  <li key={r.requester._id} className="join-request-item">
+                    <div className="join-request-info">
+                      <img src={r.requester.avatar || '/default-avatar.png'} alt={r.requester.username} />
+                      <div>
+                        <div className="join-request-username">{r.requester.username}</div>
+                        <div className="join-request-meta">Yêu cầu vào phòng</div>
+                      </div>
+                    </div>
+                    <div className="join-request-actions">
+                      {/* If request has been responded to, show inline status badge; otherwise show action buttons */}
+                      {r.status && r.status !== "pending" ? (
+                        <div className={`join-request-status ${r.status}`}>
+                          {r.status === "accepted" ? "Đã chấp nhận" : "Đã từ chối"}
+                        </div>
+                      ) : (
+                        r.status === "pending" ? (
+                          <>
+                            <button className="btn btn-accept" onClick={() => respondToRequest(r.requester._id, true)}>Chấp nhận</button>
+                            <button className="btn btn-deny" onClick={() => respondToRequest(r.requester._id, false)}>Từ chối</button>
+                          </>
+                        ) : (
+                          <>
+                            <button className="btn btn-accept" onClick={() => respondToRequest(r.requester._id, true)}>Chấp nhận</button>
+                            <button className="btn btn-deny" onClick={() => respondToRequest(r.requester._id, false)}>Từ chối</button>
+                          </>
+                        )
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+          </div>
+        )}
         {/* LEFT: QUEUE */}
+        {hostFeedback && joinRequests.length === 0 && <div className="host-feedback">{hostFeedback}</div>}
         <aside className="roompage-left">
           <div className="roompage-queue">
             <h2>Danh sách phát</h2>
