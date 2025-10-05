@@ -75,7 +75,7 @@ function RoomCard({ room }) {
       setWaiting(false);
       setPendingRoomId(null);
       setResultMessage(message || "Yêu cầu tham gia bị từ chối.");
-      setTimeout(() => setResultMessage(""), 3000);
+      setTimeout(() => setResultMessage(""), 10000);
     };
 
     socket.on("join-request-accepted", handleAccepted);

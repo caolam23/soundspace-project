@@ -3,73 +3,70 @@ const { customAlphabet } = require('nanoid');
 
 // Helper: Populate owner + members
 const populateRoom = async (roomId) => {
-  return Room.findById(roomId)
-    .populate('owner', 'username avatar')
-    .populate('members', 'username avatar');
+  return Room.findById(roomId)
+    .populate('owner', 'username avatar')
+    .populate('members', 'username avatar');
 };
 
 // ==========================
 // TẠO PHÒNG MỚI
 // ==========================
 exports.createRoom = async (req, res) => {
-  try {
-    const { name, description, privacy } = req.body;
-    const ownerId = req.user.id;
+  try {
+    const { name, description, privacy } = req.body;
+    const ownerId = req.user.id;
 
-    if (!req.file) {
-      return res.status(400).json({ msg: 'Vui lòng tải lên ảnh bìa.' });
-    }
+    if (!req.file) {
+      return res.status(400).json({ msg: 'Vui lòng tải lên ảnh bìa.' });
+    }
 
-    const roomDetails = {
-      name,
-      description,
-      privacy,
-      coverImage: req.file.path,
-      owner: ownerId,
-      members: [ownerId],
-      status: 'waiting' // Hoặc 'live' nếu bạn muốn live ngay
-    };
+    const roomDetails = {
+      name,
+      description,
+      privacy,
+      coverImage: req.file.path,
+      owner: ownerId,
+      members: [ownerId],
+      status: 'waiting'
+    };
 
-    if (privacy === 'private') {
-      const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 6);
-      roomDetails.roomCode = nanoid();
-    }
+    if (privacy === 'private') {
+      const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 6);
+      roomDetails.roomCode = nanoid();
+    }
 
-    let newRoom = new Room(roomDetails);
-    await newRoom.save();
+    let newRoom = new Room(roomDetails);
+    await newRoom.save();
 
-    newRoom = await populateRoom(newRoom._id);
+    newRoom = await populateRoom(newRoom._id);
 
-    // ✨ =================== THÊM MỚI =================== ✨
     const io = req.app.get('io');
-    io.emit('room-created', newRoom); // Gửi thông tin phòng mới đến tất cả client
+    io.emit('room-created', newRoom);
     console.log(`📢 Emitted 'room-created' for room: ${newRoom.name}`);
-    // ✨ ================================================= ✨
 
-    res.status(201).json({ msg: 'Tạo phòng thành công!', room: newRoom });
-  } catch (err) {
-    console.error("❌ Lỗi khi tạo phòng:", err);
-    res.status(500).json({ msg: 'Lỗi server', error: err.message });
-  }
+    res.status(201).json({ msg: 'Tạo phòng thành công!', room: newRoom });
+  } catch (err) {
+    console.error("❌ Lỗi khi tạo phòng:", err);
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+  }
 };
-
 
 // ==========================
 // LẤY CÁC PHÒNG ĐANG HOẠT ĐỘNG
 // ==========================
 exports.getActiveRooms = async (req, res) => {
-  try {
-    // Sửa lại query một chút để đảm bảo chỉ lấy phòng 'waiting' và 'live'
-    const activeRooms = await Room.find({ status: { $in: ['waiting', 'live'] } })
-      .populate('owner', 'username avatar')
-      .sort({ createdAt: -1 });
+  try {
+    const activeRooms = await Room.find({ status: { $in: ['waiting', 'live'] } })
+      .populate('owner', 'username avatar')
+      .sort({ createdAt: -1 });
 
-    res.status(200).json(activeRooms);
-  } catch (err) {
-    console.error("❌ Lỗi getActiveRooms:", err);
-    res.status(500).json({ msg: 'Lỗi server', error: err.message });
-  }
+    res.status(200).json(activeRooms);
+  } catch (err) {
+    console.error("❌ Lỗi getActiveRooms:", err);
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+  }
 };
+
 // ==========================
 // BẮT ĐẦU PHIÊN LIVE
 // ==========================
@@ -95,39 +92,36 @@ exports.startSession = async (req, res) => {
 // KẾT THÚC PHIÊN LIVE
 // ==========================
 exports.endSession = async (req, res) => {
-  try {
-    const roomId = req.params.roomId;
-    const room = await Room.findById(roomId);
-    if (!room) return res.status(404).json({ msg: 'Không tìm thấy phòng.' });
+  try {
+    const roomId = req.params.roomId;
+    const room = await Room.findById(roomId);
+    if (!room) return res.status(404).json({ msg: 'Không tìm thấy phòng.' });
 
-    if (room.owner.toString() !== req.user.id) {
-      return res.status(403).json({ msg: 'Bạn không có quyền kết thúc phiên.' });
-    }
+    if (room.owner.toString() !== req.user.id) {
+      return res.status(403).json({ msg: 'Bạn không có quyền kết thúc phiên.' });
+    }
 
-    room.status = 'ended';
-    await room.save();
+    room.status = 'ended';
+    await room.save();
 
-    const io = req.app.get('io');
+    const io = req.app.get('io');
 
-    // Thông báo cho những người trong phòng (giữ nguyên)
-    io.to(roomId).emit('room-ended', {
-      message: 'Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.'
-    });
+    io.to(roomId).emit('room-ended', {
+      message: 'Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.'
+    });
 
-    // ✨ =================== THÊM MỚI =================== ✨
-    // Gửi sự kiện để trang chủ xóa phòng này khỏi danh sách
     io.emit('room-ended-homepage', { roomId: roomId });
     console.log(`📢 Emitted 'room-ended-homepage' for room ID: ${roomId}`);
-    // ✨ ================================================= ✨
 
-    res.status(200).json({ msg: 'Phiên đã kết thúc!', room });
-  } catch (err) {
-    console.error("❌ Lỗi endSession:", err);
-    res.status(500).json({ msg: 'Lỗi server', error: err.message });
-  }
+    res.status(200).json({ msg: 'Phiên đã kết thúc!', room });
+  } catch (err) {
+    console.error("❌ Lỗi endSession:", err);
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+  }
 };
+
 // ==========================
-// THAM GIA PHÒNG
+// THAM GIA PHÒNG - FIXED ✅
 // ==========================
 exports.joinRoom = async (req, res) => {
   try {
@@ -139,31 +133,50 @@ exports.joinRoom = async (req, res) => {
     const userId = req.user.id;
     const isMember = room.members.some(m => m.toString() === userId);
 
+    // Nếu đã là member rồi thì trả về luôn
     if (isMember) {
       room = await populateRoom(room._id);
       return res.status(200).json({ msg: 'Đã ở trong phòng.', room });
     }
 
+    // ✅ Kiểm tra điều kiện join theo privacy
     if (room.privacy === 'private') {
       const { roomCode } = req.body;
-      if (room.roomCode !== roomCode) {
+      if (!roomCode || room.roomCode !== roomCode) {
         return res.status(403).json({ msg: 'Mã phòng không chính xác.' });
       }
+      // Mã đúng → cho phép join
     } else if (room.privacy === 'manual') {
+      // Manual cần approval từ host, không cho join trực tiếp qua API
       return res.status(403).json({ msg: 'Phòng này cần sự phê duyệt của chủ phòng.' });
     }
+    // Nếu là public → không cần kiểm tra gì
 
+    // ✅ Thêm user vào members
     room.members.push(userId);
     await room.save();
+    
+    // ✅ Populate để lấy thông tin đầy đủ
     room = await populateRoom(room._id);
 
+    // ✅ Emit socket update-members cho TẤT CẢ các privacy types
     const io = req.app.get('io');
-    io.to(room._id.toString()).emit('update-members', room.members);
+    
+    // Đảm bảo owner đứng đầu danh sách
+    const ownerId = String(room.owner._id);
+    const ownerMember = room.members.find(m => String(m._id) === ownerId);
+    const otherMembers = room.members.filter(m => String(m._id) !== ownerId);
+    const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : room.members;
+    
+    // ✅ Emit realtime update
+    io.to(room._id.toString()).emit('update-members', sortedMembers);
+    console.log(`✅ [JOIN-ROOM API] User ${userId} joined room ${room._id}`);
+    console.log(`📤 [JOIN-ROOM API] Emitted update-members with ${sortedMembers.length} members`);
 
     res.status(200).json({ msg: 'Tham gia phòng thành công!', room });
   } catch (err) {
     console.error("❌ Lỗi joinRoom:", err);
-    res.status(500).send('Lỗi Server');
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
   }
 };
 
@@ -185,18 +198,17 @@ exports.requestJoinRoom = async (req, res) => {
     
     const payload = {
       requester: {
-        _id: req.user.id, // ⚠️ Đảm bảo đây là string
+        _id: req.user.id,
         username: req.user.username,
         avatar: req.user.avatar,
       },
       roomId: room._id.toString(),
     };
     
-    console.log('📤 Sending join request:', payload); // DEBUG
+    console.log('📤 Sending join request:', payload);
     
     const hostSockets = userSockets.get(room.owner.toString());
     if (hostSockets && hostSockets.size > 0) {
-     // Notify only one of the host's sockets (first) to avoid duplicate prompts
       const firstSocketId = hostSockets.values().next().value;
       io.to(firstSocketId).emit('new-join-request', payload);
       console.log(`📩 Sent new-join-request to host socket ${firstSocketId}`);
@@ -207,7 +219,7 @@ exports.requestJoinRoom = async (req, res) => {
     res.status(200).json({ msg: 'Yêu cầu tham gia đã được gửi đi.' });
   } catch (err) {
     console.error("❌ Lỗi requestJoinRoom:", err);
-    res.status(500).send('Lỗi Server');
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
   }
 };
 
@@ -223,6 +235,6 @@ exports.getRoomDetails = async (req, res) => {
     res.json(room);
   } catch (err) {
     console.error("❌ Lỗi getRoomDetails:", err);
-    res.status(500).send('Lỗi Server');
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
   }
 };

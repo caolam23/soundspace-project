@@ -157,6 +157,8 @@ io.on('connection', (socket) => {
 
   // --- Join room ---
 // server.js - socket.on('join-room')
+// server.js - Thay thế socket.on('join-room') handler
+
 socket.on('join-room', async (roomId) => {
   try {
     socket.join(roomId);
@@ -171,70 +173,34 @@ socket.on('join-room', async (roomId) => {
       return;
     }
 
-    // 🔥 KIỂM TRA: Nếu socket.userId tồn tại nhưng chưa có trong members
+    // ✅ CHỈ emit danh sách hiện tại, KHÔNG tự động thêm user
+    // User phải join qua API trước (public/private) hoặc được approve (manual)
+    
     if (socket.userId) {
       const isMember = room.members.some(m => String(m._id) === socket.userId);
       const isOwner = String(room.owner._id) === socket.userId;
       
       console.log(`[JOIN-ROOM] User ${socket.userId} - isMember: ${isMember}, isOwner: ${isOwner}`);
       
-      if (!isMember) {
-        // 🔥 Nếu là owner thì tự động thêm vào
-        if (isOwner) {
-          console.log(`[JOIN-ROOM] Owner not in members, adding automatically`);
-          
-          room.members.push(socket.userId);
-          await room.save();
-          
-          const updatedRoom = await Room.findById(roomId)
-            .populate('owner', 'username avatar')
-            .populate('members', 'username avatar');
-          
-          // 🔥 Đảm bảo owner đứng đầu
-          const ownerMember = updatedRoom.members.find(m => String(m._id) === socket.userId);
-          const otherMembers = updatedRoom.members.filter(m => String(m._id) !== socket.userId);
-          const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : updatedRoom.members;
-          
-          io.to(roomId).emit('update-members', sortedMembers);
-          console.log(`[JOIN-ROOM] Emitted update-members with ${sortedMembers.length} members (owner first)`);
-          return;
-        }
-        
-        // 🔥 Nếu không phải owner, kiểm tra approval
-        console.log(`[JOIN-ROOM] User ${socket.userId} not in members yet, checking approval...`);
-        
-        const key = `${roomId}-${socket.userId}`;
-        if (joinApprovals.has(key)) {
-          console.log(`[JOIN-ROOM] Found approval, adding user to members`);
-          
-          room.members.push(socket.userId);
-          await room.save();
-          
-          const updatedRoom = await Room.findById(roomId)
-            .populate('owner', 'username avatar')
-            .populate('members', 'username avatar');
-          
-          // 🔥 Đảm bảo owner đứng đầu
-          const ownerId = String(updatedRoom.owner._id);
-          const ownerMember = updatedRoom.members.find(m => String(m._id) === ownerId);
-          const otherMembers = updatedRoom.members.filter(m => String(m._id) !== ownerId);
-          const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : updatedRoom.members;
-          
-          io.to(roomId).emit('update-members', sortedMembers);
-          console.log(`[JOIN-ROOM] Emitted update-members with ${sortedMembers.length} members (owner first)`);
-          return;
-        }
+      // ❌ BỎ logic tự động thêm user vào members
+      // Owner phải được thêm vào members khi tạo phòng (đã có trong createRoom)
+      // User khác phải join qua API hoặc được approve
+      
+      if (!isMember && !isOwner) {
+        console.log(`[JOIN-ROOM] User ${socket.userId} not authorized yet`);
+        // Không làm gì, đợi API hoặc approval
       }
     }
 
-    // 🔥 Logic cũ - nhưng đảm bảo owner đứng đầu
+    // ✅ Luôn đảm bảo owner đứng đầu
     const ownerId = String(room.owner._id);
     const ownerMember = room.members.find(m => String(m._id) === ownerId);
     const otherMembers = room.members.filter(m => String(m._id) !== ownerId);
     const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : room.members;
     
+    // ✅ Emit danh sách members hiện tại (từ DB)
     io.to(roomId).emit('update-members', sortedMembers);
-    console.log(`[JOIN-ROOM] Emitted update-members with ${sortedMembers.length} members (owner first)`);
+    console.log(`[JOIN-ROOM] Emitted update-members with ${sortedMembers.length} members`);
     
   } catch (err) {
     console.error('[JOIN-ROOM] Error:', err);
