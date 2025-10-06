@@ -472,3 +472,27 @@
     border: 1px solid rgba(255,255,255,0.04);
     z-index: 1600;
 }
+
+/* Small transient toast when a user is accepted/joins - bottom-right of chat area */
+.join-toast {
+    position: fixed;
+    right: 28px;
+    bottom: 28px;
+    z-index: 1700;
+    pointer-events: none; /* Clicks pass through unless we change */
+}
+.join-toast-content {
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.04);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    font-weight: 700;
+    animation: join-toast-in 300ms ease-out;
+}
+
+@keyframes join-toast-in {
+    from { transform: translateY(12px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}

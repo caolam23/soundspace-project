@@ -30,6 +30,7 @@ function RoomPage() {
 
   const [room, setRoom] = useState(null);
   const [members, setMembers] = useState([]);
+  const [joinNotification, setJoinNotification] = useState(null);
   const [joinRequests, setJoinRequests] = useState([]);
   const [hostFeedback, setHostFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -144,6 +145,14 @@ const handleNewJoinRequest = useCallback(
             { headers: { Authorization: `Bearer ${token}` } }
           );
           fetchedRoom = joinRes.data.room || fetchedRoom;
+          // If join succeeded via API (auto-join public), show local transient notification
+          try {
+            const myUsername = user.username || (joinRes.data.room?.owner?.username) || null;
+            if (myUsername) {
+              setJoinNotification({ username: myUsername, id: Date.now() });
+              setTimeout(() => setJoinNotification(null), 4000);
+            }
+          } catch (e) { /* ignore */ }
         } catch (joinErr) {
           console.error("Lỗi join phòng public:", joinErr);
         }
@@ -212,7 +221,12 @@ const handleNewJoinRequest = useCallback(
   };
 
   const handleUserJoined = ({ username }) => {
+    // Show toast via react-toastify for quick feedback
     toast.success(`${username} vừa tham gia phòng!`);
+    // Also show a small transient in-chat corner notification so it's visible to all clients
+    setJoinNotification({ username, id: Date.now() });
+    // auto-hide after 4s
+    setTimeout(() => setJoinNotification(null), 4000);
   };
 
   const handleRoomEnded = (data) => {
@@ -598,6 +612,14 @@ const handleNewJoinRequest = useCallback(
           </div>
         </aside>
       </main>
+      {/* Bottom-right join notification */}
+      {joinNotification && (
+        <div className="join-toast">
+          <div className="join-toast-content">
+            <strong>{joinNotification.username}</strong> đã tham gia
+          </div>
+        </div>
+      )}
     </div>
   );
 }
