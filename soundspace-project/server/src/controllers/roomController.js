@@ -172,6 +172,16 @@ exports.joinRoom = async (req, res) => {
     io.to(room._id.toString()).emit('update-members', sortedMembers);
     console.log(`✅ [JOIN-ROOM API] User ${userId} joined room ${room._id}`);
     console.log(`📤 [JOIN-ROOM API] Emitted update-members with ${sortedMembers.length} members`);
+    // Notify everyone in room that a user has joined (transient notification)
+    try {
+      const joinedMember = sortedMembers.find(m => String(m._id) === String(userId));
+      if (joinedMember) {
+        io.to(room._id.toString()).emit('user-joined-notification', { username: joinedMember.username });
+        console.log(`[JOIN-ROOM API] Emitted user-joined-notification for ${joinedMember.username}`);
+      }
+    } catch (e) {
+      console.warn('[JOIN-ROOM API] Could not emit user-joined-notification:', e.message);
+    }
 
     res.status(200).json({ msg: 'Tham gia phòng thành công!', room });
   } catch (err) {

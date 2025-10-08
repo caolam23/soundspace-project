@@ -11,9 +11,7 @@ function UserHomePage() {
   const { user, logout, socket } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // ==============================
   // STATE cho tạo phòng
-  // ==============================
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [roomData, setRoomData] = useState({
     name: '',
@@ -24,16 +22,12 @@ function UserHomePage() {
   const [coverImagePreview, setCoverImagePreview] = useState('');
   const fileInputRef = useRef(null);
 
-  // ==============================
   // STATE cho danh sách phòng
-  // ==============================
   const [rooms, setRooms] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [visibleRoomsCount, setVisibleRoomsCount] = useState(6);
 
-  // ==============================
   // HANDLE INPUT
-  // ==============================
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setRoomData({ ...roomData, [name]: value });
@@ -54,9 +48,7 @@ function UserHomePage() {
     setCoverImagePreview('');
   };
 
-  // ==============================
-  // HANDLE CREATE ROOM
-  // ==============================
+  // HANDLE CREATE ROOM - ✅ FIXED
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     const formData = new FormData();
@@ -84,8 +76,12 @@ function UserHomePage() {
       console.log("Phòng đã tạo:", newRoom);
 
       closeModal();
-      // Redirect Host vào phòng
-      navigate(`/room/${newRoom._id}`);
+      
+      // ✅ THÊM STATE ĐỂ ĐÁNH DẤU ĐÂY LÀ NAVIGATE MỚI
+      navigate(`/room/${newRoom._id}`, { 
+        state: { fromCreate: true },
+        replace: true 
+      });
 
     } catch (err) {
       console.error("Lỗi khi gọi API tạo phòng:", err);
@@ -93,16 +89,12 @@ function UserHomePage() {
     }
   };
 
-  // ==============================
   // LOAD MORE ROOMS
-  // ==============================
   const handleLoadMore = () => {
     setVisibleRoomsCount(prevCount => prevCount + 9);
   };
 
-  // ==============================
   // FETCH ACTIVE ROOMS khi load trang
-  // ==============================
   useEffect(() => {
     const fetchActiveRooms = async () => {
       try {
@@ -121,9 +113,7 @@ function UserHomePage() {
     fetchActiveRooms();
   }, []);
 
-  // ==============================
   // Cleanup ảnh preview
-  // ==============================
   useEffect(() => {
     return () => {
       if (coverImagePreview) {
@@ -132,9 +122,7 @@ function UserHomePage() {
     };
   }, [coverImagePreview]);
 
-  // ==============================
   // SOCKET LISTENERS (Realtime phòng)
-  // ==============================
   useEffect(() => {
     if (!socket) return;
 
@@ -160,18 +148,7 @@ function UserHomePage() {
     };
   }, [socket]);
 
-  // ==============================
-  // SOCKET LISTENERS (Join Request)
-  // ==============================
-  useEffect(() => {
-    if (!socket) return;
-
-    
-  }, [socket, navigate]);
-
-  // ==============================
   // RENDER
-  // ==============================
   if (!user) {
     return <div className="loading-message">Đang tải thông tin người dùng...</div>;
   }

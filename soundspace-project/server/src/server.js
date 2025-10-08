@@ -244,6 +244,16 @@ socket.on('join-room', async (roomId) => {
 
         // Emit members array trực tiếp
         io.to(roomId).emit('update-members', populatedRoom.members);
+         // Notify everyone in the room that a user has joined (transient notification)
+        try {
+          const joinedMember = populatedRoom.members.find(m => String(m._id) === toId(requester._id));
+          if (joinedMember) {
+            io.to(roomId).emit('user-joined-notification', { username: joinedMember.username });
+            console.log(`[REQUEST-JOIN] Emitted user-joined-notification for ${joinedMember.username}`);
+          }
+        } catch (e) {
+          console.warn('[REQUEST-JOIN] Could not emit user-joined-notification:', e.message);
+        }
         console.log(`[REQUEST-JOIN] Emitted update-members with ${populatedRoom.members.length} members`);
         return;
       }
@@ -323,6 +333,16 @@ socket.on('join-room', async (roomId) => {
       // 🔥 Emit danh sách đã sort (owner đầu tiên)
       console.log(`[RESPOND] About to emit update-members to room ${roomId}`);
       io.to(roomId).emit('update-members', sortedMembers);
+      // Notify everyone in the room that a user has been accepted/joined
+      try {
+        const joinedMember = sortedMembers.find(m => String(m._id) === reqIdStr);
+        if (joinedMember) {
+          io.to(roomId).emit('user-joined-notification', { username: joinedMember.username });
+          console.log(`[RESPOND] Emitted user-joined-notification for ${joinedMember.username}`);
+        }
+      } catch (e) {
+        console.warn('[RESPOND] Could not emit user-joined-notification:', e.message);
+      }
       console.log(`[RESPOND] Emitted update-members with ${sortedMembers.length} members (owner first)`);
       
     } else {

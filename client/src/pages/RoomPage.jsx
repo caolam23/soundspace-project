@@ -1,6 +1,6 @@
 // client/src/pages/RoomPage.jsx
 import React, { useEffect, useState, useContext, useCallback, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { AuthContext } from "../contexts/AuthContext";
 import {
@@ -21,44 +21,30 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 function RoomPage() {
+  const isReloading = useRef(false); // ✅ THÊM: Cờ để phát hiện reload
   const roomRef = useRef(null);
+  const hasInitialized = useRef(false);
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // ✅ Lấy socket trực tiếp từ AuthContext
   const { user, socket } = useContext(AuthContext);
 
   const [room, setRoom] = useState(null);
   const [members, setMembers] = useState([]);
+  const [joinNotification, setJoinNotification] = useState(null);
   const [joinRequests, setJoinRequests] = useState([]);
   const [hostFeedback, setHostFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("chat");
 
-   // Log socket events for debugging but register once per component lifecycle
-  useEffect(() => {
-    const anyHandler = (event, ...args) => {
-      console.log("📡 Received event:", event, args);
-    };
-
-    socket.onAny(anyHandler);
-
-    return () => {
-      socket.offAny(anyHandler);
-    };
-  }, []);
-
-  // Giữ roomRef luôn đồng bộ
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
 
   const isHost = user && room && user._id === room.owner._id;
 
-  // ======================
-  // API kết thúc phòng
-  // ======================
   const endRoomAPI = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
@@ -74,191 +60,228 @@ function RoomPage() {
     }
   }, [roomId]);
 
-  // ======================
-  // Host xử lý join-request
-  // ======================
-const handleNewJoinRequest = useCallback(
-  ({ requester, roomId: requestedRoomId }) => {
-    if (roomId === requestedRoomId) {
-      // Deduplicate by requester id
-      setJoinRequests((prev) => {
-        if (prev.some((r) => r.requester._id === requester._id)) return prev;
-        return [...prev, { requester, roomId: requestedRoomId, status: "pending" }];
-      });
-    }
-  },
-  [roomId]
-);
+  const handleNewJoinRequest = useCallback(
+    ({ requester, roomId: requestedRoomId }) => {
+      if (roomId === requestedRoomId) {
+        setJoinRequests((prev) => {
+          if (prev.some((r) => r.requester._id === requester._id)) return prev;
+          return [...prev, { requester, roomId: requestedRoomId, status: "pending" }];
+        });
+      }
+    },
+    [roomId]
+  );
 
-   // Accept / Deny handlers for host UI
   const respondToRequest = useCallback((requesterId, accepted) => {
-    // Emit to server
     socket.emit("respond-to-request", {
       requesterId,
       roomId,
       accepted,
     });
 
-    // Update only the matched request's status so it shows inline
     setJoinRequests((prev) =>
       prev.map((r) =>
         r.requester._id === requesterId ? { ...r, status: accepted ? "accepted" : "denied" } : r
       )
     );
 
-    // Optionally remove the request after a short delay to keep the list clean
     setTimeout(() => {
       setJoinRequests((prev) => prev.filter((r) => r.requester._id !== requesterId));
     }, 5000);
-  }, [roomId]);
+  }, [roomId, socket]);
 
-
-  // ======================
-  // useEffect chính
-  // ======================
+  // ✅ THÊM: useEffect để set cờ khi người dùng reload hoặc đóng tab
   useEffect(() => {
-  if (!user) return;
+    const handleBeforeUnload = () => {
+      isReloading.current = true;
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
 
-  let currentUserIsHost = false;
-  let cleanedUp = false;
-  let socketJoined = false; // ✅ Track xem đã join socket chưa
+  // ✅ MAIN USEEFFECT - ĐÃ SỬA HOÀN CHỈNH
+  useEffect(() => {
+    if (!user) return;
 
-  const fetchRoomDetails = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      let { data: fetchedRoom } = await axios.get(
-        `http://localhost:8800/api/rooms/${roomId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+    let currentUserIsHost = false;
+    let cleanedUp = false;
+    let socketJoined = false;
+    const roomKey = `room_visited_${roomId}`;
 
-      const isMember = (fetchedRoom.members || []).some(
-        (m) => String(m._id) === String(user._id)
-      );
+    const fetchRoomDetails = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        let { data: fetchedRoom } = await axios.get(
+          `http://localhost:8800/api/rooms/${roomId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
-      // ✅ CHỈ auto-join nếu là PUBLIC và chưa là member
-      if (!isMember && fetchedRoom.privacy === "public") {
-        try {
-          const joinRes = await axios.post(
-            `http://localhost:8800/api/rooms/${roomId}/join`,
-            {},
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          fetchedRoom = joinRes.data.room || fetchedRoom;
-        } catch (joinErr) {
-          console.error("Lỗi join phòng public:", joinErr);
+        const hasVisited = localStorage.getItem(roomKey);
+        
+        const isReload = performance.navigation.type === 1 ||
+                         performance.getEntriesByType('navigation')[0]?.type === 'reload';
+        
+        const isNewNavigation = !!(location.state?.fromCreate ||
+                                   location.state?.fromJoin ||
+                                   location.state?.fromApproval);
+        
+        if (isNewNavigation) {
+          window.history.replaceState({}, document.title);
+        }
+        
+        if (hasVisited && isReload && !isNewNavigation) {
+          const userIsHost = String(user._id) === String(fetchedRoom.owner._id);
+          
+          localStorage.removeItem(roomKey);
+          
+          if (userIsHost) {
+            toast.error("Host không được reload trang khi đang live! Phòng đã bị kết thúc.");
+            await endRoomAPI();
+            navigate("/home", { replace: true });
+            return;
+          } else {
+            socket.emit("leave-room", { roomId, userId: user._id });
+            toast.warning("Bạn đã reload trang và bị đẩy ra khỏi phòng");
+            navigate("/home", { replace: true });
+            return;
+          }
+        }
+        
+        if (!hasVisited) {
+          localStorage.setItem(roomKey, "true");
+        }
+        
+        hasInitialized.current = true;
+
+        const isMember = (fetchedRoom.members || []).some(
+          (m) => String(m._id) === String(user._id)
+        );
+
+        if (!isMember && fetchedRoom.privacy === "public") {
+          try {
+            const joinRes = await axios.post(
+              `http://localhost:8800/api/rooms/${roomId}/join`,
+              {},
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            fetchedRoom = joinRes.data.room || fetchedRoom;
+            
+            try {
+              const myUsername = user.username || (joinRes.data.room?.owner?.username) || null;
+              if (myUsername) {
+                setJoinNotification({ username: myUsername, id: Date.now() });
+                setTimeout(() => setJoinNotification(null), 4000);
+              }
+            } catch (e) { /* ignore */ }
+          } catch (joinErr) {
+            console.error("❌ Lỗi join phòng public:", joinErr);
+          }
+        }
+
+        if (cleanedUp) return;
+        
+        setRoom(fetchedRoom);
+
+        const owner = fetchedRoom.owner ? [fetchedRoom.owner] : [];
+        const otherMembers = (fetchedRoom.members || []).filter(
+          (m) => String(m._id) !== String(fetchedRoom.owner?._id)
+        );
+        setMembers([...owner, ...otherMembers]);
+
+        if (socket.connected) {
+          socket.emit("join-room", roomId);
+          socketJoined = true;
+        } else {
+          socket.once("connect", () => {
+            socket.emit("join-room", roomId);
+            socketJoined = true;
+          });
+        }
+
+        if (String(user._id) === String(fetchedRoom.owner?._id)) {
+          currentUserIsHost = true;
+          socket.on("new-join-request", handleNewJoinRequest);
+        }
+      } catch (err) {
+        console.error("🔍 [DEBUG] ❌ Lỗi khi lấy thông tin phòng:", err);
+        setError(err.response?.data?.msg || "Không thể tải phòng.");
+        toast.error(err.response?.data?.msg || "Không thể tải phòng.");
+        navigate("/home");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRoomDetails();
+
+    const handleUpdateMembers = (data) => {
+      const updatedMembers = data.members || data;
+      if (!updatedMembers || updatedMembers.length === 0) return;
+      
+      const currentRoom = roomRef.current;
+      if (!currentRoom || !currentRoom.owner) {
+        setMembers(updatedMembers);
+        return;
+      }
+
+      const ownerId = String(currentRoom.owner._id);
+      const ownerObj = updatedMembers.find((m) => String(m._id) === ownerId);
+      
+      if (ownerObj) {
+        const others = updatedMembers.filter((m) => String(m._id) !== ownerId);
+        setMembers([ownerObj, ...others]);
+      } else {
+        setMembers(updatedMembers);
+      }
+    };
+
+    const handleUserJoined = ({ username }) => {
+      toast.success(`${username} vừa tham gia phòng!`);
+      setJoinNotification({ username, id: Date.now() });
+      setTimeout(() => setJoinNotification(null), 4000);
+    };
+
+    const handleRoomEnded = (data) => {
+      if (!currentUserIsHost) toast.info(data.message);
+      navigate("/home");
+    };
+
+    socket.on("update-members", handleUpdateMembers);
+    socket.on("user-joined-notification", handleUserJoined);
+    socket.on("room-ended", handleRoomEnded);
+
+    return () => {
+      cleanedUp = true;
+      
+      // ✅ SỬA LẠI: Chỉ xóa localStorage nếu không phải là hành động reload
+      if (!isReloading.current) {
+        localStorage.removeItem(roomKey);
+      }
+      
+      if (socketJoined) {
+        if (currentUserIsHost) {
+          endRoomAPI();
+        } else if (user) {
+          socket.emit("leave-room", { roomId, userId: user._id });
         }
       }
 
-      if (cleanedUp) return;
-      setRoom(fetchedRoom);
+      socket.off("update-members", handleUpdateMembers);
+      socket.off("user-joined-notification", handleUserJoined);
+      socket.off("room-ended", handleRoomEnded);
+      socket.off("new-join-request", handleNewJoinRequest);
+    };
+  }, [roomId, user, socket, navigate, handleNewJoinRequest, endRoomAPI, location.state]);
 
-      const owner = fetchedRoom.owner ? [fetchedRoom.owner] : [];
-      const otherMembers = (fetchedRoom.members || []).filter(
-        (m) => String(m._id) !== String(fetchedRoom.owner?._id)
-      );
-      setMembers([...owner, ...otherMembers]);
-
-      // ✅ Emit join-room socket
-      if (socket.connected) {
-        socket.emit("join-room", roomId);
-        socketJoined = true; // ✅ Đánh dấu đã join
-      } else {
-        console.warn("Socket chưa sẵn sàng, chờ connect...");
-        socket.once("connect", () => {
-          console.log("Socket đã kết nối, emit join-room");
-          socket.emit("join-room", roomId);
-          socketJoined = true; // ✅ Đánh dấu đã join
-        });
-      }
-
-      if (String(user._id) === String(fetchedRoom.owner?._id)) {
-        currentUserIsHost = true;
-        socket.on("new-join-request", handleNewJoinRequest);
-      }
-    } catch (err) {
-      console.error("Lỗi khi lấy thông tin phòng:", err);
-      setError(err.response?.data?.msg || "Không thể tải phòng.");
-      toast.error(err.response?.data?.msg || "Không thể tải phòng.");
-      navigate("/home");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  fetchRoomDetails();
-
-  // Event handlers (giữ nguyên)
-  const handleUpdateMembers = (data) => {
-    const updatedMembers = data.members || data;
-    if (!updatedMembers || updatedMembers.length === 0) return;
-    
-    console.log("📥 Received update-members:", updatedMembers.map(m => m.username));
-    
-    const currentRoom = roomRef.current;
-    if (!currentRoom || !currentRoom.owner) {
-      setMembers(updatedMembers);
-      return;
-    }
-
-    const ownerId = String(currentRoom.owner._id);
-    const ownerObj = updatedMembers.find((m) => String(m._id) === ownerId);
-    
-    if (ownerObj) {
-      const others = updatedMembers.filter((m) => String(m._id) !== ownerId);
-      setMembers([ownerObj, ...others]);
-    } else {
-      setMembers(updatedMembers);
-    }
-  };
-
-  const handleUserJoined = ({ username }) => {
-    toast.success(`${username} vừa tham gia phòng!`);
-  };
-
-  const handleRoomEnded = (data) => {
-    if (!currentUserIsHost) toast.info(data.message);
-    navigate("/home");
-  };
-
-  socket.on("update-members", handleUpdateMembers);
-  socket.on("user-joined-notification", handleUserJoined);
-  socket.on("room-ended", handleRoomEnded);
-
-  // ✅ CLEANUP đã sửa
-  return () => {
-    cleanedUp = true;
-    
-    // ✅ CHỈ emit leave-room nếu ĐÃ join socket thành công
-    if (socketJoined) {
-      if (currentUserIsHost) {
-        endRoomAPI();
-      } else if (user) {
-        socket.emit("leave-room", { roomId, userId: user._id });
-      }
-    }
-
-    socket.off("update-members", handleUpdateMembers);
-    socket.off("user-joined-notification", handleUserJoined);
-    socket.off("room-ended", handleRoomEnded);
-    socket.off("new-join-request", handleNewJoinRequest);
-  };
-}, [roomId, user, socket, navigate, handleNewJoinRequest, endRoomAPI]);
-
-  // ======================
-  // Guest nhận phản hồi join
-  // ======================
   useEffect(() => {
     const handleJoinRequestAccepted = async ({ roomId: acceptedRoomId, room: payload }) => {
       if (acceptedRoomId !== roomId) return;
       
-      console.log("✅ Join request accepted, payload:", payload);
-      
       try {
-        // 1. Join socket room NGAY LẬP TỨC
         socket.emit("join-room", roomId);
-        console.log("🔌 Emitted join-room for:", roomId);
         
-        // 2. Cập nhật state từ payload socket (đã có data đầy đủ)
         setRoom(payload);
         const owner = payload.owner ? [payload.owner] : [];
         const otherMembers = (payload.members || []).filter(
@@ -266,24 +289,16 @@ const handleNewJoinRequest = useCallback(
         );
         setMembers([...owner, ...otherMembers]);
         
-        console.log("📋 Members from payload:", [...owner, ...otherMembers].map(m => m.username));
-        
         toast.success("Bạn đã được chủ phòng chấp nhận — đang vào phòng!");
         
-        // 3. Đợi một chút để server xử lý xong rồi mới fetch
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // 4. Fetch lại từ API để verify (optional, nhưng để đảm bảo)
         const token = localStorage.getItem("token");
         const { data: freshRoom } = await axios.get(
           `http://localhost:8800/api/rooms/${roomId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
-        console.log("🔄 Fresh room from API:", freshRoom);
-        console.log("📋 Fresh members:", freshRoom.members);
-        
-        // 5. Chỉ update nếu data mới khác data cũ
         if (freshRoom.members.length >= payload.members.length) {
           setRoom(freshRoom);
           const freshOwner = freshRoom.owner ? [freshRoom.owner] : [];
@@ -313,9 +328,8 @@ const handleNewJoinRequest = useCallback(
     };
   }, [roomId, socket, navigate]);
 
-  // ======================
-  // Ngăn host tắt tab khi đang live
-  // ======================
+  // ⛔️ ĐÃ XÓA useEffect chứa beforeunload gây race-condition ở đây
+
   useEffect(() => {
     if (!isHost) return;
 
@@ -338,9 +352,6 @@ const handleNewJoinRequest = useCallback(
     };
   }, [isHost]);
 
-  // ======================
-  // Host kết thúc phòng
-  // ======================
   const handleEndRoom = async () => {
     const result = await Swal.fire({
       title: "Xác nhận",
@@ -355,6 +366,7 @@ const handleNewJoinRequest = useCallback(
       const success = await endRoomAPI();
       if (success) {
         Swal.fire("Đã kết thúc", "Buổi live đã được kết thúc.", "success");
+        localStorage.removeItem(`room_visited_${roomId}`);
         navigate("/home");
       } else {
         Swal.fire("Lỗi", "Không thể kết thúc phòng. Vui lòng thử lại.", "error");
@@ -364,6 +376,7 @@ const handleNewJoinRequest = useCallback(
 
   const handleLeaveRoom = () => {
     socket.emit("leave-room", { roomId, userId: user._id });
+    localStorage.removeItem(`room_visited_${roomId}`);
     navigate("/home");
   };
 
@@ -373,7 +386,6 @@ const handleNewJoinRequest = useCallback(
   
   return (
     <div className="roompage-container">
-      {/* HEADER */}
       <header className="roompage-header">
         <div className="roompage-header-info">
           <h1>{room.name}</h1>
@@ -409,8 +421,7 @@ const handleNewJoinRequest = useCallback(
         </div>
       </header>
       
-       <main className="roompage-main">
-        {/* Join requests box for host */}
+      <main className="roompage-main">
         {isHost && joinRequests.length > 0 && (
           <div className="join-requests-container">
             <h3>Yêu cầu tham gia</h3>
@@ -425,23 +436,15 @@ const handleNewJoinRequest = useCallback(
                       </div>
                     </div>
                     <div className="join-request-actions">
-                      {/* If request has been responded to, show inline status badge; otherwise show action buttons */}
                       {r.status && r.status !== "pending" ? (
                         <div className={`join-request-status ${r.status}`}>
                           {r.status === "accepted" ? "Đã chấp nhận" : "Đã từ chối"}
                         </div>
                       ) : (
-                        r.status === "pending" ? (
-                          <>
-                            <button className="btn btn-accept" onClick={() => respondToRequest(r.requester._id, true)}>Chấp nhận</button>
-                            <button className="btn btn-deny" onClick={() => respondToRequest(r.requester._id, false)}>Từ chối</button>
-                          </>
-                        ) : (
-                          <>
-                            <button className="btn btn-accept" onClick={() => respondToRequest(r.requester._id, true)}>Chấp nhận</button>
-                            <button className="btn btn-deny" onClick={() => respondToRequest(r.requester._id, false)}>Từ chối</button>
-                          </>
-                        )
+                        <>
+                          <button className="btn btn-accept" onClick={() => respondToRequest(r.requester._id, true)}>Chấp nhận</button>
+                          <button className="btn btn-deny" onClick={() => respondToRequest(r.requester._id, false)}>Từ chối</button>
+                        </>
                       )}
                     </div>
                   </li>
@@ -449,7 +452,6 @@ const handleNewJoinRequest = useCallback(
               </ul>
           </div>
         )}
-        {/* LEFT: QUEUE */}
         {hostFeedback && joinRequests.length === 0 && <div className="host-feedback">{hostFeedback}</div>}
         <aside className="roompage-left">
           <div className="roompage-queue">
@@ -475,7 +477,6 @@ const handleNewJoinRequest = useCallback(
           </div>
         </aside>
 
-        {/* CENTER: PLAYER */}
         <section className="roompage-center">
           <img
             className="roompage-album-art"
@@ -517,7 +518,6 @@ const handleNewJoinRequest = useCallback(
           </button>
         </section>
 
-        {/* RIGHT: CHAT + MEMBERS */}
         <aside className="roompage-right">
           <div className="roompage-tabs">
             <div
@@ -598,6 +598,15 @@ const handleNewJoinRequest = useCallback(
           </div>
         </aside>
       </main>
+      
+      {/* Bottom-right join notification */}
+      {joinNotification && (
+        <div className="join-toast">
+          <div className="join-toast-content">
+            <strong>{joinNotification.username}</strong> đã tham gia
+          </div>
+        </div>
+      )}
     </div>
   );
 }
