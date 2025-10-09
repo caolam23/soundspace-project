@@ -176,7 +176,7 @@ exports.joinRoom = async (req, res) => {
     try {
       const joinedMember = sortedMembers.find(m => String(m._id) === String(userId));
       if (joinedMember) {
-        io.to(room._id.toString()).emit('user-joined-notification', { username: joinedMember.username });
+        io.to(room._id.toString()).emit('user-joined-notification', { username: joinedMember.username, avatar: joinedMember.avatar });
         console.log(`[JOIN-ROOM API] Emitted user-joined-notification for ${joinedMember.username}`);
       }
     } catch (e) {

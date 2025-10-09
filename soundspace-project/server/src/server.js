@@ -248,7 +248,7 @@ socket.on('join-room', async (roomId) => {
         try {
           const joinedMember = populatedRoom.members.find(m => String(m._id) === toId(requester._id));
           if (joinedMember) {
-            io.to(roomId).emit('user-joined-notification', { username: joinedMember.username });
+            io.to(roomId).emit('user-joined-notification', { username: joinedMember.username, avatar: joinedMember.avatar });
             console.log(`[REQUEST-JOIN] Emitted user-joined-notification for ${joinedMember.username}`);
           }
         } catch (e) {
@@ -337,7 +337,7 @@ socket.on('join-room', async (roomId) => {
       try {
         const joinedMember = sortedMembers.find(m => String(m._id) === reqIdStr);
         if (joinedMember) {
-          io.to(roomId).emit('user-joined-notification', { username: joinedMember.username });
+          io.to(roomId).emit('user-joined-notification', { username: joinedMember.username, avatar: joinedMember.avatar });
           console.log(`[RESPOND] Emitted user-joined-notification for ${joinedMember.username}`);
         }
       } catch (e) {
