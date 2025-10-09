@@ -237,9 +237,13 @@ function RoomPage() {
       }
     };
 
-    const handleUserJoined = ({ username }) => {
-      toast.success(`${username} vừa tham gia phòng!`);
-      setJoinNotification({ username, id: Date.now() });
+    const handleUserJoined = ({ username, avatar }) => {
+      // Try to resolve avatar: prefer emitted avatar, otherwise try to find in current members
+      const memberAvatar =
+        avatar || members.find((m) => m.username === username)?.avatar || "/default-avatar.png";
+
+      // Show enhanced join notification with avatar + name (similar to Google Meet)
+      setJoinNotification({ username, avatar: memberAvatar, id: Date.now() });
       setTimeout(() => setJoinNotification(null), 4000);
     };
 
@@ -601,9 +605,17 @@ function RoomPage() {
       
       {/* Bottom-right join notification */}
       {joinNotification && (
-        <div className="join-toast">
+        <div className="join-toast" role="status" aria-live="polite">
           <div className="join-toast-content">
-            <strong>{joinNotification.username}</strong> đã tham gia
+            <img
+              className="join-toast-avatar"
+              src={joinNotification.avatar || '/default-avatar.png'}
+              alt={joinNotification.username}
+            />
+            <div className="join-toast-body">
+              <div className="join-toast-username">{joinNotification.username}</div>
+              <div className="join-toast-subtitle">vừa vào phòng</div>
+            </div>
           </div>
         </div>
       )}
