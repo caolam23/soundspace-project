@@ -324,90 +324,117 @@ io.on('connection', (socket) => {
 
   // --- Music Control Events ---
   socket.on('music-control', async ({ roomId, action }) => {
-    try {
-      const room = await Room.findById(roomId);
-      if (!room) {
-        console.warn(`[MUSIC_CONTROL] Room not found: ${roomId}`);
-        return;
-      }
-
-      if (socket.userId !== room.owner.toString()) {
-        console.warn(`[MUSIC_CONTROL] Unauthorized user tried to control music in room ${roomId}`);
-        return;
-      }
-
-      let updatedState = {};
-
-      switch (action.type) {
-        case 'PLAY': {
-          const trackIndexToPlay =
-            action.payload?.trackIndex ??
-            (room.currentTrackIndex === -1 ? 0 : room.currentTrackIndex);
-
-          if (trackIndexToPlay < 0 || trackIndexToPlay >= room.playlist.length) {
-            console.warn(`[MUSIC_CONTROL] Invalid track index: ${trackIndexToPlay}`);
-            return;
+      try {
+          // 1️⃣ Kiểm tra và lấy thông tin phòng
+          const room = await Room.findById(roomId);
+          if (!room) {
+              console.warn(`[MUSIC_CONTROL] Room not found: ${roomId}`);
+              return;
           }
 
-          updatedState = {
-            isPlaying: true,
-            currentTrackIndex: trackIndexToPlay,
-            playbackStartTime: new Date()
-          };
-          break;
-        }
-
-        case 'PAUSE': {
-          updatedState = { isPlaying: false };
-          break;
-        }
-
-        case 'SKIP_NEXT': {
-          if (!room.playlist.length) return;
-          const nextIndex = (room.currentTrackIndex + 1) % room.playlist.length;
-          updatedState = {
-            currentTrackIndex: nextIndex,
-            isPlaying: true,
-            playbackStartTime: new Date()
-          };
-          break;
-        }
-
-        case 'SEEK_TO': {
-          if (typeof action.payload?.time === 'number') {
-            const seekTimeInSeconds = action.payload.time;
-            const newPlaybackStartTime = new Date(Date.now() - seekTimeInSeconds * 1000);
-            updatedState = {
-              playbackStartTime: newPlaybackStartTime
-            };
-            console.log(`[MUSIC_CONTROL] Seek to ${seekTimeInSeconds}s in room ${roomId}`);
-          } else {
-            console.warn(`[MUSIC_CONTROL] Invalid SEEK_TO payload`);
-            return;
+          // Chỉ cho phép chủ phòng điều khiển nhạc
+          if (socket.userId !== room.owner.toString()) {
+              console.warn(`[MUSIC_CONTROL] Unauthorized user tried to control music in room ${roomId}`);
+              return;
           }
-          break;
-        }
 
-        default:
-          console.warn(`[MUSIC_CONTROL] Unknown action type: ${action.type}`);
-          return;
+          let updatedState = {};
+
+          // 2️⃣ Xử lý từng loại hành động điều khiển
+          switch (action.type) {
+
+              // ▶️ PHÁT NHẠC
+              case 'PLAY': {
+                  const trackIndexToPlay =
+                      action.payload?.trackIndex ??
+                      (room.currentTrackIndex === -1 ? 0 : room.currentTrackIndex);
+
+                  if (trackIndexToPlay < 0 || trackIndexToPlay >= room.playlist.length) {
+                      console.warn(`[MUSIC_CONTROL] Invalid track index: ${trackIndexToPlay}`);
+                      return;
+                  }
+
+                  updatedState = {
+                      isPlaying: true,
+                      currentTrackIndex: trackIndexToPlay,
+                      playbackStartTime: new Date()
+                  };
+                  break;
+              }
+
+              // ⏸️ TẠM DỪNG NHẠC
+              case 'PAUSE': {
+                  updatedState = { isPlaying: false };
+                  break;
+              }
+
+              // ⏭️ CHUYỂN BÀI TIẾP
+              case 'SKIP_NEXT': {
+                  if (!room.playlist.length) return;
+                  const nextIndex = (room.currentTrackIndex + 1) % room.playlist.length;
+                  updatedState = {
+                      currentTrackIndex: nextIndex,
+                      isPlaying: true,
+                      playbackStartTime: new Date()
+                  };
+                  break;
+              }
+
+              // ⏮️ LÙI VỀ BÀI TRƯỚC
+              case 'SKIP_PREVIOUS': {
+                  if (!room.playlist.length) return;
+                  // Nếu đang ở bài đầu, lùi về bài cuối
+                  const prevIndex = (room.currentTrackIndex - 1 + room.playlist.length) % room.playlist.length;
+                  updatedState = {
+                      currentTrackIndex: prevIndex,
+                      isPlaying: true,
+                      playbackStartTime: new Date()
+                  };
+                  break;
+              }
+
+              // ⏩ TUA NHẠC (SEEK_TO)
+              case 'SEEK_TO': {
+                  if (typeof action.payload?.time === 'number') {
+                      const seekTimeInSeconds = action.payload.time;
+                      const newPlaybackStartTime = new Date(Date.now() - seekTimeInSeconds * 1000);
+
+                      updatedState = {
+                          playbackStartTime: newPlaybackStartTime
+                      };
+
+                      console.log(`[MUSIC_CONTROL] Seek to ${seekTimeInSeconds}s in room ${roomId}`);
+                  } else {
+                      console.warn(`[MUSIC_CONTROL] Invalid SEEK_TO payload`);
+                      return;
+                  }
+                  break;
+              }
+
+              default:
+                  console.warn(`[MUSIC_CONTROL] Unknown action type: ${action.type}`);
+                  return;
+          }
+
+          // 3️⃣ Cập nhật trạng thái phòng
+          Object.assign(room, updatedState);
+          await room.save();
+
+          // 4️⃣ Gửi trạng thái mới cho toàn bộ client trong phòng
+          const playbackState = {
+              playlist: room.playlist,
+              currentTrackIndex: room.currentTrackIndex,
+              isPlaying: room.isPlaying,
+              playbackStartTime: room.playbackStartTime,
+          };
+
+          io.to(roomId).emit('playback-state-changed', playbackState);
+
+      } catch (error) {
+          console.error(`[MUSIC_CONTROL] Error:`, error);
       }
-
-      Object.assign(room, updatedState);
-      await room.save();
-
-      const playbackState = {
-        playlist: room.playlist,
-        currentTrackIndex: room.currentTrackIndex,
-        isPlaying: room.isPlaying,
-        playbackStartTime: room.playbackStartTime,
-      };
-
-      io.to(roomId).emit('playback-state-changed', playbackState);
-    } catch (error) {
-      console.error(`[MUSIC_CONTROL] Error:`, error);
-    }
   });
+
 
   // --- Sync time from host ---
   socket.on('sync-time', ({ roomId, currentTime }) => {
