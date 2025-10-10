@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { Upload, Link as LinkIcon, Play, Pause, SkipBack, SkipForward } from 'react-feather';
+import 'react-toastify/dist/ReactToastify.css';
 import './MusicPlayer.css';
+import { toastConfig } from '../services/toastConfig';
 
 // ====================================================================
 // ⚙️ CÁC HẰNG SỐ ĐỒNG BỘ
@@ -261,32 +263,50 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
 
   // ====================================================================
   // HÀM XỬ LÝ THÊM NHẠC
-  // ====================================================================
-  const handleAddFromLink = async (e) => {
-    e.preventDefault();
-    if (!link.trim()) return;
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.post(
-        `http://localhost:8800/api/rooms/${roomId}/playlist`,
-        { url: link },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (res.data?.playlist) {
-        setPlaylist(res.data.playlist);
-        if (res.data.playlist.length === 1) {
-          setCurrentTrackIndex(0);
-          setIsPlaying(true);
+  // ====================================================================    
+    const handleAddFromLink = async (e) => {
+      e.preventDefault();
+      if (!link.trim()) return;
+
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.post(
+          `http://localhost:8800/api/rooms/${roomId}/playlist`,
+          { url: link },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (res.data?.playlist) {
+          setPlaylist(res.data.playlist);
+          if (res.data.playlist.length === 1) {
+            setCurrentTrackIndex(0);
+            setIsPlaying(true);
+          }
+        }
+
+        setLink("");
+        toast.success("Đã thêm bài hát vào danh sách!", toastConfig);
+
+      } catch (err) {
+        console.error("Lỗi khi thêm bài hát:", err);
+
+        const status = err.response?.status;
+        const msg = err.response?.data?.msg || "Thêm bài hát thất bại";
+
+        if (status === 409) {
+          toast.info(msg, {
+            ...toastConfig,
+            icon: "🔁",
+            style: { ...toastConfig.style, backgroundColor: "#2563eb", color: "white" },
+          });
+        } else {
+          toast.error(msg, {
+            ...toastConfig,
+            style: { ...toastConfig.style, backgroundColor: "#dc2626", color: "white" },
+          });
         }
       }
-      setLink('');
-      toast.success("🎵 Đã thêm bài hát!");
-    } catch (err) {
-      console.error("🔥 Lỗi khi thêm bài hát:", err);
-      toast.error(err.response?.data?.msg || "Thêm bài hát thất bại");
-    }
-  };
-
+    };
   // ====================================================================
   // GỬI LỆNH ĐIỀU KHIỂN (PLAY, PAUSE, NEXT, PREV, SEEK)
   // ====================================================================

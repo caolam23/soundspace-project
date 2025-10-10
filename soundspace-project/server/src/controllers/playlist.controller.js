@@ -1,5 +1,5 @@
 const ytdl = require('@distube/ytdl-core');
-const Room = require('../models/room'); // ✅ FIX LỖI QUAN TRỌNG
+const Room = require('../models/room');
 
 // Timeout wrapper cho ytdl
 const getVideoInfoWithTimeout = (url, timeoutMs = 8000) => {
@@ -20,14 +20,25 @@ exports.addTrack = async (req, res) => {
     const room = await Room.findById(roomId);
     if (!room) return res.status(404).json({ msg: 'Không tìm thấy phòng' });
 
+    // Chỉ chủ phòng mới được thêm bài
     if (room.owner.toString() !== userId.toString()) {
       return res.status(403).json({ msg: 'Bạn không có quyền thêm nhạc' });
     }
 
+    // Kiểm tra URL hợp lệ
     if (!ytdl.validateURL(url)) {
       return res.status(400).json({ msg: 'URL không hợp lệ hoặc chưa được hỗ trợ' });
     }
 
+    // 🔍 Kiểm tra trùng link hoặc videoId trước khi lấy info
+    const existingTrack = room.playlist.find(
+      (track) => track.url === url
+    );
+    if (existingTrack) {
+      return res.status(409).json({ msg: 'Bài hát này đã có trong danh sách phát' });
+    }
+
+    // Lấy thông tin video
     let info;
     try {
       console.log(`[YTDL] Đang lấy thông tin cho URL: ${url}`);
@@ -39,6 +50,16 @@ exports.addTrack = async (req, res) => {
     }
 
     const details = info.videoDetails;
+
+    // 🔍 Kiểm tra lại trùng theo videoId để chắc chắn
+    const duplicateById = room.playlist.find(
+      (track) => track.sourceId === details.videoId
+    );
+    if (duplicateById) {
+      return res.status(409).json({ msg: 'Bài hát này đã có trong danh sách phát' });
+    }
+
+    // Tạo object bài hát mới
     const newTrack = {
       title: details.title,
       artist: details.ownerChannelName,
@@ -77,7 +98,7 @@ exports.addTrack = async (req, res) => {
 
     // ✅ Trả phản hồi ngay để client cập nhật playlist
     return res.status(201).json({
-      msg: 'Đã thêm bài hát thành công',
+      msg: ' Đã thêm bài hát thành công',
       playlist: populatedRoom.playlist,
     });
 

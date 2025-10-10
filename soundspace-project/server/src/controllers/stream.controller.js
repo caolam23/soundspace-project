@@ -2,24 +2,7 @@ const ytdl = require('ytdl-core');
 const { exec } = require('child_process');
 const util = require('util');
 const axios = require('axios');
-const path = require('path');
-const os = require('os');
 const execPromise = util.promisify(exec);
-
-// 🧠 Tự phát hiện đường dẫn yt-dlp trên các hệ điều hành
-function getYtDlpPath() {
-  const platform = os.platform();
-
-  if (platform === 'win32') {
-    // Ưu tiên bản bạn đã cài trong MSYS2
-    const msysPath = 'C:/msys64/mingw64/bin/yt-dlp.exe';
-    return `"${msysPath}"`;
-  } else if (platform === 'darwin') {
-    return '/usr/local/bin/yt-dlp';
-  } else {
-    return '/usr/bin/yt-dlp';
-  }
-}
 
 /**
  * 🎧 Stream nhạc an toàn — thử ytdl-core trước, nếu lỗi fallback sang yt-dlp
@@ -40,19 +23,22 @@ exports.streamTrack = async (req, res) => {
       const info = await ytdl.getInfo(url);
       const title = info.videoDetails.title;
 
+      // 👉 Lấy thumbnail lớn nhất
       const thumbnails = info.videoDetails.thumbnails || [];
       const thumbnail = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url : null;
 
       console.log(`🎵 Đang phát: ${title}`);
 
-      if (req.query.meta === 'true') {
+      // Nếu chỉ muốn gửi metadata (title, thumbnail) trước khi stream
+      if (req.query.meta === "true") {
         return res.json({
           title,
           thumbnail,
-          url: `/api/stream/${videoId}`,
+          url: `/api/stream/${videoId}` // đường dẫn để frontend phát nhạc
         });
       }
 
+      // Set headers cho audio
       res.setHeader('Content-Type', 'audio/mpeg');
       res.setHeader('Accept-Ranges', 'bytes');
       res.setHeader('Cache-Control', 'no-cache');
@@ -78,7 +64,8 @@ exports.streamTrack = async (req, res) => {
     }
 
     // ✅ Fallback sang yt-dlp
-    await fallbackWithYtDlp(url, res, req.query.meta === 'true');
+    await fallbackWithYtDlp(url, res, req.query.meta === "true");
+
   } catch (error) {
     console.error('🔥 Lỗi không mong muốn trong streamTrack:', error);
     if (!res.headersSent) {
@@ -93,20 +80,18 @@ exports.streamTrack = async (req, res) => {
 async function fallbackWithYtDlp(url, res, metaOnly = false) {
   console.log('🎧 Fallback yt-dlp cho:', url);
 
-  const ytDlpPath = getYtDlpPath();
-
   try {
-    // ⚙️ Dùng đường dẫn yt-dlp phù hợp
-    const { stdout } = await execPromise(`${ytDlpPath} -j -f "bestaudio" "${url}"`);
+    const { stdout } = await execPromise(`yt-dlp -j -f "bestaudio" "${url}"`);
     const info = JSON.parse(stdout);
 
     const audioUrl =
       info.url ||
       (info.formats &&
-        info.formats.find((f) => f.acodec && f.acodec !== 'none' && f.url)?.url);
+        info.formats.find(f => f.acodec && f.acodec !== 'none' && f.url)?.url);
 
     if (!audioUrl) throw new Error('Không tìm thấy luồng âm thanh hợp lệ.');
 
+    // 👉 Lấy thumbnail lớn nhất từ yt-dlp
     const thumbnails = info.thumbnails || [];
     const thumbnail = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url : null;
 
@@ -114,7 +99,7 @@ async function fallbackWithYtDlp(url, res, metaOnly = false) {
       return res.json({
         title: info.title,
         thumbnail,
-        url: `/api/stream/${info.id}`,
+        url: `/api/stream/${info.id}`
       });
     }
 
@@ -124,7 +109,9 @@ async function fallbackWithYtDlp(url, res, metaOnly = false) {
       method: 'GET',
       url: audioUrl,
       responseType: 'stream',
-      headers: { 'User-Agent': 'Mozilla/5.0' },
+      headers: {
+        'User-Agent': 'Mozilla/5.0'
+      }
     });
 
     res.setHeader('Content-Type', response.headers['content-type'] || 'audio/mp4');
@@ -136,12 +123,13 @@ async function fallbackWithYtDlp(url, res, metaOnly = false) {
     res.setHeader('Access-Control-Allow-Origin', '*');
 
     response.data.pipe(res);
+
   } catch (err) {
     console.error('🔥 Lỗi khi fallback yt-dlp:', err.message);
     if (!res.headersSent) {
       res.status(500).json({
         msg: 'Lỗi khi stream bằng yt-dlp',
-        error: err.message,
+        error: 'Không tìm thấy luồng âm thanh hợp lệ.',
       });
     }
   }
