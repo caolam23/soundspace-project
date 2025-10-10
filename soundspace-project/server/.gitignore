@@ -20,3 +20,4 @@ yarn-error.log*
 # Thư mục build của client
 client/dist
 client/.vite
+*-player-script.js
