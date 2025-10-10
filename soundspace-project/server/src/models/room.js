@@ -42,7 +42,7 @@ const TrackSchema = new mongoose.Schema(
       ref: "User",
     },
   },
-  { _id: false, timestamps: true }
+  { timestamps: true }
 );
 
 /**
@@ -52,7 +52,9 @@ const TrackSchema = new mongoose.Schema(
  */
 const roomSchema = new mongoose.Schema(
   {
+    // =============================================
     // Thông tin cơ bản
+    // =============================================
     name: {
       type: String,
       required: [true, "Tên phòng là bắt buộc"],
@@ -63,13 +65,16 @@ const roomSchema = new mongoose.Schema(
       type: String,
       trim: true,
       maxlength: [500, "Mô tả không được quá 500 ký tự"],
+      default: "",
     },
     coverImage: {
       type: String, // URL ảnh bìa từ Cloudinary
       required: [true, "Ảnh bìa là bắt buộc"],
     },
 
+    // =============================================
     // Quyền riêng tư của phòng
+    // =============================================
     privacy: {
       type: String,
       enum: ["public", "manual", "private"],
@@ -81,38 +86,79 @@ const roomSchema = new mongoose.Schema(
       sparse: true,
     },
 
-    /**
-     * =============================================
-     * Quản lý trạng thái phòng
-     * - waiting: vừa tạo, chưa bắt đầu
-     * - live: đang phát nhạc
-     * - ended: đã kết thúc
-     * =============================================
-     */
+    // =============================================
+    // Quản lý trạng thái phòng
+    // =============================================
     status: {
       type: String,
       enum: ["waiting", "live", "ended"],
       default: "waiting",
     },
 
-    // Chủ phòng và thành viên
+    // =============================================
+    // Chủ phòng & thành viên
+    // =============================================
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    members: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
+    members: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "User",
+      default: [],
+    },
 
-    /**
-     * =============================================
-     * Thông tin trình phát nhạc
-     * =============================================
-     */
+    // =============================================
+    // Thống kê
+    // =============================================
+    statistics: {
+      totalJoins: { type: Number, default: 0 },
+      peakMembers: { type: Number, default: 0 },
+      totalMessages: { type: Number, default: 0 },
+      totalDuration: { type: Number, default: 0 },
+    },
+
+    // =============================================
+    // Lịch sử & nhật ký hoạt động
+    // =============================================
+    joinHistory: {
+      type: [
+        {
+          userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+          action: { type: String, enum: ["join", "leave"] },
+          timestamp: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+
+    startedAt: { type: Date, default: null },
+    endedAt: { type: Date, default: null },
+
+    rejectedUsers: {
+      type: [
+        {
+          userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+          rejectedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+
+    metadata: {
+      avgSessionTime: { type: Number, default: 0 },
+    },
+
+    // =============================================
+    // Quản lý Admin
+    // =============================================
+    isBanned: { type: Boolean, default: false },
+    banReason: { type: String, trim: true, default: "" },
+
+    // =============================================
+    // Trình phát nhạc
+    // =============================================
     playlist: [TrackSchema], // Danh sách bài hát
     currentTrackIndex: {
       type: Number,
@@ -128,5 +174,19 @@ const roomSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// =======================================================
+// Index hỗ trợ tìm kiếm & quản lý nhanh
+roomSchema.index({ status: 1 });
+roomSchema.index({ privacy: 1 });
+roomSchema.index({ owner: 1 });
+roomSchema.index({ isBanned: 1 });
+roomSchema.index({ createdAt: -1 });
+
+// =======================================================
+// Luôn hiển thị đầy đủ các trường khi trả JSON
+roomSchema.set("toJSON", { virtuals: true });
+roomSchema.set("toObject", { virtuals: true });
+roomSchema.options.minimize = false; // Không ẩn object rỗng
 
 module.exports = mongoose.model("Room", roomSchema);

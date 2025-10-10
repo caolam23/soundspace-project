@@ -1,9 +1,11 @@
+// src/pages/admin/Users.jsx
 import React, { useState, useEffect, useContext } from "react";
 import "./Users.css";
 import { User, Edit, Lock, Unlock, Trash2, Ban } from "lucide-react";
 import ChuyenTrang from "../../components/ChuyenTrang";
 import { AuthContext } from "../../contexts/AuthContext";
-import AddUserModal from "../../components/AddUserModal"; // 🔥 Import modal
+import AddUserModal from "../../components/AddUserModal";
+import EditUserModal from "../../components/EditUserModal"; // 🔥 Import EditUserModal
 
 const Users = () => {
   const { socket } = useContext(AuthContext);
@@ -16,7 +18,11 @@ const Users = () => {
     role: 'all',
     status: 'all'
   });
-  const [isModalOpen, setIsModalOpen] = useState(false); // 🔥 State cho modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // 🔥 State cho Edit Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   
   const usersPerPage = 5;
 
@@ -64,9 +70,20 @@ const Users = () => {
     };
   }, [socket]);
 
-  // 🔥 Handler khi thêm user thành công
+  // Handler khi thêm user thành công
   const handleUserAdded = () => {
-    fetchUsers(); // Refresh danh sách
+    fetchUsers();
+  };
+
+  // 🔥 Handler khi edit user thành công
+  const handleUserUpdated = () => {
+    fetchUsers();
+  };
+
+  // 🔥 Handler mở modal edit
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    setIsEditModalOpen(true);
   };
 
   // Xử lý khóa/mở khóa user
@@ -171,7 +188,7 @@ const Users = () => {
         <h2 className="users-title">Quản lý Users</h2>
         <button 
           className="users-addBtn"
-          onClick={() => setIsModalOpen(true)} // 🔥 Mở modal
+          onClick={() => setIsModalOpen(true)}
         >
           Thêm User mới
         </button>
@@ -259,7 +276,14 @@ const Users = () => {
                     <td>{formatDate(user.createdAt)}</td>
                     <td>
                       <div className="users-actions">
-                        <button className="users-btn users-editBtn"><Edit className="users-icon" /></button>
+                        {/* 🔥 Nút Edit - Mở modal */}
+                        <button 
+                          className="users-btn users-editBtn"
+                          onClick={() => handleEditUser(user)}
+                          title="Chỉnh sửa user"
+                        >
+                          <Edit className="users-icon" />
+                        </button>
                          <button
                           className={`users-btn users-lockBtn ${displayStatus === "locked" ? "users-unlockBtn" : ""}`}
                           onClick={() => handleLockUser(user._id, user.isBlocked, user.role)}
@@ -299,11 +323,19 @@ const Users = () => {
         </div>
       </div>
 
-      {/* 🔥 Modal thêm user */}
+      {/* Modal thêm user */}
       <AddUserModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onUserAdded={handleUserAdded}
+      />
+
+      {/* 🔥 Modal edit user */}
+      <EditUserModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        user={selectedUser}
+        onUserUpdated={handleUserUpdated}
       />
     </div>
   );
