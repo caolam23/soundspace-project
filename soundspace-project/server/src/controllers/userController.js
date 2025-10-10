@@ -176,3 +176,176 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
 };
+
+exports.updateUserInfo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, email } = req.body;
+
+    // Validation
+    if (!username || !email) {
+      return res.status(400).json({ message: 'Username và email là bắt buộc' });
+    }
+
+    // Kiểm tra email format
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Email không hợp lệ' });
+    }
+
+    // Tìm user
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User không tồn tại' });
+    }
+
+    // Kiểm tra email/username đã tồn tại (trừ chính user này)
+    const existingUser = await User.findOne({
+      _id: { $ne: id },
+      $or: [{ email }, { username }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        message: existingUser.email === email 
+          ? 'Email đã được sử dụng bởi user khác' 
+          : 'Username đã được sử dụng bởi user khác'
+      });
+    }
+
+    // Cập nhật thông tin cơ bản
+    user.username = username;
+    user.email = email;
+
+    await user.save();
+
+    res.json({ 
+      message: 'Cập nhật thông tin thành công',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email
+      }
+    });
+
+  } catch (err) {
+    console.error('Error updating user info:', err);
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+
+// ==========================================
+// 🔥 [PUT] /api/users/:id/update-role
+// Cập nhật role và currentRole
+// ==========================================
+exports.updateUserRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, currentRole } = req.body;
+
+    // Validation
+    const validRoles = ['user', 'admin'];
+    const validCurrentRoles = ['user', 'host', 'listener'];
+
+    if (role && !validRoles.includes(role)) {
+      return res.status(400).json({ message: 'Role không hợp lệ' });
+    }
+
+    if (currentRole && !validCurrentRoles.includes(currentRole)) {
+      return res.status(400).json({ message: 'Current role không hợp lệ' });
+    }
+
+    // Tìm user
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User không tồn tại' });
+    }
+
+    // Cập nhật role
+    if (role) user.role = role;
+    if (currentRole) user.currentRole = currentRole;
+
+    await user.save();
+
+    res.json({ 
+      message: 'Cập nhật phân quyền thành công',
+      user: {
+        id: user._id,
+        role: user.role,
+        currentRole: user.currentRole
+      }
+    });
+
+  } catch (err) {
+    console.error('Error updating user role:', err);
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+
+// ==========================================
+// 🔥 [PUT] /api/users/:id/reset-password
+// Reset password và gửi email (nếu cần)
+// ==========================================
+exports.resetUserPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword, requirePasswordChange, sendResetEmail } = req.body;
+
+    // Validation
+    if (!newPassword) {
+      return res.status(400).json({ message: 'Mật khẩu mới là bắt buộc' });
+    }
+
+    if (newPassword.length < 8 || newPassword.length > 20) {
+      return res.status(400).json({ message: 'Mật khẩu phải có từ 8-20 ký tự' });
+    }
+
+    // Tìm user
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User không tồn tại' });
+    }
+
+    // Hash password mới
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Cập nhật password
+    user.password = hashedPassword;
+    user.requirePasswordChange = requirePasswordChange || false;
+    user.passwordChangedAt = new Date();
+
+    await user.save();
+
+    // Gửi email nếu được yêu cầu
+    if (sendResetEmail) {
+      try {
+        await sendWelcomeEmail(user.email, user.username, newPassword, user.role);
+        console.log('✅ Password reset email sent to:', user.email);
+      } catch (emailError) {
+        console.error('❌ Failed to send reset email:', emailError);
+        // Không throw error, vẫn coi như reset thành công
+      }
+    }
+
+    // Emit socket event để force logout user (nếu đang online)
+    if (req.io && req.io.userSockets) {
+      const socketId = req.io.userSockets.get(user._id.toString());
+      if (socketId) {
+        req.io.to(socketId).emit('password-reset', {
+          message: 'Mật khẩu của bạn đã được thay đổi. Vui lòng đăng nhập lại.'
+        });
+      }
+    }
+
+    res.json({ 
+      message: sendResetEmail 
+        ? 'Reset password thành công! Email đã được gửi đến user'
+        : 'Reset password thành công!',
+      requirePasswordChange: user.requirePasswordChange
+    });
+
+  } catch (err) {
+    console.error('Error resetting password:', err);
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};

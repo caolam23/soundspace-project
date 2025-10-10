@@ -15,6 +15,7 @@ function RoomCard({ room }) {
   const [acceptedBox, setAcceptedBox] = useState(false);
   const [acceptedRoomIdNav, setAcceptedRoomIdNav] = useState(null);
 
+  // ✅ FIXED - Thêm state để navigate
   const handleJoinRoom = async () => {
     const token = localStorage.getItem("token");
     if (!user || !token) {
@@ -29,7 +30,11 @@ function RoomCard({ room }) {
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        navigate(`/room/${room._id}`);
+        // ✅ THÊM STATE
+        navigate(`/room/${room._id}`, { 
+          state: { fromJoin: true },
+          replace: true 
+        });
       } else if (room.privacy === "private") {
         const roomCode = prompt("Nhập mã phòng:");
         if (!roomCode) return;
@@ -38,7 +43,11 @@ function RoomCard({ room }) {
           { roomCode },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        navigate(`/room/${room._id}`);
+        // ✅ THÊM STATE
+        navigate(`/room/${room._id}`, { 
+          state: { fromJoin: true },
+          replace: true 
+        });
       } else if (room.privacy === "manual") {
         socket.emit("request-to-join", {
           roomId: room._id,
@@ -81,14 +90,12 @@ function RoomCard({ room }) {
     socket.on("join-request-accepted", handleAccepted);
     socket.on("join-request-denied", handleDenied);
 
-    // ✅ Cleanup
     return () => {
       socket.off("join-request-accepted", handleAccepted);
       socket.off("join-request-denied", handleDenied);
     };
-  }, [pendingRoomId, navigate]);
+  }, [pendingRoomId]);
 
-  // ✅ JSX phải nằm ngoài useEffect
   return (
     <>
       {waiting && (
@@ -117,7 +124,13 @@ function RoomCard({ room }) {
                 className="accepted-btn"
                 onClick={() => {
                   setAcceptedBox(false);
-                  if (acceptedRoomIdNav) navigate(`/room/${acceptedRoomIdNav}`);
+                  if (acceptedRoomIdNav) {
+                    // ✅ THÊM STATE
+                    navigate(`/room/${acceptedRoomIdNav}`, { 
+                      state: { fromApproval: true },
+                      replace: true 
+                    });
+                  }
                 }}
               >
                 Vào phòng
