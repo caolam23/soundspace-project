@@ -9,45 +9,103 @@ const populateRoom = async (roomId) => {
 };
 
 // ==========================
-// TẠO PHÒNG MỚI
+// TẠO PHÒNG MỚI - FIXED ✅
 // ==========================
 exports.createRoom = async (req, res) => {
   try {
+    console.log('📥 Create room request body:', req.body);
+    console.log('📥 Uploaded file:', req.file);
+    console.log('📥 User ID:', req.user?.id);
+
     const { name, description, privacy } = req.body;
     const ownerId = req.user.id;
+
+    // Validate input
+    if (!name || !name.trim()) {
+      return res.status(400).json({ msg: 'Tên phòng không được để trống.' });
+    }
 
     if (!req.file) {
       return res.status(400).json({ msg: 'Vui lòng tải lên ảnh bìa.' });
     }
 
+    // Validate privacy value
+    if (!['public', 'manual', 'private'].includes(privacy)) {
+      return res.status(400).json({ msg: 'Loại phòng không hợp lệ.' });
+    }
+
     const roomDetails = {
-      name,
-      description,
+      name: name.trim(),
+      description: description?.trim() || '',
       privacy,
-      coverImage: req.file.path,
+      coverImage: req.file.path, // URL từ Cloudinary
       owner: ownerId,
-      members: [ownerId],
-      status: 'waiting'
+      members: [ownerId], // Owner tự động là member
+      status: 'waiting',
+      startedAt: null,
+      endedAt: null
     };
 
+    // Tạo mã phòng cho private room
     if (privacy === 'private') {
       const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 6);
       roomDetails.roomCode = nanoid();
+      console.log('🔑 Generated room code:', roomDetails.roomCode);
     }
+
+    console.log('💾 Creating room with details:', roomDetails);
 
     let newRoom = new Room(roomDetails);
     await newRoom.save();
 
-    newRoom = await populateRoom(newRoom._id);
+    console.log('✅ Room saved to DB:', newRoom._id);
 
+    // Populate owner và members
+    newRoom = await Room.findById(newRoom._id)
+      .populate('owner', 'username avatar')
+      .populate('members', 'username avatar');
+
+    console.log('✅ Room populated:', newRoom);
+
+    // Emit socket event
     const io = req.app.get('io');
-    io.emit('room-created', newRoom);
-    console.log(`📢 Emitted 'room-created' for room: ${newRoom.name}`);
+    if (io) {
+      io.emit('room-created', newRoom);
+      console.log(`📢 Emitted 'room-created' for room: ${newRoom.name}`);
+    } else {
+      console.warn('⚠️ Socket.IO instance not found on app');
+    }
 
-    res.status(201).json({ msg: 'Tạo phòng thành công!', room: newRoom });
+    res.status(201).json({ 
+      msg: 'Tạo phòng thành công!', 
+      room: newRoom 
+    });
+
   } catch (err) {
-    console.error("❌ Lỗi khi tạo phòng:", err);
-    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+    console.error("❌ Lỗi khi tạo phòng:");
+    console.error("Error name:", err.name);
+    console.error("Error message:", err.message);
+    console.error("Error stack:", err.stack);
+    
+    // Xử lý lỗi cụ thể
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ 
+        msg: 'Dữ liệu không hợp lệ', 
+        errors 
+      });
+    }
+
+    if (err.code === 11000) {
+      return res.status(400).json({ 
+        msg: 'Mã phòng đã tồn tại, vui lòng thử lại.' 
+      });
+    }
+
+    res.status(500).json({ 
+      msg: 'Lỗi server khi tạo phòng', 
+      error: err.message 
+    });
   }
 };
 
@@ -87,9 +145,8 @@ exports.startSession = async (req, res) => {
     res.status(500).json({ msg: 'Lỗi server', error: err.message });
   }
 };
-
 // ==========================
-// KẾT THÚC PHIÊN LIVE
+// KẾT THÚC PHIÊN LIVE - FIXED ✅
 // ==========================
 exports.endSession = async (req, res) => {
   try {
@@ -101,7 +158,16 @@ exports.endSession = async (req, res) => {
       return res.status(403).json({ msg: 'Bạn không có quyền kết thúc phiên.' });
     }
 
+    // ✅ Cập nhật cả status và endedAt
     room.status = 'ended';
+    room.endedAt = new Date(); // Thêm timestamp kết thúc
+    
+    // 🔥 Tính tổng thời gian phiên (nếu có startedAt)
+    if (room.startedAt) {
+      const duration = Math.floor((room.endedAt - room.startedAt) / 1000); // seconds
+      room.statistics.totalDuration = duration;
+    }
+    
     await room.save();
 
     const io = req.app.get('io');
@@ -111,7 +177,7 @@ exports.endSession = async (req, res) => {
     });
 
     io.emit('room-ended-homepage', { roomId: roomId });
-    console.log(`📢 Emitted 'room-ended-homepage' for room ID: ${roomId}`);
+    console.log(`📢 Phòng ${room.name} đã kết thúc lúc ${room.endedAt}`);
 
     res.status(200).json({ msg: 'Phiên đã kết thúc!', room });
   } catch (err) {
