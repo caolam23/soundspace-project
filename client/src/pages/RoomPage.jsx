@@ -19,6 +19,7 @@ import "./RoomPage.css";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import MusicPlayer from "../components/MusicPlayer"; 
 
 function RoomPage() {
   const roomRef = useRef(null);
@@ -371,235 +372,191 @@ const handleNewJoinRequest = useCallback(
   if (error) return <div>Lỗi: {error}</div>;
   if (!room) return <div>Không tìm thấy phòng.</div>;
   
-  return (
-    <div className="roompage-container">
-      {/* HEADER */}
-      <header className="roompage-header">
-        <div className="roompage-header-info">
-          <h1>{room.name}</h1>
-          {room.description && <p>{room.description}</p>}
-          {room.privacy === "private" && isHost && (
-            <div className="roompage-roomcode">
-              Mã phòng: <strong>{room.roomCode}</strong>
-            </div>
-          )}
-        </div>
+ return (
+  <div className="roompage-container">
+    {/* ================= HEADER ================= */}
+    <header className="roompage-header">
+      <div className="roompage-header-info">
+        <h1>{room.name}</h1>
+        {room.description && <p>{room.description}</p>}
+        {room.privacy === "private" && isHost && (
+          <div className="roompage-roomcode">
+            Mã phòng: <strong>{room.roomCode}</strong>
+          </div>
+        )}
+      </div>
 
-        <div className="roompage-header-actions">
-          {isHost ? (
-            <>
-              <button
-                className="btn btn-danger-outline"
-                onClick={handleEndRoom}
-              >
-                <XCircle size={16} />
-                <span>Kết thúc</span>
-              </button>
-              <button className="btn btn-primary">
-                <UserPlus size={16} />
-                <span>Mời</span>
-              </button>
-            </>
-          ) : (
-            <button className="btn" onClick={handleLeaveRoom}>
-              <LogOut size={16} />
-              <span>Rời phòng</span>
+      <div className="roompage-header-actions">
+        {isHost ? (
+          <>
+            <button className="btn btn-danger-outline" onClick={handleEndRoom}>
+              <XCircle size={16} />
+              <span>Kết thúc</span>
             </button>
-          )}
-        </div>
-      </header>
-      
-       <main className="roompage-main">
+            <button className="btn btn-primary">
+              <UserPlus size={16} />
+              <span>Mời</span>
+            </button>
+          </>
+        ) : (
+          <button className="btn" onClick={handleLeaveRoom}>
+            <LogOut size={16} />
+            <span>Rời phòng</span>
+          </button>
+        )}
+      </div>
+    </header>
+
+    {/* ================= MAIN ================= */}
+    <main className="roompage-main new-layout">
+      {/* ===== CỘT TRÁI: Join Requests + MusicPlayer ===== */}
+      <div className="roompage-left-column">
         {/* Join requests box for host */}
         {isHost && joinRequests.length > 0 && (
           <div className="join-requests-container">
             <h3>Yêu cầu tham gia</h3>
             <ul>
-                {joinRequests.map((r) => (
-                  <li key={r.requester._id} className="join-request-item">
-                    <div className="join-request-info">
-                      <img src={r.requester.avatar || '/default-avatar.png'} alt={r.requester.username} />
-                      <div>
-                        <div className="join-request-username">{r.requester.username}</div>
-                        <div className="join-request-meta">Yêu cầu vào phòng</div>
+              {joinRequests.map((r) => (
+                <li key={r.requester._id} className="join-request-item">
+                  <div className="join-request-info">
+                    <img
+                      src={r.requester.avatar || "/default-avatar.png"}
+                      alt={r.requester.username}
+                    />
+                    <div>
+                      <div className="join-request-username">
+                        {r.requester.username}
                       </div>
+                      <div className="join-request-meta">Yêu cầu vào phòng</div>
                     </div>
-                    <div className="join-request-actions">
-                      {/* If request has been responded to, show inline status badge; otherwise show action buttons */}
-                      {r.status && r.status !== "pending" ? (
-                        <div className={`join-request-status ${r.status}`}>
-                          {r.status === "accepted" ? "Đã chấp nhận" : "Đã từ chối"}
-                        </div>
-                      ) : (
-                        r.status === "pending" ? (
-                          <>
-                            <button className="btn btn-accept" onClick={() => respondToRequest(r.requester._id, true)}>Chấp nhận</button>
-                            <button className="btn btn-deny" onClick={() => respondToRequest(r.requester._id, false)}>Từ chối</button>
-                          </>
-                        ) : (
-                          <>
-                            <button className="btn btn-accept" onClick={() => respondToRequest(r.requester._id, true)}>Chấp nhận</button>
-                            <button className="btn btn-deny" onClick={() => respondToRequest(r.requester._id, false)}>Từ chối</button>
-                          </>
-                        )
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-          </div>
-        )}
-        {/* LEFT: QUEUE */}
-        {hostFeedback && joinRequests.length === 0 && <div className="host-feedback">{hostFeedback}</div>}
-        <aside className="roompage-left">
-          <div className="roompage-queue">
-            <h2>Danh sách phát</h2>
-            <ul className="roompage-queue-list">
-              {room.queue?.map((track) => (
-                <li
-                  key={track.id}
-                  className={`roompage-queue-item ${
-                    room.currentTrack?.id === track.id
-                      ? "roompage-now-playing"
-                      : ""
-                  }`}
-                >
-                  <img src={track.albumArt} alt={track.title} />
-                  <div className="roompage-queue-info">
-                    <h3>{track.title}</h3>
-                    <p>{track.artist}</p>
+                  </div>
+                  <div className="join-request-actions">
+                    {r.status && r.status !== "pending" ? (
+                      <div className={`join-request-status ${r.status}`}>
+                        {r.status === "accepted"
+                          ? "Đã chấp nhận"
+                          : "Đã từ chối"}
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          className="btn btn-accept"
+                          onClick={() =>
+                            respondToRequest(r.requester._id, true)
+                          }
+                        >
+                          Chấp nhận
+                        </button>
+                        <button
+                          className="btn btn-deny"
+                          onClick={() =>
+                            respondToRequest(r.requester._id, false)
+                          }
+                        >
+                          Từ chối
+                        </button>
+                      </>
+                    )}
                   </div>
                 </li>
               ))}
             </ul>
           </div>
-        </aside>
+        )}
 
-        {/* CENTER: PLAYER */}
-        <section className="roompage-center">
-          <img
-            className="roompage-album-art"
-            src={room.currentTrack?.albumArt}
-            alt="Album Art"
+        {/* Trình phát nhạc */}
+         <MusicPlayer
+            roomData={room}
+            isHost={isHost}
+            roomId={roomId}
+            socket={socket}
           />
-          <div className="roompage-song-info">
-            <h1>{room.currentTrack?.title}</h1>
-            <p>{room.currentTrack?.artist}</p>
-          </div>
+      </div>
 
-          <div className="roompage-player">
-            <div className="roompage-player-progress">
+      {/* ===== CỘT PHẢI: Chat + Participants ===== */}
+      <aside className="roompage-right">
+        <div className="roompage-tabs">
+          <div
+            className={`roompage-tab ${
+              activeTab === "chat" ? "active" : ""
+            }`}
+            onClick={() => setActiveTab("chat")}
+          >
+            Trò chuyện ({room.chat?.length || 0})
+          </div>
+          <div
+            className={`roompage-tab ${
+              activeTab === "participants" ? "active" : ""
+            }`}
+            onClick={() => setActiveTab("participants")}
+          >
+            Thành viên ({members.length})
+          </div>
+        </div>
+
+        {/* Chat box */}
+        {activeTab === "chat" && (
+          <div className="roompage-chat">
+            {room.chat?.map((msg) => (
               <div
-                className="roompage-progress-bar"
-                style={{ width: room.progress || "0%" }}
-              ></div>
-            </div>
-            <div className="roompage-player-time">
-              <span>{room.currentTime || "0:00"}</span>
-              <span>{room.duration || "0:00"}</span>
-            </div>
-            <div className="roompage-player-controls">
-              <button className="roompage-btn-icon" disabled>
-                <SkipBack size={28} />
-              </button>
-              <button className="roompage-btn-icon roompage-btn-play" disabled>
-                <Pause size={32} />
-              </button>
-              <button className="roompage-btn-icon" disabled>
-                <SkipForward size={28} />
-              </button>
-            </div>
-          </div>
-
-          <button className="roompage-btn-spotify">
-            <Headphones size={18} />
-            <span>Nghe bản đầy đủ trên Spotify</span>
-          </button>
-        </section>
-
-        {/* RIGHT: CHAT + MEMBERS */}
-        <aside className="roompage-right">
-          <div className="roompage-tabs">
-            <div
-              className={`roompage-tab ${
-                activeTab === "chat" ? "active" : ""
-              }`}
-              onClick={() => setActiveTab("chat")}
-            >
-              Trò chuyện ({room.chat?.length || 0})
-            </div>
-            <div
-              className={`roompage-tab ${
-                activeTab === "participants" ? "active" : ""
-              }`}
-              onClick={() => setActiveTab("participants")}
-            >
-              Thành viên ({members.length})
-            </div>
-          </div>
-
-          {activeTab === "chat" && (
-            <div className="roompage-chat">
-              {room.chat?.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`roompage-chat-msg ${
-                    msg.userId === room.owner._id ? "is-host" : ""
-                  }`}
-                >
-                  <img src={msg.avatar} alt={msg.username} />
-                  <div className="roompage-chat-body">
-                    <div className="roompage-chat-username">
-                      {msg.username}
-                    </div>
-                    <div className="roompage-chat-text">{msg.text}</div>
-                    <div className="roompage-chat-actions">
-                      <button className="roompage-btn-icon">
-                        <Smile size={16} />
-                      </button>
-                      <button className="roompage-btn-icon">
-                        <Flag size={16} />
-                      </button>
-                    </div>
+                key={msg.id}
+                className={`roompage-chat-msg ${
+                  msg.userId === room.owner._id ? "is-host" : ""
+                }`}
+              >
+                <img src={msg.avatar} alt={msg.username} />
+                <div className="roompage-chat-body">
+                  <div className="roompage-chat-username">{msg.username}</div>
+                  <div className="roompage-chat-text">{msg.text}</div>
+                  <div className="roompage-chat-actions">
+                    <button className="roompage-btn-icon">
+                      <Smile size={16} />
+                    </button>
+                    <button className="roompage-btn-icon">
+                      <Flag size={16} />
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {activeTab === "participants" && (
-            <div className="roompage-participants">
-              <ul className="roompage-participant-list">
-                {members.map((p) => (
-                  <li key={p._id} className="roompage-participant-item">
-                    <div className="roompage-participant-info">
-                      <img
-                        src={p.avatar || "/default-avatar.png"}
-                        alt={p.username}
-                      />
-                      <span>
-                        {p.username}
-                        {p._id === room.owner._id && (
-                          <span className="roompage-host-tag">HOST</span>
-                        )}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="roompage-chat-input">
-            <input type="text" placeholder="Nhập tin nhắn..." />
-            <button className="roompage-btn-icon">
-              <Send size={18} />
-            </button>
+              </div>
+            ))}
           </div>
-        </aside>
-      </main>
-    </div>
-  );
+        )}
+
+        {/* Participants list */}
+        {activeTab === "participants" && (
+          <div className="roompage-participants">
+            <ul className="roompage-participant-list">
+              {members.map((p) => (
+                <li key={p._id} className="roompage-participant-item">
+                  <div className="roompage-participant-info">
+                    <img
+                      src={p.avatar || "/default-avatar.png"}
+                      alt={p.username}
+                    />
+                    <span>
+                      {p.username}
+                      {p._id === room.owner._id && (
+                        <span className="roompage-host-tag">HOST</span>
+                      )}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Chat input */}
+        <div className="roompage-chat-input">
+          <input type="text" placeholder="Nhập tin nhắn..." />
+          <button className="roompage-btn-icon">
+            <Send size={18} />
+          </button>
+        </div>
+      </aside>
+    </main>
+  </div>
+);
 }
 
 export default RoomPage;
