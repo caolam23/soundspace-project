@@ -27,15 +27,15 @@ const TrackSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ["youtube", "spotify", "soundcloud", "upload"],
+      enum: ["youtube", "spotify", "soundcloud", "upload"], // ✅ Thêm 'upload'
       required: [true, "Nguồn bài hát là bắt buộc"],
     },
     url: {
-      type: String,
+      type: String, // ✅ Nếu là 'upload' thì đây là URL Cloudinary audio
       required: [true, "URL bài hát là bắt buộc"],
     },
     sourceId: {
-      type: String, // ID gốc (VD: YouTube video ID)
+      type: String, // ✅ Nếu là 'upload', đây có thể là public_id Cloudinary
     },
     addedBy: {
       type: mongoose.Schema.Types.ObjectId,
