@@ -5,6 +5,7 @@ import { Upload, Link as LinkIcon, Play, Pause, SkipBack, SkipForward } from 're
 import 'react-toastify/dist/ReactToastify.css';
 import './MusicPlayer.css';
 import { toastConfig } from '../services/toastConfig';
+import UploadModal from './UploadModal'; // <-- ĐÃ IMPORT MODAL
 
 // ====================================================================
 // ⚙️ CÁC HẰNG SỐ ĐỒNG BỘ
@@ -45,6 +46,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
   const [playerUrl, setPlayerUrl] = useState(null);
   const [progress, setProgress] = useState({ playedSeconds: 0, duration: 0 });
   const [initialSeekTime, setInitialSeekTime] = useState(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false); // <-- ĐÃ THÊM STATE CHO MODAL
 
   // --- HIỆU ỨNG NHỊP ĐẬP THUMBNAIL ---
   const [thumbnailPulse, setThumbnailPulse] = useState(0);
@@ -56,75 +58,59 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
   const analyserRef = useRef(null);
   const sourceNodeRef = useRef(null);
   const animationFrameIdRef = useRef(null);
-  
-
-  // Trong file MusicPlayer.js, sau phần khai báo ref
-
-// ====================================================================
-// ✅ BƯỚC 2.1: HÀM VISUALIZE ÂM THANH
-// ====================================================================
-  const visualizeAudio = () => {
-      // Nếu chưa có analyser hoặc audio context, dừng lại
-      if (!analyserRef.current || !audioContextRef.current) return;
-      
-      const analyser = analyserRef.current;
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-
-      const animate = () => {
-        // Lặp lại animation
-        animationFrameIdRef.current = requestAnimationFrame(animate);
-
-        // Lấy dữ liệu tần số âm thanh
-        analyser.getByteFrequencyData(dataArray);
-
-        // Tính toán cường độ trung bình của âm thanh (tập trung vào bass)
-        let sum = 0;
-        // Chỉ lấy 1/3 dải tần số đầu tiên (thường là bass) để hiệu ứng nhạy hơn
-        for (let i = 0; i < bufferLength / 3; i++) {
-          sum += dataArray[i];
-        }
-        const average = sum / (bufferLength / 3);
-
-        // Chuyển đổi giá trị trung bình thành một số từ 0 đến 1 để điều khiển CSS
-        // Bạn có thể tinh chỉnh các số 40 và 120 để thay đổi độ nhạy
-        const pulseStrength = Math.min(1, Math.max(0, (average - 40) / 120));
-        setThumbnailPulse(pulseStrength);
-      };
-
-      animate();
-  };
-
 
   // ====================================================================
-  // ✅ BƯỚC 2.2: KHỞI TẠO WEB AUDIO API
+  // ✅ HÀM VISUALIZE ÂM THANH
+  // ====================================================================
+  const visualizeAudio = () => {
+    if (!analyserRef.current || !audioContextRef.current) return;
+    
+    const analyser = analyserRef.current;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const animate = () => {
+      animationFrameIdRef.current = requestAnimationFrame(animate);
+      analyser.getByteFrequencyData(dataArray);
+
+      let sum = 0;
+      for (let i = 0; i < bufferLength / 3; i++) {
+        sum += dataArray[i];
+      }
+      const average = sum / (bufferLength / 3);
+      const pulseStrength = Math.min(1, Math.max(0, (average - 40) / 120));
+      setThumbnailPulse(pulseStrength);
+    };
+    animate();
+  };
+
+  // ====================================================================
+  // ✅ KHỞI TẠO WEB AUDIO API
   // ====================================================================
   useEffect(() => {
-  const audioEl = playerRef.current;
-  if (!audioEl) return;
+    const audioEl = playerRef.current;
+    if (!audioEl) return;
 
-  if (!audioContextRef.current) {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    audioContextRef.current = new AudioCtx();
-    analyserRef.current = audioContextRef.current.createAnalyser();
-    analyserRef.current.fftSize = 256;
-  }
+    if (!audioContextRef.current) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      audioContextRef.current = new AudioCtx();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 256;
+    }
 
-  // Gỡ kết nối cũ trước khi tạo mới (tránh lỗi duplicate)
-  if (sourceNodeRef.current) {
-    try { sourceNodeRef.current.disconnect(); } catch {}
-  }
+    if (sourceNodeRef.current) {
+      try { sourceNodeRef.current.disconnect(); } catch {}
+    }
 
-  const source = audioContextRef.current.createMediaElementSource(audioEl);
-  sourceNodeRef.current = source;
-  source.connect(analyserRef.current);
-  analyserRef.current.connect(audioContextRef.current.destination);
+    const source = audioContextRef.current.createMediaElementSource(audioEl);
+    sourceNodeRef.current = source;
+    source.connect(analyserRef.current);
+    analyserRef.current.connect(audioContextRef.current.destination);
 
-  return () => {
-    cancelAnimationFrame(animationFrameIdRef.current);
-  };
-}, [playerUrl]); // 👈 Chạy lại khi đổi bài
-
+    return () => {
+      cancelAnimationFrame(animationFrameIdRef.current);
+    };
+  }, [playerUrl]);
 
   const currentTrack = playlist[currentTrackIndex];
 
@@ -133,7 +119,6 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
   // ====================================================================
   useEffect(() => {
     if (!roomData) return;
-
     const rdPlaylistIds = (roomData.playlist || []).map(t => t._id || t.sourceId).join(',');
     const localPlaylistIds = (playlist || []).map(t => t._id || t.sourceId).join(',');
 
@@ -142,7 +127,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
       setCurrentTrackIndex(roomData.currentTrackIndex ?? -1);
     if ((roomData.isPlaying ?? false) !== isPlaying)
       setIsPlaying(roomData.isPlaying ?? false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomData]);
 
   // ====================================================================
@@ -153,7 +138,13 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
       setPlayerUrl(null);
       return;
     }
-    if (currentTrack.sourceId) {
+    
+    // ✅ LOGIC ĐÃ ĐƯỢC CẬP NHẬT
+    if (currentTrack.source === 'upload') {
+      // Nếu là bài hát upload, dùng trực tiếp URL từ Cloudinary
+      setPlayerUrl(currentTrack.url);
+    } else if (currentTrack.sourceId) {
+      // Nếu từ YouTube/SoundCloud, dùng route stream như cũ
       const streamUrl = `http://localhost:8800/api/stream/${currentTrack.sourceId}`;
       setPlayerUrl(streamUrl);
     } else {
@@ -203,9 +194,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
   // ====================================================================
   useEffect(() => {
     if (!socket) return;
-
     const handlePlaylistUpdate = (newPlaylist) => setPlaylist(newPlaylist || []);
-
     const handlePlaybackChange = (newState) => {
       if (newState?.playlist) setPlaylist(newState.playlist);
       if (typeof newState?.currentTrackIndex !== 'undefined')
@@ -226,7 +215,6 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
         setInitialSeekTime(null);
       }
     };
-
     const handleTimeUpdateFromServer = ({ currentTime }) => {
       if (isHost || !playerRef.current || !isPlaying) return;
       const delta = Math.abs(currentTime - playerRef.current.currentTime);
@@ -262,63 +250,49 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
   }, [isHost, isPlaying, socket, roomId]);
 
   // ====================================================================
-  // HÀM XỬ LÝ THÊM NHẠC
-  // ====================================================================    
-    const handleAddFromLink = async (e) => {
-      e.preventDefault();
-      if (!link.trim()) return;
-
-      try {
-        const token = localStorage.getItem("token");
-        const res = await axios.post(
-          `http://localhost:8800/api/rooms/${roomId}/playlist`,
-          { url: link },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        if (res.data?.playlist) {
-          setPlaylist(res.data.playlist);
-          if (res.data.playlist.length === 1) {
-            setCurrentTrackIndex(0);
-            setIsPlaying(true);
-          }
-        }
-
-        setLink("");
-        toast.success("Đã thêm bài hát vào danh sách!", toastConfig);
-
-      } catch (err) {
-        console.error("Lỗi khi thêm bài hát:", err);
-
-        const status = err.response?.status;
-        const msg = err.response?.data?.msg || "Thêm bài hát thất bại";
-
-        if (status === 409) {
-          toast.info(msg, {
-            ...toastConfig,
-            icon: "🔁",
-            style: { ...toastConfig.style, backgroundColor: "#2563eb", color: "white" },
-          });
-        } else {
-          toast.error(msg, {
-            ...toastConfig,
-            style: { ...toastConfig.style, backgroundColor: "#dc2626", color: "white" },
-          });
+  // HÀM XỬ LÝ THÊM NHẠC TỪ LINK
+  // ====================================================================   
+  const handleAddFromLink = async (e) => {
+    e.preventDefault();
+    if (!link.trim()) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        `http://localhost:8800/api/rooms/${roomId}/playlist`,
+        { url: link },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data?.playlist) {
+        setPlaylist(res.data.playlist);
+        if (res.data.playlist.length === 1) {
+          setCurrentTrackIndex(0);
+          setIsPlaying(true);
         }
       }
-    };
+      setLink("");
+      toast.success("Đã thêm bài hát vào danh sách!", toastConfig);
+    } catch (err) {
+      console.error("Lỗi khi thêm bài hát:", err);
+      const status = err.response?.status;
+      const msg = err.response?.data?.msg || "Thêm bài hát thất bại";
+      if (status === 409) {
+        toast.info(msg, { ...toastConfig, icon: "🔁", style: { ...toastConfig.style, backgroundColor: "#2563eb", color: "white" } });
+      } else {
+        toast.error(msg, { ...toastConfig, style: { ...toastConfig.style, backgroundColor: "#dc2626", color: "white" } });
+      }
+    }
+  };
+
   // ====================================================================
   // GỬI LỆNH ĐIỀU KHIỂN (PLAY, PAUSE, NEXT, PREV, SEEK)
   // ====================================================================
   const sendControlAction = (type, payload = {}) => {
     if (!socket || !isHost) return;
     socket.emit('music-control', { roomId, action: { type, payload } });
-
-    // Cập nhật giao diện tạm thời (optimistic)
+    
+    // Optimistic UI updates
     if (type === 'PLAY') {
-      const idx = typeof payload.trackIndex !== 'undefined'
-        ? payload.trackIndex
-        : (currentTrackIndex === -1 ? 0 : currentTrackIndex);
+      const idx = typeof payload.trackIndex !== 'undefined' ? payload.trackIndex : (currentTrackIndex === -1 ? 0 : currentTrackIndex);
       if (idx >= 0 && idx < playlist.length) {
         setCurrentTrackIndex(idx);
         setIsPlaying(true);
@@ -337,9 +311,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
         setCurrentTrackIndex(prev);
         setIsPlaying(true);
       }
-    }
-    // ✅ THÊM MỚI: SEEK_TO
-    else if (type === 'SEEK_TO') {
+    } else if (type === 'SEEK_TO') {
       if (playerRef.current && typeof payload.time === 'number') {
         playerRef.current.currentTime = payload.time;
         setProgress(prev => ({ ...prev, playedSeconds: payload.time }));
@@ -347,17 +319,11 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
     }
   };
 
-  // ====================================================================
-  // CHỌN BÀI
-  // ====================================================================
   const handleSelectTrack = (index) => {
     if (!isHost) return;
     sendControlAction('PLAY', { trackIndex: index });
   };
 
-  // ====================================================================
-  // TUA NHẠC (CLICK THANH TIẾN TRÌNH)
-  // ====================================================================
   const handleSeek = (e) => {
     if (!isHost || !playerRef.current || !progressBarRef.current || progress.duration <= 0) return;
     const rect = progressBarRef.current.getBoundingClientRect();
@@ -366,38 +332,37 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
     const clampedX = Math.max(0, Math.min(clickX, barWidth));
     const seekRatio = clampedX / barWidth;
     const newTime = progress.duration * seekRatio;
-    console.log(`[SEEK] Seeking to ${newTime.toFixed(2)}s`);
     sendControlAction('SEEK_TO', { time: newTime });
   };
-// ====================================================================
-// AUDIO EVENT HANDLERS
-// ====================================================================
+
+  // ====================================================================
+  // AUDIO EVENT HANDLERS
+  // ====================================================================
   const handleOnPlay = () => {
-      console.log('[AudioPlayer] Started.');
-      // ✅ KÍCH HOẠT VISUALIZATION
-      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-          audioContextRef.current.resume();
-      }
-      visualizeAudio();
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
+    }
+    visualizeAudio();
   };
 
   const handleOnPause = () => {
-      console.log('[AudioPlayer] Paused.');
-      if (animationFrameIdRef.current) {
-        cancelAnimationFrame(animationFrameIdRef.current);
-        animationFrameIdRef.current = null;
-      }
-      setThumbnailPulse(0); 
+    if (animationFrameIdRef.current) {
+      cancelAnimationFrame(animationFrameIdRef.current);
+      animationFrameIdRef.current = null;
+    }
+    setThumbnailPulse(0);
   };
 
   const handleOnError = (e) => {
     console.error('[AudioPlayer] Error:', e);
-    toast.error("Lỗi phát nhạc. Vui lòng thử bài khác hoặc kiểm tra server!");
+    toast.error("Lỗi phát nhạc. Vui lòng thử bài khác!");
   };
+
   const handleTimeUpdate = (e) => {
     const audio = e.target;
     setProgress({ playedSeconds: audio.currentTime, duration: audio.duration });
   };
+
   const progressPercent = progress.duration > 0 ? (progress.playedSeconds / progress.duration) * 100 : 0;
 
   return (
@@ -414,13 +379,10 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
             onTimeUpdate={handleTimeUpdate}
             crossOrigin="anonymous"
             onLoadedMetadata={(e) => {
-              // Cập nhật duration khi metadata load xong
               handleTimeUpdate(e);
-              // NẾU CÓ LỊCH TUA, THỰC HIỆN NGAY
               if (initialSeekTime !== null) {
-                console.log(`[SYNC] Applying initial seek to ${initialSeekTime.toFixed(2)}s`);
                 e.target.currentTime = initialSeekTime;
-                setInitialSeekTime(null); // Xóa lịch sau khi đã tua
+                setInitialSeekTime(null);
               }
             }}
             key={`${currentTrack?.sourceId || 'no'}-${currentTrack?._id || ''}`}
@@ -428,9 +390,8 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
         )}
       </div>
 
-      {/* ========================================================== */}
-      {/* PHẦN GIAO DIỆN JSX BÊN DƯỚI KHÔNG CÓ THAY ĐỔI GÌ */}
-      {/* ========================================================== */}
+      {/* ✅ RENDER MODAL CÓ ĐIỀU KIỆN */}
+      {isUploadModalOpen && <UploadModal roomId={roomId} onClose={() => setIsUploadModalOpen(false)} />}
       
       <aside className="roompage-left">
         <h2>Danh sách phát</h2>
@@ -457,11 +418,15 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
               </form>
             )}
 
+            {/* ✅ PHẦN TẢI LÊN ĐÃ ĐƯỢC CẬP NHẬT */}
             {activeInput === 'upload' && (
               <div className="add-music-form">
-                <p style={{ textAlign: 'center', padding: '10px', color: '#7a7a8e' }}>
-                  🚧 Tính năng tải lên đang phát triển.
-                </p>
+                <button
+                  className="upload-trigger-button"
+                  onClick={() => setIsUploadModalOpen(true)}
+                >
+                  Mở trình tải lên
+                </button>
               </div>
             )}
           </div>
@@ -472,7 +437,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
             {playlist.length === 0 && <li className="empty-queue">Danh sách phát trống</li>}
             {playlist.map((track, index) => (
               <li
-                key={track._id || index}
+                key={track._id || track.sourceId || index}
                 className={`roompage-queue-item ${index === currentTrackIndex ? "roompage-now-playing" : ""}`}
                 onClick={() => handleSelectTrack(index)}
                 style={{ cursor: isHost ? 'pointer' : 'default' }}
@@ -494,51 +459,44 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
         {currentTrack?.thumbnail && (
           <div className="roompage-blur-bg" style={{ backgroundImage: `url(${currentTrack.thumbnail})` }}></div>
         )}
-
         <div className="roompage-song-info-main">
           <h1>{currentTrack?.title || "Chưa có bài hát"}</h1>
           <p>{currentTrack?.artist || "Hãy thêm một bài hát vào danh sách"}</p>
         </div>
-
-        <div 
-          className="roompage-progress-bar-container"
-          ref={progressBarRef} // <-- GÁN REF
-          onClick={handleSeek} // <-- GÁN SỰ KIỆN ONCLICK
-          style={{ cursor: isHost ? 'pointer' : 'default' }} // <-- Thêm con trỏ chuột cho host
-        >
-          <div className="roompage-progress-bar" style={{ width: `${progressPercent}%` }}></div>
-        </div>
-
+        <div
+          className="roompage-progress-bar-container"
+          ref={progressBarRef}
+          onClick={handleSeek}
+          style={{ cursor: isHost ? 'pointer' : 'default' }}
+        >
+          <div className="roompage-progress-bar" style={{ width: `${progressPercent}%` }}></div>
+        </div>
         <div className="roompage-time-info">
           <span>{formatTime(progress.playedSeconds)}</span>
           <span>{formatTime(progress.duration)}</span>
         </div>
-
         <div className="roompage-thumbnail-center">
           {currentTrack?.thumbnail ? (
-            <img 
-              src={currentTrack.thumbnail} 
-              alt={currentTrack.title} 
-              className="roompage-thumbnail-img" 
-              onError={(e) => e.target.style.display = 'none'} 
-              // ✅ ÁP DỤNG STYLE ĐỘNG TẠI ĐÂY
+            <img
+              src={currentTrack.thumbnail}
+              alt={currentTrack.title}
+              className="roompage-thumbnail-img"
+              onError={(e) => e.target.style.display = 'none'}
               style={{
-                transform: `scale(${1 + thumbnailPulse * 0.07})`, // Phóng to/nhỏ theo nhạc
-                boxShadow: `0 0 ${thumbnailPulse * 25}px rgba(255, 255, 255, ${thumbnailPulse * 0.6})`, // Tỏa sáng theo nhạc
+                transform: `scale(${1 + thumbnailPulse * 0.07})`,
+                boxShadow: `0 0 ${thumbnailPulse * 25}px rgba(255, 255, 255, ${thumbnailPulse * 0.6})`,
               }}
             />
           ) : (
-            <div 
-                className="roompage-thumbnail-placeholder"
-                // ✅ ÁP DỤNG CẢ CHO PLACEHOLDER
-                style={{
-                    transform: `scale(${1 + thumbnailPulse * 0.07})`,
-                    boxShadow: `0 0 ${thumbnailPulse * 25}px rgba(90, 224, 255, ${thumbnailPulse * 0.6})`,
-                }}
+            <div
+              className="roompage-thumbnail-placeholder"
+              style={{
+                transform: `scale(${1 + thumbnailPulse * 0.07})`,
+                boxShadow: `0 0 ${thumbnailPulse * 25}px rgba(90, 224, 255, ${thumbnailPulse * 0.6})`,
+              }}
             >🎵</div>
           )}
         </div>
-
         <div className="roompage-player-controls-main">
           {isHost ? (
             <>
