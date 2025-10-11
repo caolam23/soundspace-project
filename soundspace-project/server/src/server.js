@@ -33,8 +33,9 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
-  pingInterval: 10000,
-  pingTimeout: 5000,
+  // ✅ Tăng thời gian để kết nối ổn định hơn trên mạng yếu
+  pingInterval: 25000,
+  pingTimeout: 20000,
 });
 
 // Maps for tracking users and approvals
