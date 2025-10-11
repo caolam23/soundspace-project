@@ -21,3 +21,5 @@ yarn-error.log*
 client/dist
 client/.vite
 *-player-script.js
+
+ecosystem.config.js

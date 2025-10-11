@@ -1,6 +1,3 @@
-/* ================================== */
-/* BIẾN MÀU VÀ GLOBAL        */
-/* ================================== */
 :root {
     --bg-primary: #121212;      /* Màu nền chính tối nhất */
     --bg-secondary: #1E1E1E;    /* Màu nền cho các cột */
@@ -393,9 +390,6 @@
 .roompage-chat-input .roompage-btn-icon:hover {
     color: var(--text-primary);
 }
-/* ========================= */
-/* Join requests box */
-/* ========================= */
 .join-requests-container {
         position: fixed;
         right: 28px;
@@ -529,8 +523,18 @@
     color: var(--text-secondary);
     line-height: 1;
 }
-
 @keyframes join-toast-in {
     from { transform: translateY(12px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+.join-toast .join-toast-content {
+    background: linear-gradient(135deg, rgba(138,43,226,0.1), rgba(46, 125, 50, 0.1)); 
+    border-left: 3px solid var(--accent); /* Đường viền tím */
+}
+.leave-toast .join-toast-content {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(255, 152, 0, 0.1));
+    border-left: 3px solid #F44336; 
+}
+.leave-toast .join-toast-username {
+    color: #F44336; 
 }

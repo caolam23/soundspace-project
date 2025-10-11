@@ -1,10 +1,12 @@
 // client/src/pages/UserHomePage.jsx
+
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { Plus, X, LogOut, UploadCloud } from 'react-feather';
 import axios from 'axios';
 import RoomCard from '../components/RoomCard';
 import { useNavigate } from 'react-router-dom';
+import LoadingTaoPhong from '../components/LoadingTaoPhong';
 import './UserHomePage.css';
 
 function UserHomePage() {
@@ -21,6 +23,11 @@ function UserHomePage() {
   const [coverImage, setCoverImage] = useState(null);
   const [coverImagePreview, setCoverImagePreview] = useState('');
   const fileInputRef = useRef(null);
+
+  // STATE cho loading tạo phòng
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [createdRoomId, setCreatedRoomId] = useState(null);
+  const [isApiComplete, setIsApiComplete] = useState(false);
 
   // STATE cho danh sách phòng
   const [rooms, setRooms] = useState([]);
@@ -48,20 +55,27 @@ function UserHomePage() {
     setCoverImagePreview('');
   };
 
-  // HANDLE CREATE ROOM - ✅ FIXED
+  // ✅ HANDLE CREATE ROOM - HIỆN LOADING NGAY LẬP TỨC
   const handleCreateRoom = async (e) => {
     e.preventDefault();
+    
+    // Validate
+    if (!coverImage) {
+      alert('Vui lòng chọn ảnh bìa!');
+      return;
+    }
+
+    // ✅ ĐÓNG MODAL VÀ HIỆN LOADING NGAY LẬP TỨC
+    closeModal();
+    setIsCreatingRoom(true);
+    setIsApiComplete(false);
+
+    // Chuẩn bị form data
     const formData = new FormData();
     formData.append('name', roomData.name);
     formData.append('description', roomData.description);
     formData.append('privacy', roomData.privacy);
-
-    if (coverImage) {
-      formData.append('coverImage', coverImage);
-    } else {
-      alert('Vui lòng chọn ảnh bìa!');
-      return;
-    }
+    formData.append('coverImage', coverImage);
 
     try {
       const token = localStorage.getItem('token');
@@ -73,21 +87,46 @@ function UserHomePage() {
       });
 
       const newRoom = res.data.room;
-      console.log("Phòng đã tạo:", newRoom);
+      console.log("✅ Phòng đã tạo:", newRoom);
 
-      closeModal();
-      
-      // ✅ THÊM STATE ĐỂ ĐÁNH DẤU ĐÂY LÀ NAVIGATE MỚI
-      navigate(`/room/${newRoom._id}`, { 
-        state: { fromCreate: true },
-        replace: true 
-      });
+      // ✅ Lưu roomId và đánh dấu API đã xong
+      setCreatedRoomId(newRoom._id);
+      setIsApiComplete(true);
 
     } catch (err) {
-      console.error("Lỗi khi gọi API tạo phòng:", err);
+      console.error("❌ Lỗi khi gọi API tạo phòng:", err);
+      
+      // Nếu lỗi thì tắt loading và hiện alert
+      setIsCreatingRoom(false);
+      setIsApiComplete(false);
       alert(err.response?.data?.msg || 'Đã có lỗi xảy ra.');
     }
   };
+
+  // ✅ Xử lý khi loading hoàn tất (chỉ navigate khi CẢ loading VÀ API đều xong)
+  const handleLoadingComplete = () => {
+    // Chỉ navigate khi API đã hoàn thành
+    if (isApiComplete && createdRoomId) {
+      setIsCreatingRoom(false);
+      navigate(`/room/${createdRoomId}`, {
+        state: { fromCreate: true },
+        replace: true
+      });
+    } else {
+      // Nếu API chưa xong thì chờ thêm
+      console.log("⏳ Loading xong nhưng API chưa hoàn thành, đang chờ...");
+    }
+  };
+
+  // ✅ Khi API xong và loading cũng xong thì navigate
+  useEffect(() => {
+    if (isApiComplete && createdRoomId && !isCreatingRoom) {
+      navigate(`/room/${createdRoomId}`, {
+        state: { fromCreate: true },
+        replace: true
+      });
+    }
+  }, [isApiComplete, createdRoomId, isCreatingRoom, navigate]);
 
   // LOAD MORE ROOMS
   const handleLoadMore = () => {
@@ -155,6 +194,9 @@ function UserHomePage() {
 
   return (
     <div className="user-theme">
+      {/* ✅ LOADING TẠO PHÒNG - HIỆN NGAY KHI BẤM NÚT */}
+      {isCreatingRoom && <LoadingTaoPhong onComplete={handleLoadingComplete} />}
+
       {/* HEADER */}
       <header className="user-page-header">
         <div className="header-container">
