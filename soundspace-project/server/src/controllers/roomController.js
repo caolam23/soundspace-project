@@ -195,65 +195,78 @@ exports.endSession = async (req, res) => {
 // ==========================
 exports.joinRoom = async (req, res) => {
   try {
-    let room = await Room.findById(req.params.roomId);
+    const { roomId } = req.params;
+    const userId = req.user.id;
+
+    // ✅ 1. Chỉ lấy field cần thiết (tăng tốc truy vấn)
+    let room = await Room.findById(roomId).select('owner members status privacy roomCode');
     if (!room || room.status === 'ended') {
       return res.status(404).json({ msg: 'Phòng không tồn tại hoặc đã kết thúc.' });
     }
 
-    const userId = req.user.id;
+    // ✅ 2. Kiểm tra đã là member chưa
     const isMember = room.members.some(m => m.toString() === userId);
-
-    // Nếu đã là member rồi thì trả về luôn
     if (isMember) {
-      room = await populateRoom(room._id);
-      return res.status(200).json({ msg: 'Đã ở trong phòng.', room });
+      // Dùng promise để trả về nhanh, populate chạy nền
+      populateRoom(room._id).then((popRoom) => {
+        const io = req.app.get('io');
+        if (io) {
+          io.to(roomId).emit('update-members', popRoom.members);
+        }
+      });
+      return res.status(200).json({ msg: 'Đã ở trong phòng.', roomId });
     }
 
-    // ✅ Kiểm tra điều kiện join theo privacy
+    // ✅ 3. Kiểm tra quyền vào phòng (theo privacy)
     if (room.privacy === 'private') {
       const { roomCode } = req.body;
       if (!roomCode || room.roomCode !== roomCode) {
         return res.status(403).json({ msg: 'Mã phòng không chính xác.' });
       }
-      // Mã đúng → cho phép join
     } else if (room.privacy === 'manual') {
-      // Manual cần approval từ host, không cho join trực tiếp qua API
       return res.status(403).json({ msg: 'Phòng này cần sự phê duyệt của chủ phòng.' });
     }
-    // Nếu là public → không cần kiểm tra gì
 
-    // ✅ Thêm user vào members
+    // ✅ 4. Thêm thành viên và lưu (chỉ lưu ID, không populate lúc này)
     room.members.push(userId);
     await room.save();
-    
-    // ✅ Populate để lấy thông tin đầy đủ
-    room = await populateRoom(room._id);
 
-    // ✅ Emit socket update-members cho TẤT CẢ các privacy types
-    const io = req.app.get('io');
-    
-    // Đảm bảo owner đứng đầu danh sách
-    const ownerId = String(room.owner._id);
-    const ownerMember = room.members.find(m => String(m._id) === ownerId);
-    const otherMembers = room.members.filter(m => String(m._id) !== ownerId);
-    const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : room.members;
-    
-    // ✅ Emit realtime update
-    io.to(room._id.toString()).emit('update-members', sortedMembers);
-    console.log(`✅ [JOIN-ROOM API] User ${userId} joined room ${room._id}`);
-    console.log(`📤 [JOIN-ROOM API] Emitted update-members with ${sortedMembers.length} members`);
-    // Notify everyone in room that a user has joined (transient notification)
-    try {
-      const joinedMember = sortedMembers.find(m => String(m._id) === String(userId));
-      if (joinedMember) {
-        io.to(room._id.toString()).emit('user-joined-notification', { username: joinedMember.username, avatar: joinedMember.avatar });
-        console.log(`[JOIN-ROOM API] Emitted user-joined-notification for ${joinedMember.username}`);
+    // ⚡️ 5. Trả phản hồi NGAY LẬP TỨC cho frontend (frontend sẽ hiển thị tạm)
+    res.status(200).json({
+      msg: 'Tham gia phòng thành công!',
+      roomId: room._id,
+      fastJoin: true, // đánh dấu để frontend biết đây là join nhanh
+    });
+
+    // ✅ 6. Phần populate + socket emit sẽ chạy song song ở background
+    (async () => {
+      const fullRoom = await populateRoom(room._id);
+      const io = req.app.get('io');
+      if (!io) return;
+
+      // Đảm bảo chủ phòng đứng đầu danh sách
+      const ownerId = String(fullRoom.owner._id);
+      const sortedMembers = [
+        fullRoom.owner,
+        ...fullRoom.members.filter(m => String(m._id) !== ownerId),
+      ];
+
+      // ⚡️ Emit realtime update nhanh hơn
+      io.to(roomId.toString()).emit('update-members', sortedMembers);
+      console.log(`✅ [JOIN-ROOM FAST] User ${userId} joined room ${roomId}`);
+
+      // ⚡️ Emit thông báo user mới vào phòng
+      const joinedUser = sortedMembers.find(m => String(m._id) === userId);
+      if (joinedUser) {
+        io.to(roomId.toString()).emit('user-joined-notification', {
+          username: joinedUser.username,
+          avatar: joinedUser.avatar,
+        });
       }
-    } catch (e) {
-      console.warn('[JOIN-ROOM API] Could not emit user-joined-notification:', e.message);
-    }
 
-    res.status(200).json({ msg: 'Tham gia phòng thành công!', room });
+      console.log(`📤 [JOIN-ROOM FAST] Emitted update-members + user-joined-notification`);
+    })().catch(e => console.error('⚠️ Background joinRoom error:', e));
+
   } catch (err) {
     console.error("❌ Lỗi joinRoom:", err);
     res.status(500).json({ msg: 'Lỗi server', error: err.message });
