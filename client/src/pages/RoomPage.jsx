@@ -20,6 +20,7 @@ import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import MusicPlayer from "../components/MusicPlayer";
+import { toastConfig } from "../services/toastConfig"; // hoặc đường dẫn bạn lưu file config
 
 function RoomPage() {
   const isReloading = useRef(false);
@@ -35,6 +36,7 @@ function RoomPage() {
   const [members, setMembers] = useState([]);
   const [joinNotification, setJoinNotification] = useState(null);
   const [joinRequests, setJoinRequests] = useState([]);
+   const [leaveNotification, setLeaveNotification] = useState(null);
   const [hostFeedback, setHostFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -144,18 +146,36 @@ function RoomPage() {
           localStorage.removeItem(roomKey);
           
           if (userIsHost) {
-            toast.error("Host không được reload trang khi đang live! Phòng đã bị kết thúc.");
+            toast.error("Host không được reload khi đang live! Phòng đã bị kết thúc.", {
+            ...toastConfig,
+            autoClose: 4200, // ⏳ hiển thị lâu hơn 2 giây
+            icon: "💀",
+            style: {
+              ...toastConfig.style,
+              background: "linear-gradient(135deg, #2b2b2b, #3a3a3a)",
+              color: "#ff8a8a", // chữ đỏ nhạt nhẹ
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+            },
+          });
             await endRoomAPI();
             navigate("/home", { replace: true });
             return;
           } else {
             socket.emit("leave-room", { roomId, userId: user._id });
-            toast.warning("Bạn đã reload trang và bị đẩy ra khỏi phòng");
+            toast.warning("Bạn đã reload trang — bạn đã bị đẩy ra khỏi phòng.", {
+                ...toastConfig,
+                icon: "🔄",
+                style: {
+                  ...toastConfig.style,
+                  background: "linear-gradient(135deg, #1CB5E0, #000046)", // xanh lạnh
+                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
+                },
+              });
             navigate("/home", { replace: true });
             return;
           }
         }
-        
         if (!hasVisited) {
           localStorage.setItem(roomKey, "true");
         }
@@ -248,13 +268,15 @@ function RoomPage() {
     };
 
     const handleUserJoined = ({ username, avatar }) => {
-      const memberAvatar =
-        avatar || members.find((m) => m.username === username)?.avatar || "/default-avatar.png";
+      // 🆕 Thêm điều kiện: Không hiển thị thông báo nếu đó là chính mình
+      if (user && user.username === username) return;
+      
+      const memberAvatar =
+        avatar || members.find((m) => m.username === username)?.avatar || "/default-avatar.png";
 
-      setJoinNotification({ username, avatar: memberAvatar, id: Date.now() });
-      setTimeout(() => setJoinNotification(null), 4000);
-    };
-
+      setJoinNotification({ username, avatar: memberAvatar, id: Date.now() });
+      setTimeout(() => setJoinNotification(null), 4000);
+    };
     const handleRoomEnded = (data) => {
       if (!currentUserIsHost) toast.info(data.message);
       navigate("/home");
@@ -286,6 +308,28 @@ function RoomPage() {
       socket.off("new-join-request", handleNewJoinRequest);
     };
   }, [roomId, user, socket, navigate, handleNewJoinRequest, endRoomAPI, location.state]);
+
+  useEffect(() => {
+        const handleUserLeft = ({ username, avatar, userId }) => { // ⚠️ Nên thêm userId để lọc chính xác hơn
+            // Lọc bỏ nếu người rời phòng là chính mình (đã chuyển hướng về /home)
+            if (user && user._id === userId) return; // Lọc bằng _id sẽ chính xác hơn
+
+            const memberAvatar = avatar || "/default-avatar.png";
+
+            // Hiển thị thông báo rời phòng
+            setLeaveNotification({ username, avatar: memberAvatar, id: Date.now() });
+
+            // Tự động ẩn sau 4 giây
+            const timer = setTimeout(() => setLeaveNotification(null), 4000);
+            return () => clearTimeout(timer);
+        };
+
+        socket.on("user-left-notification", handleUserLeft);
+
+        return () => {
+            socket.off("user-left-notification", handleUserLeft);
+        };
+    }, [socket, user])
 
   // Guest join approval handling
   useEffect(() => {
@@ -598,6 +642,24 @@ function RoomPage() {
           </div>
         </div>
       )}
+
+      {/* 🆕 Bottom-right leave notification */}
+      {leaveNotification && (
+        <div className="join-toast leave-toast" role="status" aria-live="polite">
+          <div className="join-toast-content">
+            <img
+              className="join-toast-avatar"
+              src={leaveNotification.avatar || '/default-avatar.png'}
+              alt={leaveNotification.username}
+            />
+            <div className="join-toast-body">
+              <div className="join-toast-username">{leaveNotification.username}</div>
+              <div className="join-toast-subtitle">đã rời phòng</div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

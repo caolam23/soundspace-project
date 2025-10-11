@@ -1,0 +1,273 @@
+/* LoadingTaoPhong.css - Phù hợp với theme dark hiện tại */
+
+.LoadingTaoPhong-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.25); /* mờ nhẹ */
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: LoadingTaoPhong-fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes LoadingTaoPhong-fadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(12px);
+  }
+}
+
+.LoadingTaoPhong-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 2.5rem 3rem;
+  background: transparent !important; /* trong suốt hoàn toàn */
+  border: none !important;
+  box-shadow: none !important;
+  animation: LoadingTaoPhong-slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes LoadingTaoPhong-slideUp {
+  from {
+    transform: translateY(40px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+.LoadingTaoPhong-circle-wrapper {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.LoadingTaoPhong-text-wrapper {
+  text-align: center;
+  color: #fff;
+  max-width: 320px;
+}
+
+.LoadingTaoPhong-svg {
+  transform: scaleX(-1);
+  filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.3));
+}
+
+.LoadingTaoPhong-circle-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-linecap: round;
+}
+
+.LoadingTaoPhong-circle-progress {
+  fill: none;
+  stroke: #8b5cf6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.08s linear;
+  filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.6));
+  animation: LoadingTaoPhong-glow 2s ease-in-out infinite;
+}
+
+@keyframes LoadingTaoPhong-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.9));
+  }
+}
+
+.LoadingTaoPhong-percentage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 
+    0 0 30px rgba(139, 92, 246, 0.8),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.02em;
+  animation: LoadingTaoPhong-numberPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes LoadingTaoPhong-numberPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.08);
+    opacity: 0.95;
+  }
+}
+
+.LoadingTaoPhong-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+  color: #f5f5f7;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #ffffff 0%, #e0e0e8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.LoadingTaoPhong-subtitle {
+  font-size: 1rem;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  min-height: 1.5rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.LoadingTaoPhong-dots {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+.LoadingTaoPhong-dot {
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
+  animation: LoadingTaoPhong-bounce 1.6s infinite ease-in-out;
+}
+
+.LoadingTaoPhong-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.LoadingTaoPhong-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+.LoadingTaoPhong-dot:nth-child(3) {
+  animation-delay: 0s;
+}
+
+@keyframes LoadingTaoPhong-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+/* Hover effects cho container (optional) */
+.LoadingTaoPhong-container:hover {
+  box-shadow: 
+    0 30px 60px -15px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Responsive - phù hợp với mobile như RoomPage */
+@media (max-width: 768px) {
+  .LoadingTaoPhong-container {
+    padding: 2.5rem 3rem;
+    gap: 2rem;
+    max-width: 90%;
+    border-radius: 16px;
+  }
+
+  .LoadingTaoPhong-circle-wrapper {
+    width: 140px;
+    height: 140px;
+  }
+
+  .LoadingTaoPhong-svg {
+    width: 140px;
+    height: 140px;
+  }
+
+  .LoadingTaoPhong-percentage {
+    font-size: 2.25rem;
+  }
+
+  .LoadingTaoPhong-title {
+    font-size: 1.5rem;
+  }
+
+  .LoadingTaoPhong-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .LoadingTaoPhong-dot {
+    width: 8px;
+    height: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .LoadingTaoPhong-container {
+    padding: 2rem 2.5rem;
+    gap: 1.75rem;
+  }
+
+  .LoadingTaoPhong-circle-wrapper {
+    width: 120px;
+    height: 120px;
+  }
+
+  .LoadingTaoPhong-svg {
+    width: 120px;
+    height: 120px;
+  }
+
+  .LoadingTaoPhong-percentage {
+    font-size: 2rem;
+  }
+
+  .LoadingTaoPhong-title {
+    font-size: 1.35rem;
+  }
+
+  .LoadingTaoPhong-subtitle {
+    font-size: 0.9rem;
+  }
+}
+
+/* Animation khi hoàn thành 100% */
+@keyframes LoadingTaoPhong-complete {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+.LoadingTaoPhong-container.complete {
+  animation: LoadingTaoPhong-complete 0.4s ease-out forwards;
+}

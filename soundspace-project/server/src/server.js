@@ -304,24 +304,40 @@ io.on('connection', (socket) => {
 
   // --- Leave room ---
   socket.on('leave-room', async ({ roomId, userId }) => {
-    socket.leave(roomId);
-    try {
-      await Room.findByIdAndUpdate(roomId, { $pull: { members: userId } });
-      const populatedRoom = await Room.findById(roomId)
-        .populate('owner', 'username avatar')
-        .populate('members', 'username avatar');
-      if (populatedRoom) {
-        const ownerId = String(populatedRoom.owner._id);
-        const ownerMember = populatedRoom.members.find(m => String(m._id) === ownerId);
-        const otherMembers = populatedRoom.members.filter(m => String(m._id) !== ownerId);
-        const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
-        
-        io.to(roomId).emit('update-members', sortedMembers);
-      }
-    } catch (err) {
-      console.error('[LEAVE-ROOM] Error:', err);
-    }
-  });
+    socket.leave(roomId);
+    try {
+      // 🆕 1. Lấy thông tin người dùng trước khi họ bị xoá khỏi room
+      const leavingUser = await User.findById(userId).select('username avatar');
+
+      // 2. Xóa thành viên khỏi phòng
+      await Room.findByIdAndUpdate(roomId, { $pull: { members: userId } });
+
+      // 🆕 3. Gửi thông báo người dùng rời phòng
+      if (leavingUser) {
+        io.to(roomId).emit('user-left-notification', {
+          userId: userId,
+          username: leavingUser.username,
+          avatar: leavingUser.avatar
+        });
+        console.log(`[LEAVE-ROOM] Emitted user-left-notification for ${leavingUser.username}`);
+      }
+
+      // 4. Populate lại room và gửi update members
+      const populatedRoom = await Room.findById(roomId)
+        .populate('owner', 'username avatar')
+        .populate('members', 'username avatar');
+      if (populatedRoom) {
+        const ownerId = String(populatedRoom.owner._id);
+        const ownerMember = populatedRoom.members.find(m => String(m._id) === ownerId);
+        const otherMembers = populatedRoom.members.filter(m => String(m._id) !== ownerId);
+        const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
+        
+        io.to(roomId).emit('update-members', sortedMembers);
+      }
+    } catch (err) {
+      console.error('[LEAVE-ROOM] Error:', err);
+    }
+  });
 
   // --- Music Control Events ---
   socket.on('music-control', async ({ roomId, action }) => {
