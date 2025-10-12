@@ -51,5 +51,9 @@ router.post('/:roomId/join', verifyToken, roomController.joinRoom);
 // ==============================
 // POST /api/rooms/:roomId/request-join
 router.post('/:roomId/request-join', verifyToken, roomController.requestJoinRoom);
-
+// ==============================
+// TÌM PHÒNG THEO MÃ
+// ==============================
+// GET /api/rooms/search-by-code/:roomCode
+router.get('/search-by-code/:roomCode', verifyToken, roomController.searchRoomByCode);
 module.exports = router;

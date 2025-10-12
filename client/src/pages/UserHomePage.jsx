@@ -1,10 +1,10 @@
 // client/src/pages/UserHomePage.jsx
-
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { Plus, X, LogOut, UploadCloud } from 'react-feather';
 import axios from 'axios';
 import RoomCard from '../components/RoomCard';
+import ThamGiaPhong from '../components/ThamGiaPhong'; // ✅ IMPORT MỚI
 import { useNavigate } from 'react-router-dom';
 import LoadingTaoPhong from '../components/LoadingTaoPhong';
 import './UserHomePage.css';
@@ -202,10 +202,14 @@ function UserHomePage() {
         <div className="header-container">
           <div className="header-logo">soundspace</div>
 
-          <button onClick={() => setIsModalOpen(true)} className="create-room-button-header">
-            <Plus className="create-room-icon" />
-            <span className="create-room-text">Tạo phòng mới</span>
-          </button>
+          {/* ✅ GROUP BUTTONS MỚI */}
+          <div className="header-action-buttons">
+            <ThamGiaPhong />
+            <button onClick={() => setIsModalOpen(true)} className="create-room-button-header">
+              <Plus className="create-room-icon" />
+              <span className="create-room-text">Tạo phòng mới</span>
+            </button>
+          </div>
 
           <div className="header-user-profile">
             <span className="user-profile-welcome">Chào mừng, {user.username}!</span>

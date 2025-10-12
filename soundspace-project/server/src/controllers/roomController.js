@@ -331,3 +331,39 @@ exports.getRoomDetails = async (req, res) => {
     res.status(500).json({ msg: 'Lỗi server', error: err.message });
   }
 };
+// ==========================
+// TÌM PHÒNG THEO MÃ
+// ==========================
+exports.searchRoomByCode = async (req, res) => {
+  try {
+    const { roomCode } = req.params;
+
+    if (!roomCode || roomCode.length !== 6) {
+      return res.status(400).json({ msg: 'Mã phòng không hợp lệ.' });
+    }
+
+    const room = await Room.findOne({ 
+      roomCode: roomCode.toUpperCase(),
+      status: { $in: ['waiting', 'live'] }
+    }).populate('owner', 'username avatar');
+
+    if (!room) {
+      return res.status(404).json({ msg: 'Không tìm thấy phòng với mã này.' });
+    }
+
+    res.status(200).json({ 
+      msg: 'Tìm thấy phòng!', 
+      room: {
+        _id: room._id,
+        name: room.name,
+        description: room.description,
+        privacy: room.privacy,
+        coverImage: room.coverImage,
+        owner: room.owner
+      }
+    });
+  } catch (err) {
+    console.error("❌ Lỗi searchRoomByCode:", err);
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+  }
+};
