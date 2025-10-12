@@ -7,13 +7,31 @@
 }
 
 /* 1. Phần danh sách phát (Bên trái) */
+/* 1. Phần danh sách phát (Bên trái) - ĐÃ CẬP NHẬT */
 .roompage-left {
-    width: 350px; /* Độ rộng cố định cho danh sách phát */
+    width: 350px;
     padding: 20px;
-    background-color: #1a1a1a; /* Nền danh sách phát */
-    overflow-y: auto;
+    background-color: #1a1a1a;
     border-right: 1px solid #333;
+
+    /* -- BẮT BUỘC -- */
+    height: 100vh; /* Chiếm đúng 100% chiều cao màn hình */
+    box-sizing: border-box; /* Đảm bảo padding không làm tăng chiều cao */
+    display: flex;
+    flex-direction: column; /* Sắp xếp các mục con theo chiều dọc */
+    overflow: hidden; /* Quan trọng: Ngăn chính nó tự cuộn */
 }
+/* Thêm class này để xử lý cuộn cho danh sách */
+/* Tìm đến class này */
+.roompage-queue {
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
+
+    /* Giới hạn chiều cao để scrollbar ngắn hơn */
+    max-height: calc(100vh - 180px); /* 180px = tổng chiều cao header + nút upload + margin */
+}
+
 
 .roompage-left h2 {
     font-size: 18px;
@@ -24,20 +42,53 @@
 .roompage-queue-list {
     list-style: none;
     padding: 0;
+    padding-bottom: 100px;
 }
 
 /* Item trong danh sách phát */
+/* Thêm vào cuối file src/components/MusicPlayer.css */
+
+/* Cấu trúc cho mỗi item trong danh sách phát */
 .roompage-queue-item {
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: background-color 0.2s;
-    background-color: transparent; /* Nền mặc định trong suốt */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  margin-bottom: 15px; /* ✅ tăng khoảng cách dọc giữa các item */
 }
 
+
+/* Phần chứa thông tin bài hát (ảnh, tên) */
+.track-info-wrapper {
+  display: flex;
+  align-items: center;
+  flex-grow: 1; /* Cho phép nó giãn ra để chiếm không gian */
+  min-width: 0; /* Cần thiết để text-overflow hoạt động */
+  gap: 12px;
+}
+
+/* CSS CHO HIỆU ỨNG ẨN/HIỆN NÚT 3 CHẤM */
+/* ------------------------------------------- */
+
+/* 1. Mặc định, ẩn nút 3 chấm đi */
+.roompage-queue-item .track-options-container {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+}
+
+/* 2. Khi di chuột vào một bài hát (thẻ li), cho nút 3 chấm hiện ra */
+.roompage-queue-item:hover .track-options-container {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Tùy chọn: Thêm một chút màu nền khi di chuột vào bài hát để trực quan hơn */
+.roompage-queue-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
 .roompage-queue-item:hover {
     background-color: #2a2a2a;
 }

@@ -469,7 +469,7 @@ function RoomPage() {
               </button>
             </>
           ) : (
-            <button className="btn" onClick={handleLeaveRoom}>
+            <button className="btn btn-leave-room" onClick={handleLeaveRoom}>
               <LogOut size={16} />
               <span>Rời phòng</span>
             </button>

@@ -2,25 +2,38 @@ const express = require("express");
 const router = express.Router({ mergeParams: true }); // ✅ Dùng mergeParams để lấy roomId từ URL nếu có
 
 const playlistController = require("../controllers/playlist.controller");
-const { auth } = require("../middleware/auth"); // ✅ Giữ nguyên cách import như code 1
-const { uploadTrackAndThumbnail } = require("../config/uploadConfig"); // ✅ Middleware upload Cloudinary (audio + thumbnail)
+const { auth } = require("../middleware/auth"); 
+const { uploadTrackAndThumbnail } = require("../config/uploadConfig");
 
 // ======================================================
-// 🎵 Route: Thêm bài hát từ link (YouTube, Spotify, SoundCloud)
-// ======================================================
-router.post("/:roomId/playlist", auth, playlistController.addTrack); // ✅ Giữ nguyên logic code 1
-
-// ======================================================
-// 🎧 Route: Upload bài hát thủ công (file audio từ Cloudinary)
+// 🎵 THÊM BÀI HÁT TỪ LINK (YouTube, Spotify, SoundCloud)
 // ======================================================
 router.post(
-  "/:roomId/playlist/upload",
-  auth, // ✅ xác thực người dùng
-  uploadTrackAndThumbnail, // ✅ middleware xử lý upload file (audio + ảnh)
-  playlistController.addTrackByUpload // ✅ controller mới cho upload
+  "/:roomId/playlist",
+  auth, 
+  playlistController.addTrack // ✅ Controller xử lý thêm bài hát từ link
 );
 
 // ======================================================
-// Xuất module router
+// 🎧 UPLOAD BÀI HÁT THỦ CÔNG (File audio + thumbnail)
+// ======================================================
+router.post(
+  "/:roomId/playlist/upload",
+  auth, 
+  uploadTrackAndThumbnail, // ✅ Middleware upload Cloudinary (audio + ảnh)
+  playlistController.addTrackByUpload // ✅ Controller xử lý upload
+);
+
+// ======================================================
+// ❌ XOÁ MỘT BÀI HÁT KHỎI PLAYLIST
+// ======================================================
+router.delete(
+  "/:roomId/playlist/:trackId",
+  auth,
+  playlistController.removeTrackFromPlaylist // ✅ Controller mới để xoá bài hát
+);
+
+// ======================================================
+// 📦 EXPORT MODULE ROUTER
 // ======================================================
 module.exports = router;
