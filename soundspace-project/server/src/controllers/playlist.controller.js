@@ -1,7 +1,7 @@
 const Room = require("../models/room");
-const ytdl = require("@distube/ytdl-core"); // Dùng bản ổn định
+const ytdl = require("@distube/ytdl-core");
 const { cloudinary } = require("../config/uploadConfig");
-const getAudioDuration = require("get-audio-duration"); // npm install get-audio-duration
+const getAudioDuration = require("get-audio-duration");
 
 // ======================================================
 // ⚙️ HÀM HỖ TRỢ: LẤY THÔNG TIN VIDEO CÓ TIMEOUT AN TOÀN
@@ -23,24 +23,27 @@ exports.addTrack = async (req, res) => {
   const { url } = req.body;
   const userId = req.user?.id || req.user?._id;
 
-  if (!url || !url.trim()) return res.status(400).json({ msg: "Vui lòng cung cấp URL hợp lệ." });
+  if (!url?.trim()) return res.status(400).json({ msg: "Vui lòng cung cấp URL hợp lệ." });
   if (!ytdl.validateURL(url)) return res.status(400).json({ msg: "URL YouTube không hợp lệ." });
 
   try {
     const room = await Room.findById(roomId);
     if (!room) return res.status(404).json({ msg: "Không tìm thấy phòng." });
-
     if (room.owner.toString() !== userId.toString())
       return res.status(403).json({ msg: "Chỉ chủ phòng mới được thêm nhạc." });
 
-    // Check trùng URL & videoId
-    const info = await getVideoInfoWithTimeout(url).catch(err => null);
-    if (!info)
-      return res.status(400).json({ msg: "Không thể lấy thông tin video từ YouTube." });
+    // ✅ Giới hạn YouTube: tối đa 8 bài
+    const ytCount = room.playlist.filter(t => t.source === "youtube").length;
+    if (ytCount >= 8)
+      return res.status(400).json({ msg: "Bạn đã đạt giới hạn 8 bài hát YouTube trong phòng." });
+
+    const info = await getVideoInfoWithTimeout(url).catch(() => null);
+    if (!info) return res.status(400).json({ msg: "Không thể lấy thông tin video từ YouTube." });
 
     const details = info.videoDetails;
     const videoId = details.videoId;
 
+    // ✅ Check trùng URL / videoId
     if (room.playlist.some(t => t.url === url || t.sourceId === videoId))
       return res.status(409).json({ msg: "Bài hát đã tồn tại trong playlist." });
 
@@ -55,10 +58,10 @@ exports.addTrack = async (req, res) => {
       addedBy: userId,
     };
 
-    const shouldStartPlaying = room.playlist.length === 0 && !room.isPlaying;
     room.playlist.push(newTrack);
 
-    if (shouldStartPlaying) {
+    // Nếu playlist đang trống, bắt đầu phát ngay
+    if (room.playlist.length === 1 && !room.isPlaying) {
       room.currentTrackIndex = 0;
       room.isPlaying = true;
       room.playbackStartTime = new Date();
@@ -66,27 +69,25 @@ exports.addTrack = async (req, res) => {
 
     await room.save();
 
-    const populatedRoom = await Room.findById(roomId).populate("playlist.addedBy", "username");
-
     const io = req.app.get("io");
     if (io) {
       io.to(roomId).emit("playback-state-changed", {
-        playlist: populatedRoom.playlist,
+        playlist: room.playlist,
         currentTrackIndex: room.currentTrackIndex,
         isPlaying: room.isPlaying,
         playbackStartTime: room.playbackStartTime,
       });
     }
 
-    return res.status(201).json({ msg: "🎶 Đã thêm bài hát thành công!", playlist: populatedRoom.playlist });
+    return res.status(201).json({ msg: "🎶 Đã thêm bài hát thành công!", playlist: room.playlist });
   } catch (error) {
     console.error("🔥 Lỗi khi thêm nhạc:", error);
-    return res.status(500).json({ msg: "Lỗi máy chủ. Vui lòng thử lại sau.", error: error.message });
+    return res.status(500).json({ msg: "Lỗi máy chủ.", error: error.message });
   }
 };
 
 // ======================================================
-// 🎧 THÊM BÀI HÁT QUA UPLOAD FILE
+// 🎧 THÊM BÀI HÁT QUA UPLOAD FILE (CLOUDINARY)
 // ======================================================
 exports.addTrackByUpload = async (req, res) => {
   const { roomId } = req.params;
@@ -104,18 +105,21 @@ exports.addTrackByUpload = async (req, res) => {
     if (room.owner.toString() !== userId.toString())
       return res.status(403).json({ msg: "Chỉ chủ phòng mới có thể tải nhạc lên." });
 
+    // ✅ Giới hạn upload: tối đa 5 bài
     const uploadCount = room.playlist.filter(t => t.source === "upload").length;
     if (uploadCount >= 5)
-      return res.status(400).json({ msg: "Bạn đã đạt giới hạn 5 bài hát tải lên cho phòng này." });
+      return res.status(400).json({ msg: "Bạn đã đạt giới hạn 5 bài hát tải lên." });
 
-    // Upload lên Cloudinary
+    // Upload Cloudinary (song song)
     const [audioUpload, thumbnailUpload] = await Promise.all([
       cloudinary.uploader.upload(audioFile.path, { resource_type: "video", folder: "soundspace-tracks" }),
       cloudinary.uploader.upload(thumbnailFile.path, { folder: "soundspace-thumbnails" }),
     ]);
 
     let durationInSeconds = 0;
-    try { durationInSeconds = await getAudioDuration(audioUpload.secure_url); } catch {}
+    try {
+      durationInSeconds = await getAudioDuration(audioUpload.secure_url);
+    } catch {}
 
     const newTrack = {
       title: audioFile.originalname.replace(/\.[^/.]+$/, ""),
@@ -138,5 +142,69 @@ exports.addTrackByUpload = async (req, res) => {
   } catch (err) {
     console.error("🔥 Lỗi khi upload nhạc:", err);
     return res.status(500).json({ msg: "Lỗi máy chủ." });
+  }
+};
+
+// ======================================================
+// ❌ XOÁ BÀI HÁT KHỎI PLAYLIST
+// ======================================================
+exports.removeTrackFromPlaylist = async (req, res) => {
+  try {
+    const { roomId, trackId } = req.params;
+    const userId = req.user?.id || req.user?._id;
+
+    const room = await Room.findById(roomId);
+    if (!room) return res.status(404).json({ msg: "Không tìm thấy phòng." });
+
+    // Chỉ chủ phòng mới được xóa
+    if (room.owner.toString() !== userId.toString())
+      return res.status(403).json({ msg: "Bạn không có quyền xóa bài hát." });
+
+    const trackIndex = room.playlist.findIndex(t => t._id.toString() === trackId);
+    if (trackIndex === -1)
+      return res.status(404).json({ msg: "Không tìm thấy bài hát trong playlist." });
+
+    // Nếu là file upload, xoá khỏi Cloudinary
+    const deletedTrack = room.playlist[trackIndex];
+    if (deletedTrack.source === "upload" && deletedTrack.sourceId) {
+      try {
+        await cloudinary.uploader.destroy(deletedTrack.sourceId, { resource_type: "video" });
+      } catch (err) {
+        console.warn("⚠️ Không thể xóa file Cloudinary:", err.message);
+      }
+    }
+
+    // Xóa bài hát khỏi danh sách
+    room.playlist.splice(trackIndex, 1);
+
+    // === Cập nhật trạng thái phát ===
+    if (room.currentTrackIndex === trackIndex) {
+      if (room.playlist.length > 0) {
+        room.currentTrackIndex = Math.min(trackIndex, room.playlist.length - 1);
+        room.playbackStartTime = room.isPlaying ? new Date() : null;
+      } else {
+        room.isPlaying = false;
+        room.currentTrackIndex = -1;
+        room.playbackStartTime = null;
+      }
+    } else if (room.currentTrackIndex > trackIndex) {
+      room.currentTrackIndex -= 1;
+    }
+
+    await room.save();
+
+    const io = req.app.get("io");
+    const roomState = {
+      playlist: room.playlist,
+      currentTrackIndex: room.currentTrackIndex,
+      isPlaying: room.isPlaying,
+      playbackStartTime: room.playbackStartTime,
+    };
+    if (io) io.to(roomId).emit("playback-state-changed", roomState);
+
+    return res.status(200).json({ msg: "Đã xóa bài hát thành công.", playlist: room.playlist });
+  } catch (error) {
+    console.error("🔥 Lỗi khi xóa bài hát:", error);
+    res.status(500).json({ msg: "Lỗi máy chủ." });
   }
 };

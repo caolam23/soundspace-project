@@ -6,6 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import './MusicPlayer.css';
 import { toastConfig } from '../services/toastConfig';
 import UploadModal from './UploadModal'; // <-- ĐÃ IMPORT MODAL
+import TrackOptions from './TrackOptions';
 
 // ====================================================================
 // ⚙️ CÁC HẰNG SỐ ĐỒNG BỘ
@@ -283,6 +284,25 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
     }
   };
 
+  // ===> 2. THÊM HÀM XỬ LÝ XÓA <===
+  const handleDeleteTrack = async (trackId) => {
+    // Chỉ host mới có thể xóa
+    if (!isHost) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(
+        `http://localhost:8800/api/rooms/${roomId}/playlist/${trackId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Không cần cập nhật state ở đây, socket sẽ làm điều đó
+      toast.success("Đã xóa bài hát khỏi danh sách!", toastConfig);
+    } catch (err) {
+      console.error("Lỗi khi xóa bài hát:", err);
+      toast.error(err.response?.data?.msg || "Xóa bài hát thất bại.", { ...toastConfig, style: { ...toastConfig.style, backgroundColor: "#dc2626", color: "white" } });
+    }
+  };
+
   // ====================================================================
   // GỬI LỆNH ĐIỀU KHIỂN (PLAY, PAUSE, NEXT, PREV, SEEK)
   // ====================================================================
@@ -390,7 +410,6 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
         )}
       </div>
 
-      {/* ✅ RENDER MODAL CÓ ĐIỀU KIỆN */}
       {isUploadModalOpen && <UploadModal roomId={roomId} onClose={() => setIsUploadModalOpen(false)} />}
       
       <aside className="roompage-left">
@@ -405,26 +424,15 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
                 <LinkIcon size={16} /> Từ link
               </button>
             </div>
-
             {activeInput === 'link' && (
               <form onSubmit={handleAddFromLink} className="add-music-form">
-                <input
-                  type="text"
-                  placeholder="Dán link YouTube hoặc SoundCloud..."
-                  value={link}
-                  onChange={(e) => setLink(e.target.value)}
-                />
+                <input type="text" placeholder="Dán link YouTube hoặc SoundCloud..." value={link} onChange={(e) => setLink(e.target.value)} />
                 <button type="submit">+</button>
               </form>
             )}
-
-            {/* ✅ PHẦN TẢI LÊN ĐÃ ĐƯỢC CẬP NHẬT */}
             {activeInput === 'upload' && (
               <div className="add-music-form">
-                <button
-                  className="upload-trigger-button"
-                  onClick={() => setIsUploadModalOpen(true)}
-                >
+                <button className="upload-trigger-button" onClick={() => setIsUploadModalOpen(true)}>
                   Mở trình tải lên
                 </button>
               </div>
@@ -435,30 +443,45 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
         <div className="roompage-queue">
           <ul className="roompage-queue-list">
             {playlist.length === 0 && <li className="empty-queue">Danh sách phát trống</li>}
+            
+            {/* ====================================================== */}
+            {/* 💅 PHẦN GIAO DIỆN ĐÃ ĐƯỢC CẬP NHẬT HOÀN CHỈNH          */}
+            {/* ====================================================== */}
             {playlist.map((track, index) => (
               <li
                 key={track._id || track.sourceId || index}
                 className={`roompage-queue-item ${index === currentTrackIndex ? "roompage-now-playing" : ""}`}
-                onClick={() => handleSelectTrack(index)}
-                style={{ cursor: isHost ? 'pointer' : 'default' }}
               >
-                <div className="roompage-album-thumb">
-                  <img src={track.thumbnail} alt={track.title} onError={(e) => e.target.style.display = 'none'} />
+                {/* Bọc phần thông tin bài hát và thumbnail vào một div riêng để xử lý click */}
+                <div 
+                  className="track-info-wrapper"
+                  onClick={() => handleSelectTrack(index)}
+                  style={{ cursor: isHost ? 'pointer' : 'default' }}
+                >
+                  <div className="roompage-album-thumb">
+                    <img src={track.thumbnail} alt={track.title} onError={(e) => e.target.style.display = 'none'} />
+                  </div>
+                  <div className="roompage-queue-info">
+                    <h3>{track.title}</h3>
+                    <p>{track.artist}</p>
+                  </div>
                 </div>
-                <div className="roompage-queue-info">
-                  <h3>{track.title}</h3>
-                  <p>{track.artist}</p>
-                </div>
+
+                {/* Nút 3 chấm chỉ hiện cho Host */}
+                {isHost && (
+                  <TrackOptions 
+                    onDelete={() => handleDeleteTrack(track._id)} 
+                  />
+                )}
               </li>
             ))}
           </ul>
         </div>
       </aside>
 
+      {/* Phần main content bên phải giữ nguyên */}
       <section className="music-player-main-content">
-        {currentTrack?.thumbnail && (
-          <div className="roompage-blur-bg" style={{ backgroundImage: `url(${currentTrack.thumbnail})` }}></div>
-        )}
+        {currentTrack?.thumbnail && ( <div className="roompage-blur-bg" style={{ backgroundImage: `url(${currentTrack.thumbnail})` }}></div> )}
         <div className="roompage-song-info-main">
           <h1>{currentTrack?.title || "Chưa có bài hát"}</h1>
           <p>{currentTrack?.artist || "Hãy thêm một bài hát vào danh sách"}</p>
@@ -477,19 +500,14 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
         </div>
         <div className="roompage-thumbnail-center">
           {currentTrack?.thumbnail ? (
-            <img
-              src={currentTrack.thumbnail}
-              alt={currentTrack.title}
-              className="roompage-thumbnail-img"
-              onError={(e) => e.target.style.display = 'none'}
+            <img src={currentTrack.thumbnail} alt={currentTrack.title} className="roompage-thumbnail-img" onError={(e) => e.target.style.display = 'none'}
               style={{
                 transform: `scale(${1 + thumbnailPulse * 0.07})`,
                 boxShadow: `0 0 ${thumbnailPulse * 25}px rgba(255, 255, 255, ${thumbnailPulse * 0.6})`,
               }}
             />
           ) : (
-            <div
-              className="roompage-thumbnail-placeholder"
+            <div className="roompage-thumbnail-placeholder"
               style={{
                 transform: `scale(${1 + thumbnailPulse * 0.07})`,
                 boxShadow: `0 0 ${thumbnailPulse * 25}px rgba(90, 224, 255, ${thumbnailPulse * 0.6})`,
@@ -500,15 +518,11 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
         <div className="roompage-player-controls-main">
           {isHost ? (
             <>
-              <button className="roompage-btn-icon" onClick={() => sendControlAction('SKIP_PREVIOUS')}>
-                <SkipBack size={28} />
-              </button>
+              <button className="roompage-btn-icon" onClick={() => sendControlAction('SKIP_PREVIOUS')}><SkipBack size={28} /></button>
               <button className="roompage-btn-icon roompage-btn-play-main" onClick={() => sendControlAction(isPlaying ? 'PAUSE' : 'PLAY')}>
                 {isPlaying ? <Pause size={32} /> : <Play size={32} />}
               </button>
-              <button className="roompage-btn-icon" onClick={() => sendControlAction('SKIP_NEXT')}>
-                <SkipForward size={28} />
-              </button>
+              <button className="roompage-btn-icon" onClick={() => sendControlAction('SKIP_NEXT')}><SkipForward size={28} /></button>
             </>
           ) : (
             <>
