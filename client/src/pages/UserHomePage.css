@@ -1,0 +1,578 @@
+/* =============================================== */
+/* THEME RIÊNG USER PAGE */
+/* =============================================== */
+.user-theme {
+    --bg-primary: #121212;
+    --bg-secondary: #1E1E1E;
+    --bg-tertiary: #2A2A2A;
+    --accent: #8A2BE2;
+    --accent-hover: #9945FF;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0A0A0;
+    --border-color: #333;
+
+    position: fixed;
+    inset: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    background-color: var(--background-color);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+
+    /* Cho phép scroll dọc, ẩn ngang */
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* lớp nền phủ toàn bộ màn hình */
+.user-theme::before {
+    content: "";
+    position: fixed;   /* luôn dính vào viewport */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    background-color: var(--bg-primary);
+    z-index: -1;       /* nằm dưới toàn bộ content */
+}
+
+/* Main */
+.user-theme .user-page-main-content {
+    flex: 1;
+}
+
+
+/* =============================================== */
+/* HEADER */
+/* =============================================== */
+.user-page-header {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-primary); /* Màu nền header giống body */
+}
+
+.user-page-header .header-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-logo {
+    font-size: 1.8rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: var(--accent);
+}
+
+.header-user-profile {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-profile-welcome {
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.user-profile-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    object-fit: cover;
+}
+
+.user-profile-logout-btn {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-profile-logout-btn:hover {
+    background-color: var(--accent);
+    color: var(--text-primary);
+}
+
+
+/* =============================================== */
+/* NỘI DUNG CHÍNH (MAIN CONTENT) */
+/* =============================================== */
+.user-page-main-content {
+    padding: 60px 0;
+}
+
+.user-page-main-content .main-content-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.main-action-bar {
+    text-align: center;
+    margin-bottom: 80px;
+}
+
+/* Nút Tạo phòng trong header */
+.create-room-button-header {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 25px;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    background-color: var(--accent);
+    color: var(--text-primary);
+    margin-left: 500px; /* đẩy sang trái 1 chút so với auto */
+}
+
+.create-room-button-header:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(138, 43, 226, 0.3);
+}
+
+.create-room-icon {
+    width: 18px;
+    height: 18px;
+}
+
+
+
+/* =============================================== */
+/* DANH SÁCH PHÒNG (ROOM LIST) */
+/* =============================================== */
+.user-room-list-section {
+    width: 100%;
+}
+
+.room-list-title {
+    font-family: 'Poppins', 'Helvetica Neue', sans-serif; /* font hiện đại, dễ đọc */
+    font-size: 2.5rem;
+    font-weight: 700;           /* giảm nhẹ độ đậm để dễ nhìn hơn */
+    margin-bottom: 40px;
+    letter-spacing: 0.5px;      /* nhẹ nhàng, thoáng mắt */
+    color: #fff;                /* màu trắng */
+    text-transform: none;       /* giữ chữ thường, dễ đọc */
+    line-height: 1.2;           /* khoảng cách dòng hợp lý */
+}
+
+.room-grid-container {
+    display: grid;
+    /* Tạo các cột có chiều rộng tối thiểu 300px, tự động lấp đầy không gian */
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+/* LƯU Ý: Đây là CSS cho component RoomCard mà bạn sẽ tạo sau này.
+  Khi bạn render các card phòng từ database, chúng sẽ tự động có style này.
+*/
+.room-card {
+  background-color: var(--bg-secondary);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  height: 420px; /* cao hơn, dạng dọc */
+  cursor: pointer;
+}
+
+.room-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+  border-color: var(--accent);
+}
+
+/* Ảnh bìa dài hơn */
+.room-card-image {
+  width: 100%;
+  height: 280px; /* giống TikTok, chiếm nhiều diện tích */
+  object-fit: cover;
+  background-color: var(--bg-tertiary);
+  display: block;
+}
+
+/* Nội dung */
+.room-card-content {
+  flex: 1;
+  padding: 15px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.room-card-content h3 {
+  font-size: 1.2rem;
+  margin: 0 0 8px 0;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-card-content p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0 0 15px 0;
+  line-height: 1.4;
+  max-height: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+
+/* =============================================== */
+/* MODAL TẠO PHÒNG */
+/* =============================================== */
+.create-room-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.create-room-modal-content {
+    background-color: var(--bg-secondary);
+    padding: 40px;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 650px;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-close-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: var(--bg-tertiary);
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.modal-close-button:hover {
+    color: var(--text-primary);
+    background-color: var(--accent);
+}
+
+.modal-title {
+    font-family: 'Poppins', 'Helvetica Neue', sans-serif; /* font hiện đại */
+    font-size: 1.8rem;           /* nhỏ gọn hơn */
+    margin: 0 0 20px 0;          /* margin ngắn hơn */
+    font-weight: 600;            /* vừa phải, dễ đọc */
+    color: #fff;                 /* màu trắng */
+    letter-spacing: 0.4px;       /* khoảng cách chữ nhẹ */
+    line-height: 1.2;            /* khoảng cách dòng gọn */
+}
+
+
+.create-room-form {
+    /* CSS cho form bên trong modal sẽ ở đây */
+    color: var(--text-secondary);
+}
+/* ================================== */
+/* == CSS CHO MODAL TẠO PHÒNG == */
+/* ================================== */
+
+/* Lớp phủ toàn màn hình */
+.create-room-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Nội dung của modal */
+.create-room-modal-content {
+    background-color: #181818; /* var(--bg-secondary) */
+    padding: 40px;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 650px;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border: 1px solid #282828; /* var(--border-color) */
+}
+
+@keyframes slideUp {
+    from { transform: scale(0.95) translateY(20px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Nút đóng modal */
+.modal-close-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #282828; /* var(--bg-tertiary) */
+    border: none;
+    color: #b3b3b3; /* var(--text-secondary) */
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+.modal-close-button:hover {
+    color: #ffffff; /* var(--text-primary) */
+    background-color: #8a2be2; /* var(--accent) */
+    transform: rotate(90deg);
+}
+
+/* Tiêu đề modal */
+.modal-title {
+    font-size: 2.2rem;
+    margin-bottom: 30px;
+    font-weight: 900;
+    color: #ffffff; /* var(--text-primary) */
+}
+
+/* Nhóm các thành phần form */
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 500;
+    font-size: 1rem;
+    color: #b3b3b3; /* var(--text-secondary) */
+}
+
+/* Input, textarea chung */
+.form-control {
+    width: 100%;
+    padding: 15px;
+    background-color: #282828; /* var(--bg-tertiary) */
+    border: 1px solid #383838; /* var(--border-color) */
+    border-radius: 10px;
+    color: #ffffff; /* var(--text-primary) */
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #8a2be2; /* var(--accent) */
+    box-shadow: 0 0 10px rgba(138, 43, 226, 0.5);
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 120px;
+}
+
+/* Khu vực upload ảnh */
+.upload-area {
+    border: 2px dashed #383838; /* var(--border-color) */
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    background-color: #282828; /* var(--bg-tertiary) */
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-area:hover {
+    border-color: #8a2be2; /* var(--accent) */
+    background-color: #252525;
+}
+
+.upload-area svg { /* target react-feather icon */
+    margin-bottom: 15px;
+}
+
+.upload-area p {
+    color: #ffffff; /* var(--text-primary) */
+    font-weight: 500;
+    margin: 0;
+}
+
+.upload-area span {
+    color: #b3b3b3; /* var(--text-secondary) */
+    font-size: 0.9rem;
+}
+
+/* Các lựa chọn quyền riêng tư */
+.privacy-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.privacy-option {
+    display: block;
+    background: #282828; /* var(--bg-tertiary) */
+    padding: 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 2px solid #383838; /* var(--border-color) */
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.privacy-option:hover {
+    transform: translateY(-2px);
+}
+
+.privacy-option input {
+    display: none;
+}
+
+.privacy-option:has(input:checked) {
+    border-color: #8a2be2; /* var(--accent) */
+    box-shadow: 0 0 15px rgba(138, 43, 226, 0.4);
+}
+
+.privacy-option strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+    color: #ffffff; /* var(--text-primary) */
+}
+
+.privacy-option span {
+    color: #b3b3b3; /* var(--text-secondary) */
+    font-size: 0.9rem;
+}
+
+/* Nút submit cuối form */
+.btn-submit-room {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: #8a2be2; /* var(--accent) */
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.btn-submit-room:hover {
+    background-color: #9932cc; /* darker accent */
+    transform: translateY(-2px);
+}
+/* Thêm vào file client/src/pages/UserHomePage.css */
+
+.room-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 25px;
+}
+/* ================================== */
+/* == CSS MỚI CHO NÚT "XEM THÊM" == */
+/* ================================== */
+
+/* Container để căn giữa nút */
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    padding: 20px 0;
+    margin-top: 20px; 
+}
+
+/* Kiểu dáng chi tiết của nút */
+.load-more-button {
+    /* Màu sắc & Nền */
+    background-color: transparent; /* Nền trong suốt */
+    color: #b3b3b3; /* Màu chữ xám nhạt, đồng bộ với text phụ */
+    border: 2px solid #383838; /* Viền tối tinh tế */
+
+    /* Hình dáng & Kích thước */
+    padding: 12px 35px;
+    border-radius: 50px; /* Bo tròn thành hình viên thuốc */
+    
+    /* Chữ viết */
+    font-size: 1rem;
+    font-weight: 700; /* In đậm */
+    text-transform: uppercase; /* In hoa */
+    letter-spacing: 1px; /* Tăng khoảng cách chữ */
+    
+    /* Tương tác */
+    cursor: pointer;
+    outline: none;
+
+    /* Hiệu ứng chuyển động */
+    transition: all 0.3s ease;
+}
+
+/* Hiệu ứng khi di chuột vào */
+.load-more-button:hover {
+    background-color: #8a2be2; /* Màu nhấn của dự án */
+    color: #ffffff; /* Chữ trắng nổi bật */
+    border-color: #8a2be2; /* Viền cùng màu nền */
+    transform: translateY(-3px); /* Hiệu ứng nhấc lên một chút */
+    box-shadow: 0 5px 20px rgba(138, 43, 226, 0.35); /* Đổ bóng màu tím mờ */
+}
+
+/* Hiệu ứng khi nhấn nút */
+.load-more-button:active {
+    transform: translateY(-1px); /* Hiệu ứng nhấn xuống */
+    box-shadow: 0 2px 10px rgba(138, 43, 226, 0.3);
+}

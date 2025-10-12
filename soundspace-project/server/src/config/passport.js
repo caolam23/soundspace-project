@@ -8,33 +8,47 @@ passport.use(new GoogleStrategy({
   callbackURL: `${process.env.SERVER_URL || 'http://localhost:8800'}/api/auth/google/callback`
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    // email có thể nằm ở profile.emails
     const email = profile.emails && profile.emails[0] && profile.emails[0].value;
+
+    // tìm theo googleId trước
     let user = await User.findOne({ googleId: profile.id });
-    if (!user && email) {
-      // nếu user đã tồn tại bằng email (đăng ký bằng form), thì gắn googleId
-      user = await User.findOne({ email });
-      if (user) {
+
+    // nếu chưa có, thử tìm bằng email
+    // Sửa thành
+    if (user) {
         user.googleId = profile.id;
+        const googleAvatar = profile.photos[0]?.value;
+        // Luôn ưu tiên avatar Google nếu có, hoặc nếu avatar hiện tại là avatar mặc định
+        if (googleAvatar && (user.avatar === '/default-avatar.png' || !user.avatar)) {
+            user.avatar = googleAvatar;
+        }
         await user.save();
-      }
     }
+    // nếu vẫn chưa có user thì tạo mới
     if (!user) {
       user = await User.create({
         googleId: profile.id,
         username: profile.displayName,
-        email
+        email,
+        avatar: profile.photos[0]?.value || '/default-avatar.png'
       });
     }
+
     return done(null, user);
   } catch (err) {
     return done(err, null);
   }
 }));
 
-// serialize / deserialize không dùng session (session: false) nhưng vẫn safe
+// serialize / deserialize (mặc dù mình xài JWT, nhưng cứ để cho chắc)
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
-  const user = await User.findById(id);
-  done(null, user);
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err, null);
+  }
 });
+
+module.exports = passport;

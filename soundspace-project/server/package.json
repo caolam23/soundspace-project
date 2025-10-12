@@ -4,24 +4,38 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "dev": "nodemon src/server.js",
-  "start": "node src/server.js",
-  "seed:admin": "node ./seeders/seedAdmin.js"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "seed:admin": "node ./seeders/seedAdmin.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
+    "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
+    "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
+    "get-audio-duration": "^4.0.1",
     "jsonwebtoken": "^9.0.2",
+    "lru-cache": "^11.2.2",
     "mongoose": "^8.18.2",
+    "multer": "^2.0.2",
+    "multer-storage-cloudinary": "^4.0.0",
+    "nanoid": "^3.3.11",
+    "nodemailer": "^7.0.6",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "socket.io": "^4.8.1"
+    "react-player": "^3.3.3",
+    "socket.io": "^4.8.1",
+    "soundcloud-scraper": "^5.0.3",
+    "youtube-dl-exec": "^3.0.25",
+    "yt-dlp-exec": "^1.0.2",
+    "ytdl-core": "^4.11.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
