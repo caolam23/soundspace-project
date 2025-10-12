@@ -2,6 +2,9 @@
 import React, { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { X, Lock } from 'react-feather';
+import { toast } from 'react-toastify';
+import { toastConfig } from '../services/toastConfig';
 import "./RoomCard.css";
 import { AuthContext } from "../contexts/AuthContext";
 import socket from "../services/socket";
@@ -14,12 +17,16 @@ function RoomCard({ room }) {
   const [resultMessage, setResultMessage] = useState("");
   const [acceptedBox, setAcceptedBox] = useState(false);
   const [acceptedRoomIdNav, setAcceptedRoomIdNav] = useState(null);
+  
+  // State cho modal nhập mã phòng
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
+  const [roomCode, setRoomCode] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
 
-  // ✅ FIXED - Thêm state để navigate
   const handleJoinRoom = async () => {
     const token = localStorage.getItem("token");
     if (!user || !token) {
-      alert("Vui lòng đăng nhập để tham gia!");
+      toast.error("Vui lòng đăng nhập để tham gia!", toastConfig);
       return;
     }
 
@@ -30,24 +37,13 @@ function RoomCard({ room }) {
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        // ✅ THÊM STATE
         navigate(`/room/${room._id}`, { 
           state: { fromJoin: true },
           replace: true 
         });
       } else if (room.privacy === "private") {
-        const roomCode = prompt("Nhập mã phòng:");
-        if (!roomCode) return;
-        await axios.post(
-          `http://localhost:8800/api/rooms/${room._id}/join`,
-          { roomCode },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        // ✅ THÊM STATE
-        navigate(`/room/${room._id}`, { 
-          state: { fromJoin: true },
-          replace: true 
-        });
+        // Mở modal nhập mã phòng thay vì dùng prompt
+        setIsCodeModalOpen(true);
       } else if (room.privacy === "manual") {
         socket.emit("request-to-join", {
           roomId: room._id,
@@ -63,7 +59,59 @@ function RoomCard({ room }) {
       }
     } catch (err) {
       console.error("Lỗi khi tham gia phòng:", err);
-      alert(err.response?.data?.msg || "Không thể tham gia phòng. Vui lòng thử lại.");
+      toast.error(err.response?.data?.msg || "Không thể tham gia phòng. Vui lòng thử lại.", toastConfig);
+    }
+  };
+
+  const handleCloseCodeModal = () => {
+    setIsCodeModalOpen(false);
+    setRoomCode('');
+  };
+
+  const handleInputChange = (e) => {
+    const value = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
+    if (value.length <= 6) {
+      setRoomCode(value);
+    }
+  };
+
+  const handleSubmitCode = async (e) => {
+    e.preventDefault();
+    
+    if (!roomCode || roomCode.length !== 6) {
+      toast.error('Vui lòng nhập đúng 6 ký tự mã phòng!', toastConfig);
+      return;
+    }
+
+    setIsJoining(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      await axios.post(
+        `http://localhost:8800/api/rooms/${room._id}/join`,
+        { roomCode },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success('Đang vào phòng...', {
+        ...toastConfig,
+        icon: '🎉',
+      });
+
+      handleCloseCodeModal();
+      
+      navigate(`/room/${room._id}`, { 
+        state: { fromJoin: true },
+        replace: true 
+      });
+
+    } catch (err) {
+      console.error('Lỗi khi tham gia phòng:', err);
+      const errorMsg = err.response?.data?.msg || 'Mã phòng không đúng. Vui lòng thử lại.';
+      toast.error(errorMsg, toastConfig);
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -125,7 +173,6 @@ function RoomCard({ room }) {
                 onClick={() => {
                   setAcceptedBox(false);
                   if (acceptedRoomIdNav) {
-                    // ✅ THÊM STATE
                     navigate(`/room/${acceptedRoomIdNav}`, { 
                       state: { fromApproval: true },
                       replace: true 
@@ -135,6 +182,67 @@ function RoomCard({ room }) {
               >
                 Vào phòng
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal nhập mã phòng */}
+      {isCodeModalOpen && (
+        <div className="ThamGiaPhong-modal-overlay" onClick={handleCloseCodeModal}>
+          <div className="ThamGiaPhong-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button onClick={handleCloseCodeModal} className="ThamGiaPhong-modal-close">
+              <X size={24} />
+            </button>
+
+            <div className="ThamGiaPhong-modal-header">
+              <div className="ThamGiaPhong-lock-icon">
+                <Lock size={40} />
+              </div>
+              <h2 className="ThamGiaPhong-modal-title">Phòng: {room.name}</h2>
+              <p className="ThamGiaPhong-modal-subtitle">
+                Nhập mã 6 ký tự để vào phòng
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmitCode} className="ThamGiaPhong-form">
+              <div className="ThamGiaPhong-input-group">
+                <input
+                  type="text"
+                  value={roomCode}
+                  onChange={handleInputChange}
+                  placeholder="VD: ABC123"
+                  className="ThamGiaPhong-input"
+                  maxLength={6}
+                  autoFocus
+                  disabled={isJoining}
+                />
+                <div className="ThamGiaPhong-input-hint">
+                  {roomCode.length}/6 ký tự
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                className="ThamGiaPhong-submit-btn"
+                disabled={isJoining || roomCode.length !== 6}
+              >
+                {isJoining ? (
+                  <>
+                    <div className="ThamGiaPhong-spinner" />
+                    <span>Đang tham gia...</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock size={18} />
+                    <span>Tham gia ngay</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="ThamGiaPhong-modal-footer">
+              <p>Mã phòng được cung cấp bởi chủ phòng</p>
             </div>
           </div>
         </div>

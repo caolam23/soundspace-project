@@ -366,7 +366,6 @@
     letter-spacing: 2px;
 }
 
-/* Ảnh nền mờ đằng sau */
 .roompage-blur-bg { 
     position: absolute;
     top: 0;
@@ -375,16 +374,16 @@
     height: 100%;
     background-size: cover;
     background-position: center;
-    
-    /* Làm mờ vừa phải thôi để còn thấy màu */
-    filter: blur(40px) brightness(0.8) contrast(1.2) saturate(1.3);
 
-    /* Tăng độ đậm bằng overlay tối */
-    background-color: rgba(0, 0, 0, 0.35);
+    /* Mờ rõ ràng hơn nhiều */
+    filter: blur(12px) brightness(0.9) contrast(1.1) saturate(1.1);
+
+    /* Overlay dày hơn chút để tăng chiều sâu */
+    background-color: rgba(0, 0, 0, 0.25);
     background-blend-mode: darken;
 
-    transform: scale(1.05);
-    opacity: 0.9;
+    transform: scale(1.02);
+    opacity: 0.96;
     transition: background-image 0.5s ease-in-out, filter 0.3s ease-in-out;
 }
 

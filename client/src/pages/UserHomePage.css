@@ -126,39 +126,51 @@
     text-align: center;
     margin-bottom: 80px;
 }
+/* Cập nhật nút Tạo phòng để loại bỏ margin-left cũ */
+/* Bạn có thể định nghĩa màu tím chính ở đây để dễ dàng thay đổi */
+:root {
+  --accent-purple: #a855f7; /* Một màu tím đẹp mắt */
+  --accent-purple-glow: rgba(168, 85, 247, 0.6); /* Màu cho hiệu ứng phát sáng */
+  --text-on-accent: #ffffff; /* Màu chữ khi hover, thường là màu trắng */
+}
 
-/* Nút Tạo phòng trong header */
 .create-room-button-header {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border-radius: 25px;
-    border: none;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    background-color: var(--accent);
-    color: var(--text-primary);
-    margin-left: 500px; /* đẩy sang trái 1 chút so với auto */
+  /* Giữ nguyên các thuộc tính sắp xếp icon và chữ */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  /* Điều chỉnh kích thước và hình dáng */
+  padding: 10px 22px; /* Tăng padding để nút trông lớn hơn một chút */
+  border-radius: 50px;  /* Giá trị lớn để đảm bảo nút luôn có dạng viên thuốc */
+  
+  /* Điều chỉnh font chữ */
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+
+  /* === CÁC THAY ĐỔI QUAN TRỌNG NHẤT === */
+  background-color: transparent; /* 1. Nền trong suốt */
+  color: var(--accent-purple);      /* 2. Chữ và icon có màu tím */
+  border: 2px solid var(--accent-purple); /* 3. Viền dày 2px màu tím */
+
+  /* Hiệu ứng và tương tác */
+  cursor: pointer;
+  transition: all 0.3s ease; /* Hiệu ứng chuyển động mượt mà hơn */
 }
 
 .create-room-button-header:hover {
-    background-color: var(--accent-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(138, 43, 226, 0.3);
+  /* === HIỆU ỨNG KHI DI CHUỘT VÀO === */
+  background-color: var(--accent-purple); /* 1. Nền được lấp đầy bằng màu tím */
+  color: var(--text-on-accent); /* 2. Chữ và icon đổi thành màu trắng */
+  box-shadow: 0 0 15px var(--accent-purple-glow); /* 3. Thêm hiệu ứng phát sáng */
+  transform: translateY(-2px); /* Giữ lại hiệu ứng nhấc nút lên một chút */
 }
-
 .create-room-icon {
     width: 18px;
     height: 18px;
 }
-
-
-
 /* =============================================== */
 /* DANH SÁCH PHÒNG (ROOM LIST) */
 /* =============================================== */
@@ -575,4 +587,14 @@ textarea.form-control {
 .load-more-button:active {
     transform: translateY(-1px); /* Hiệu ứng nhấn xuống */
     box-shadow: 0 2px 10px rgba(138, 43, 226, 0.3);
+}
+/* =============================================== */
+/* HEADER ACTION BUTTONS GROUP */
+/* =============================================== */
+.header-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-left: auto;
+  margin-right: 20px; 
 }
