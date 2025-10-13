@@ -178,6 +178,66 @@ io.on('connection', (socket) => {
     }
   });
 
+  // --- Chat: receive message from client, persist, and broadcast ---
+  socket.on('send-chat-message', async ({ roomId, text, meta }) => {
+    try {
+      if (!text || !text.trim()) return;
+      const room = await Room.findById(roomId);
+      if (!room) return;
+
+      // Build message object
+      const message = {
+        userId: socket.userId || null,
+        username: socket.userId ? undefined : 'Anonymous',
+        avatar: undefined,
+        text: text.trim(),
+        meta: meta || {},
+      };
+
+      // If socket has a userId, try to fetch minimal user info
+      if (socket.userId) {
+        try {
+          const user = await User.findById(socket.userId).select('username avatar');
+          if (user) {
+            message.userId = user._id;
+            message.username = user.username || 'User';
+            message.avatar = user.avatar || '/default-avatar.png';
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // Push to room.chat and increment stats
+      room.chat = room.chat || [];
+      room.chat.push(message);
+      room.statistics = room.statistics || { totalMessages: 0 };
+      room.statistics.totalMessages = (room.statistics.totalMessages || 0) + 1;
+      await room.save();
+
+      // Use the last pushed message (with createdAt & _id)
+      const savedMsg = room.chat[room.chat.length - 1];
+
+      // Ensure we broadcast to the canonical string room id
+      const roomIdStr = room._id ? String(room._id) : String(roomId);
+      console.log(`[CHAT] Broadcasting message ${savedMsg._id} to room ${roomIdStr}`);
+
+      // Broadcast to all clients in the room
+      io.to(roomIdStr).emit('new-chat-message', {
+        id: savedMsg._id,
+        userId: savedMsg.userId,
+        username: savedMsg.username,
+        avatar: savedMsg.avatar,
+        text: savedMsg.text,
+        meta: savedMsg.meta,
+        createdAt: savedMsg.createdAt,
+      });
+
+    } catch (err) {
+      console.error('[CHAT] send-chat-message error:', err);
+    }
+  });
+
   // --- Request to join ---
   socket.on('request-to-join', async ({ roomId, requester }) => {
     try {
