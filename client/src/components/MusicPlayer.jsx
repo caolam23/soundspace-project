@@ -5,7 +5,7 @@ import { Upload, Link as LinkIcon, Play, Pause, SkipBack, SkipForward } from 're
 import 'react-toastify/dist/ReactToastify.css';
 import './MusicPlayer.css';
 import { toastConfig } from '../services/toastConfig';
-import UploadModal from './UploadModal'; // <-- ĐÃ IMPORT MODAL
+import UploadModal from './UploadModal';
 import TrackOptions from './TrackOptions';
 
 // ====================================================================
@@ -47,10 +47,11 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
   const [playerUrl, setPlayerUrl] = useState(null);
   const [progress, setProgress] = useState({ playedSeconds: 0, duration: 0 });
   const [initialSeekTime, setInitialSeekTime] = useState(null);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false); // <-- ĐÃ THÊM STATE CHO MODAL
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // --- HIỆU ỨNG NHỊP ĐẬP THUMBNAIL ---
-  const [thumbnailPulse, setThumbnailPulse] = useState(0);
+  // --- STATE & REF CHO HIỆU ỨNG NHỊP ĐẬP ---
+  const [thumbnailPulse, setThumbnailPulse] = useState(0); // For smooth pulsing
+  const [isBeat, setIsBeat] = useState(false); // Triggers the sharp beat animation
 
   // --- REFs ---
   const playerRef = useRef(null);
@@ -59,29 +60,74 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
   const analyserRef = useRef(null);
   const sourceNodeRef = useRef(null);
   const animationFrameIdRef = useRef(null);
+  const energyHistoryRef = useRef(new Array(128).fill(0)); // Stores energy history for beat detection
+  const beatTimeoutRef = useRef(null); // Manages the timeout for the beat CSS class
 
   // ====================================================================
-  // ✅ HÀM VISUALIZE ÂM THANH
+  // ✅ HÀM VISUALIZE ÂM THANH (PHIÊN BẢN BEAT DETECTION)
   // ====================================================================
   const visualizeAudio = () => {
     if (!analyserRef.current || !audioContextRef.current) return;
-    
+
     const analyser = analyserRef.current;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+    
+    // Constants for the algorithm
+    const BEAT_MIN_THRESHOLD = 0.15; // Minimum energy to be considered a beat
+    const BEAT_DECAY_RATE = 0.97; // Decay rate for the smooth pulse effect
+    const ENERGY_HISTORY_LENGTH = 128; // Number of energy samples for averaging
+
+    // Initialize/Reset energy history
+    energyHistoryRef.current = new Array(ENERGY_HISTORY_LENGTH).fill(0);
+    
+    let lastPulse = 0; // Temporary variable for smooth pulsing
 
     const animate = () => {
-      animationFrameIdRef.current = requestAnimationFrame(animate);
-      analyser.getByteFrequencyData(dataArray);
+        animationFrameIdRef.current = requestAnimationFrame(animate);
+        analyser.getByteFrequencyData(dataArray);
 
-      let sum = 0;
-      for (let i = 0; i < bufferLength / 3; i++) {
-        sum += dataArray[i];
-      }
-      const average = sum / (bufferLength / 3);
-      const pulseStrength = Math.min(1, Math.max(0, (average - 40) / 120));
-      setThumbnailPulse(pulseStrength);
+        // --- CALCULATE CURRENT ENERGY ---
+        // Focus on bass and mid-bass frequencies (where beats usually are)
+        let currentEnergy = 0;
+        for (let i = 0; i < bufferLength / 2; i++) {
+            currentEnergy += dataArray[i];
+        }
+        currentEnergy /= (bufferLength / 2) * 255; // Normalize to a range of [0, 1]
+
+        // --- CALCULATE AVERAGE HISTORICAL ENERGY ---
+        let averageEnergy = 0;
+        for (const energy of energyHistoryRef.current) {
+            averageEnergy += energy;
+        }
+        averageEnergy /= ENERGY_HISTORY_LENGTH;
+
+        // --- BEAT DETECTION ALGORITHM ---
+        // A "beat" occurs when the current energy is significantly higher than the average
+        const beatThreshold = averageEnergy * 1.2; // Adjustable threshold (e.g., 1.1 -> 1.5)
+        if (currentEnergy > beatThreshold && currentEnergy > BEAT_MIN_THRESHOLD) {
+            // Beat detected!
+            setIsBeat(true);
+            lastPulse = 1.0; // Reset the pulse strength
+
+            // Use a timeout to remove the CSS class after a short duration
+            clearTimeout(beatTimeoutRef.current);
+            beatTimeoutRef.current = setTimeout(() => {
+                setIsBeat(false);
+            }, 150); // Duration of the beat effect (ms)
+        }
+        
+        // Update energy history
+        energyHistoryRef.current.push(currentEnergy);
+        if (energyHistoryRef.current.length > ENERGY_HISTORY_LENGTH) {
+            energyHistoryRef.current.shift();
+        }
+        
+        // Update state for the smooth pulsing effect
+        lastPulse *= BEAT_DECAY_RATE;
+        setThumbnailPulse(lastPulse);
     };
+    
     animate();
   };
 
@@ -140,12 +186,9 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
       return;
     }
     
-    // ✅ LOGIC ĐÃ ĐƯỢC CẬP NHẬT
     if (currentTrack.source === 'upload') {
-      // Nếu là bài hát upload, dùng trực tiếp URL từ Cloudinary
       setPlayerUrl(currentTrack.url);
     } else if (currentTrack.sourceId) {
-      // Nếu từ YouTube/SoundCloud, dùng route stream như cũ
       const streamUrl = `http://localhost:8800/api/stream/${currentTrack.sourceId}`;
       setPlayerUrl(streamUrl);
     } else {
@@ -252,7 +295,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
 
   // ====================================================================
   // HÀM XỬ LÝ THÊM NHẠC TỪ LINK
-  // ====================================================================   
+  // ====================================================================
   const handleAddFromLink = async (e) => {
     e.preventDefault();
     if (!link.trim()) return;
@@ -284,18 +327,17 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
     }
   };
 
-  // ===> 2. THÊM HÀM XỬ LÝ XÓA <===
+  // ====================================================================
+  // HÀM XỬ LÝ XÓA BÀI HÁT
+  // ====================================================================
   const handleDeleteTrack = async (trackId) => {
-    // Chỉ host mới có thể xóa
     if (!isHost) return;
-
     try {
       const token = localStorage.getItem("token");
       await axios.delete(
         `http://localhost:8800/api/rooms/${roomId}/playlist/${trackId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // Không cần cập nhật state ở đây, socket sẽ làm điều đó
       toast.success("Đã xóa bài hát khỏi danh sách!", toastConfig);
     } catch (err) {
       console.error("Lỗi khi xóa bài hát:", err);
@@ -444,15 +486,11 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
           <ul className="roompage-queue-list">
             {playlist.length === 0 && <li className="empty-queue">Danh sách phát trống</li>}
             
-            {/* ====================================================== */}
-            {/* 💅 PHẦN GIAO DIỆN ĐÃ ĐƯỢC CẬP NHẬT HOÀN CHỈNH          */}
-            {/* ====================================================== */}
             {playlist.map((track, index) => (
               <li
                 key={track._id || track.sourceId || index}
                 className={`roompage-queue-item ${index === currentTrackIndex ? "roompage-now-playing" : ""}`}
               >
-                {/* Bọc phần thông tin bài hát và thumbnail vào một div riêng để xử lý click */}
                 <div 
                   className="track-info-wrapper"
                   onClick={() => handleSelectTrack(index)}
@@ -467,7 +505,6 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
                   </div>
                 </div>
 
-                {/* Nút 3 chấm chỉ hiện cho Host */}
                 {isHost && (
                   <TrackOptions 
                     onDelete={() => handleDeleteTrack(track._id)} 
@@ -479,7 +516,6 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
         </div>
       </aside>
 
-      {/* Phần main content bên phải giữ nguyên */}
       <section className="music-player-main-content">
         {currentTrack?.thumbnail && ( <div className="roompage-blur-bg" style={{ backgroundImage: `url(${currentTrack.thumbnail})` }}></div> )}
         <div className="roompage-song-info-main">
@@ -498,23 +534,30 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
           <span>{formatTime(progress.playedSeconds)}</span>
           <span>{formatTime(progress.duration)}</span>
         </div>
+
         <div className="roompage-thumbnail-center">
           {currentTrack?.thumbnail ? (
-            <img src={currentTrack.thumbnail} alt={currentTrack.title} className="roompage-thumbnail-img" onError={(e) => e.target.style.display = 'none'}
+            <img 
+              src={currentTrack.thumbnail} 
+              alt={currentTrack.title} 
+              className={`roompage-thumbnail-img ${isBeat ? 'beat' : ''}`} 
+              onError={(e) => e.target.style.display = 'none'}
               style={{
-                transform: `scale(${1 + thumbnailPulse * 0.07})`,
+                transform: `scale(${1 + thumbnailPulse * 0.05})`,
                 boxShadow: `0 0 ${thumbnailPulse * 25}px rgba(255, 255, 255, ${thumbnailPulse * 0.6})`,
               }}
             />
           ) : (
-            <div className="roompage-thumbnail-placeholder"
+            <div 
+              className={`roompage-thumbnail-placeholder ${isBeat ? 'beat' : ''}`}
               style={{
-                transform: `scale(${1 + thumbnailPulse * 0.07})`,
+                transform: `scale(${1 + thumbnailPulse * 0.05})`,
                 boxShadow: `0 0 ${thumbnailPulse * 25}px rgba(90, 224, 255, ${thumbnailPulse * 0.6})`,
               }}
             >🎵</div>
           )}
         </div>
+
         <div className="roompage-player-controls-main">
           {isHost ? (
             <>

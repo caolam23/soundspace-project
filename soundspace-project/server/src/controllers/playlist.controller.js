@@ -60,11 +60,17 @@ exports.addTrack = async (req, res) => {
 
     room.playlist.push(newTrack);
 
-    // Nếu playlist đang trống, bắt đầu phát ngay
+    // 🆕 Nếu playlist đang trống, bắt đầu phát ngay VÀ chuyển sang "live"
     if (room.playlist.length === 1 && !room.isPlaying) {
       room.currentTrackIndex = 0;
       room.isPlaying = true;
       room.playbackStartTime = new Date();
+      
+      // ✅ Chuyển status sang "live" nếu đang ở "waiting"
+      if (room.status === "waiting") {
+        room.status = "live";
+        room.startedAt = new Date();
+      }
     }
 
     await room.save();
@@ -133,10 +139,31 @@ exports.addTrackByUpload = async (req, res) => {
     };
 
     room.playlist.push(newTrack);
+    
+    // 🆕 Nếu đây là bài đầu tiên, tự động phát và chuyển sang "live"
+    if (room.playlist.length === 1 && !room.isPlaying) {
+      room.currentTrackIndex = 0;
+      room.isPlaying = true;
+      room.playbackStartTime = new Date();
+      
+      // ✅ Chuyển status sang "live" nếu đang ở "waiting"
+      if (room.status === "waiting") {
+        room.status = "live";
+        room.startedAt = new Date();
+      }
+    }
+    
     await room.save();
 
     const io = req.app.get("io");
-    if (io) io.to(roomId).emit("playlist-updated", room.playlist);
+    if (io) {
+      io.to(roomId).emit("playback-state-changed", {
+        playlist: room.playlist,
+        currentTrackIndex: room.currentTrackIndex,
+        isPlaying: room.isPlaying,
+        playbackStartTime: room.playbackStartTime,
+      });
+    }
 
     return res.status(201).json({ msg: "Tải lên thành công!", playlist: room.playlist });
   } catch (err) {

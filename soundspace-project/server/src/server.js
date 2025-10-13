@@ -339,7 +339,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- Music Control Events ---
+// --- Music Control Events ---
   socket.on('music-control', async ({ roomId, action }) => {
       try {
           // 1️⃣ Kiểm tra và lấy thông tin phòng
@@ -376,6 +376,13 @@ io.on('connection', (socket) => {
                       currentTrackIndex: trackIndexToPlay,
                       playbackStartTime: new Date()
                   };
+                  
+                  // 🆕 Chuyển sang "live" nếu đang ở "waiting"
+                  if (room.status === "waiting") {
+                      updatedState.status = "live";
+                      updatedState.startedAt = new Date();
+                  }
+                  
                   break;
               }
 
@@ -394,19 +401,32 @@ io.on('connection', (socket) => {
                       isPlaying: true,
                       playbackStartTime: new Date()
                   };
+                  
+                  // 🆕 Chuyển sang "live" nếu đang ở "waiting"
+                  if (room.status === "waiting") {
+                      updatedState.status = "live";
+                      updatedState.startedAt = new Date();
+                  }
+                  
                   break;
               }
 
               // ⏮️ LÙI VỀ BÀI TRƯỚC
               case 'SKIP_PREVIOUS': {
                   if (!room.playlist.length) return;
-                  // Nếu đang ở bài đầu, lùi về bài cuối
                   const prevIndex = (room.currentTrackIndex - 1 + room.playlist.length) % room.playlist.length;
                   updatedState = {
                       currentTrackIndex: prevIndex,
                       isPlaying: true,
                       playbackStartTime: new Date()
                   };
+                  
+                  // 🆕 Chuyển sang "live" nếu đang ở "waiting"
+                  if (room.status === "waiting") {
+                      updatedState.status = "live";
+                      updatedState.startedAt = new Date();
+                  }
+                  
                   break;
               }
 
