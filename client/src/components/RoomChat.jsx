@@ -8,9 +8,10 @@ export default function RoomChat({ roomId, initialMessages = [], onNewMessage })
   const { user, socket } = useContext(AuthContext);
   const [messages, setMessages] = useState(initialMessages || []);
   const [text, setText] = useState('');
-  const [replyTo, setReplyTo] = useState(null); // { id, username, text }
+  const [replyTo, setReplyTo] = useState(null); // used only to store the original username when prefilling
   const listRef = useRef(null);
   const msgRefs = useRef({}); // map id -> dom node
+  const inputRef = useRef(null);
 
   useEffect(() => {
     setMessages(initialMessages || []);
@@ -69,10 +70,7 @@ export default function RoomChat({ roomId, initialMessages = [], onNewMessage })
     if (!text || !text.trim()) return;
     if (!socket) return;
 
-    const payload = { roomId, text: text.trim(), meta: {} };
-    if (replyTo && replyTo.id) {
-      payload.meta.replyTo = { id: replyTo.id, username: replyTo.username, text: replyTo.text };
-    }
+    const payload = { roomId, text: text.trim() };
     // Optimistic UI: push a local temp message
     const tempMsg = {
       id: `temp-${Date.now()}`,
@@ -98,14 +96,14 @@ export default function RoomChat({ roomId, initialMessages = [], onNewMessage })
         {messages.map((m) => {
           const msgId = String(m.id || m._id);
           return (
-          <div id={`msg-${msgId}`} key={msgId} ref={(el) => { if (el) msgRefs.current[msgId] = el; }} className={`roomchat-msg ${m.userId === (user?._id) ? 'is-me' : ''}`}>
+          <div id={`msg-${msgId}`} key={msgId} ref={(el) => { if (el) msgRefs.current[msgId] = el; }} className={`roomchat-msg`}>
             <img className="roomchat-avatar" src={m.avatar || '/default-avatar.png'} alt={m.username} />
             <div className="roomchat-body">
               <div className="roomchat-meta">
                 <span className="roomchat-username" title={m.username}>{m.username}</span>
                 <span className="roomchat-time">{new Date(m.createdAt).toLocaleTimeString()}</span>
               </div>
-              {/* reply snippet */}
+              {/* reply snippet: show as single-line "@originalUsername + replyer's text" */}
               {m.meta && m.meta.replyTo && (
                 <div className="roomchat-reply-snippet compact" onClick={() => {
                   // try to scroll to the original message if available
@@ -126,13 +124,21 @@ export default function RoomChat({ roomId, initialMessages = [], onNewMessage })
                     }
                   }
                 }}>
-                  <span className="roomchat-reply-compact" title={`${m.meta.replyTo.username}: ${m.meta.replyTo.text}`}>@{m.meta.replyTo.username} {m.meta.replyTo.text}</span>
+                  <span className="roomchat-reply-compact" title={`@${m.meta.replyTo.username} ${m.text}`}>@{m.meta.replyTo.username} {m.text}</span>
                 </div>
               )}
-              <div className="roomchat-text">{m.text}</div>
+              {!m.meta || !m.meta.replyTo ? (
+                <div className="roomchat-text">{m.text}</div>
+              ) : null}
             </div>
             <div className="roomchat-actions">
-              <button aria-label="reply" className="roomchat-action-btn" onClick={() => setReplyTo({ id: m.id || m._id, username: m.username, text: m.text, avatar: m.avatar || '/default-avatar.png' })}>Reply</button>
+              <button aria-label="reply" className="roomchat-action-btn" onClick={() => {
+                // Prefill the input with @username and focus
+                const at = `@${m.username} `;
+                setText(at);
+                setReplyTo({ id: m.id || m._id, username: m.username });
+                setTimeout(() => inputRef.current && inputRef.current.focus(), 40);
+              }}>Reply</button>
               <button aria-label="report" className="roomchat-action-btn"><Flag size={14} /></button>
             </div>
           </div>
@@ -142,12 +148,6 @@ export default function RoomChat({ roomId, initialMessages = [], onNewMessage })
 
         <form className="roomchat-input" onSubmit={sendMessage}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
-          {replyTo && (
-            <div className="roomchat-reply-preview compact-preview">
-              <span className="roomchat-reply-compact" title={`${replyTo.username}: ${replyTo.text}`}>@{replyTo.username} {replyTo.text}</span>
-              <button className="roomchat-reply-cancel" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button>
-            </div>
-          )}
 
           <input
           value={text}
@@ -160,6 +160,7 @@ export default function RoomChat({ roomId, initialMessages = [], onNewMessage })
           }}
           placeholder="Nhập tin nhắn..."
           aria-label="Nhập tin nhắn"
+          ref={inputRef}
         />
         <button type="submit" className="roomchat-send-btn" aria-label="Gửi">
           <Send size={16} />
