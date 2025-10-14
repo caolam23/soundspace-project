@@ -1,11 +1,20 @@
 import React, { useState, useEffect, useContext } from "react";
 import "./QuanLyPhong.css";
-import { Music, Eye, Trash2, X, Ban, CheckCircle } from "lucide-react";
+import { Music, Eye, Trash2, Ban, CheckCircle } from "lucide-react";
 import ChuyenTrang from "../../components/ChuyenTrang";
 import axios from "axios";
 import { AuthContext } from "../../contexts/AuthContext";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
+import ModalPhong from '../../components/ModalPhong';
+
+// Helper object để dịch status
+const statusMap = {
+  waiting: "Đang chờ",
+  live: "Hoạt động",
+  ended: "Đã kết thúc",
+  banned: "Bị cấm",
+};
 
 const QuanLyPhong = () => {
   const { socket } = useContext(AuthContext);
@@ -17,12 +26,12 @@ const QuanLyPhong = () => {
   // Filter & Search
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [inputValue, setInputValue] = useState(""); // State cho giá trị input trực tiếp
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [jumpPage, setJumpPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalRooms, setTotalRooms] = useState(0);
   const roomsPerPage = 5;
 
   // =============================================
@@ -53,7 +62,6 @@ const QuanLyPhong = () => {
       if (data.success) {
         setRooms(data.data);
         setTotalPages(data.pagination.totalPages);
-        setTotalRooms(data.pagination.totalRooms);
       }
     } catch (err) {
       console.error("❌ Lỗi fetch rooms:", err);
@@ -73,47 +81,17 @@ const QuanLyPhong = () => {
     }
 
     const setupListeners = () => {
-      // Khi có phòng mới được tạo
-      const handleRoomCreated = (newRoom) => {
-        fetchRooms();
-      };
-
-      // Khi phòng bị xóa
+      const handleRoomCreated = () => fetchRooms();
       const handleRoomDeleted = ({ roomId }) => {
         setRooms(prev => prev.filter(r => r.id !== roomId));
         toast.info("Một phòng vừa bị xóa");
       };
+      const handleRoomEnded = () => fetchRooms();
+      const handleRoomStatusChanged = () => fetchRooms();
 
-      // Khi phòng kết thúc
-      const handleRoomEnded = ({ roomId }) => {
-        fetchRooms();
-      };
-
-      // Khi số lượng members thay đổi
-      const handleUpdateMembers = (data) => {
-        // Optional: có thể fetchRooms() nếu muốn cập nhật số members
-      };
-
-      // Khi trạng thái phòng thay đổi (waiting → live)
-      const handleRoomStatusChanged = ({ roomId, status, startedAt }) => {
-        setRooms(prev => {
-          const updated = prev.map(room => {
-            if (room.id === roomId) {
-              const updatedRoom = { ...room, status };
-              if (startedAt) updatedRoom.startedAt = startedAt;
-              return updatedRoom;
-            }
-            return room;
-          });
-          return updated;
-        });
-      };
-
-      // Register all listeners
       socket.on("room-created", handleRoomCreated);
       socket.on("room-deleted", handleRoomDeleted);
       socket.on("room-ended-homepage", handleRoomEnded);
-      socket.on("update-members", handleUpdateMembers);
       socket.on("room-status-changed", handleRoomStatusChanged);
     };
 
@@ -123,12 +101,10 @@ const QuanLyPhong = () => {
       socket.once('connect', setupListeners);
     }
 
-    // Cleanup
     return () => {
       socket.off("room-created");
       socket.off("room-deleted");
       socket.off("room-ended-homepage");
-      socket.off("update-members");
       socket.off("room-status-changed");
       socket.off('connect', setupListeners);
     };
@@ -138,11 +114,15 @@ const QuanLyPhong = () => {
   // FETCH WHEN FILTERS CHANGE
   // =============================================
   useEffect(() => {
-    fetchRooms();
+    const delayDebounceFn = setTimeout(() => {
+        fetchRooms();
+    }, 300); // Thêm một chút delay để tránh gọi API liên tục khi filter
+
+    return () => clearTimeout(delayDebounceFn);
   }, [currentPage, statusFilter, searchTerm]);
 
   // =============================================
-  // XÓA PHÒNG
+  // DELETE ROOM
   // =============================================
   const deleteRoom = async (roomId, roomName) => {
     const result = await Swal.fire({
@@ -162,7 +142,6 @@ const QuanLyPhong = () => {
           `http://localhost:8800/api/admin/rooms/${roomId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-
         if (data.success) {
           toast.success("Xóa phòng thành công!");
           fetchRooms();
@@ -175,26 +154,22 @@ const QuanLyPhong = () => {
   };
 
   // =============================================
-  // CẤM/BỎ CẤM PHÒNG
+  // BAN/UNBAN ROOM
   // =============================================
   const toggleBanRoom = async (roomId, isBanned, roomName) => {
     const action = isBanned ? "bỏ cấm" : "cấm";
-
     let banReason = "";
+
     if (!isBanned) {
       const { value } = await Swal.fire({
         title: `Cấm phòng "${roomName}"`,
         input: 'textarea',
         inputLabel: 'Lý do cấm',
         inputPlaceholder: 'Nhập lý do cấm phòng...',
-        inputAttributes: {
-          'aria-label': 'Nhập lý do cấm phòng'
-        },
         showCancelButton: true,
         confirmButtonText: 'Cấm',
         cancelButtonText: 'Hủy'
       });
-
       if (!value) return;
       banReason = value;
     } else {
@@ -205,7 +180,6 @@ const QuanLyPhong = () => {
         confirmButtonText: "Bỏ cấm",
         cancelButtonText: "Hủy"
       });
-
       if (!result.isConfirmed) return;
     }
 
@@ -216,7 +190,6 @@ const QuanLyPhong = () => {
         { banReason },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       if (data.success) {
         toast.success(data.msg);
         fetchRooms();
@@ -226,9 +199,9 @@ const QuanLyPhong = () => {
       toast.error(err.response?.data?.msg || `Không thể ${action} phòng`);
     }
   };
-
+  
   // =============================================
-  // XEM CHI TIẾT PHÒNG
+  // VIEW ROOM DETAILS
   // =============================================
   const openRoomDetail = async (roomId) => {
     try {
@@ -237,10 +210,7 @@ const QuanLyPhong = () => {
         `http://localhost:8800/api/admin/rooms/${roomId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      if (data.success) {
-        setSelectedRoom(data.data);
-      }
+      if (data.success) setSelectedRoom(data.data);
     } catch (err) {
       console.error("❌ Lỗi lấy chi tiết phòng:", err);
       toast.error("Không thể tải chi tiết phòng");
@@ -248,12 +218,29 @@ const QuanLyPhong = () => {
   };
 
   const closeRoomDetail = () => setSelectedRoom(null);
+  
+  // =============================================
+  // HANDLE SEARCH ON ENTER
+  // =============================================
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setSearchTerm(inputValue);
+      setCurrentPage(1);
+    }
+  };
 
   // =============================================
-  // HANDLE SEARCH
+  // CLEAR FILTERS (✨ ĐÃ CẬP NHẬT)
   // =============================================
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
+  const clearSearchFilter = () => {
+    setSearchTerm('');
+    setInputValue('');
+    setCurrentPage(1);
+  };
+
+  const clearStatusFilter = () => {
+    setStatusFilter('all');
     setCurrentPage(1);
   };
 
@@ -261,7 +248,7 @@ const QuanLyPhong = () => {
   // RENDER
   // =============================================
   if (loading && rooms.length === 0) {
-    return <div className="QuanLyPhong-wrapper">Đang tải...</div>;
+    return <div className="QuanLyPhong-wrapper">Đang tải dữ liệu phòng...</div>;
   }
 
   return (
@@ -289,12 +276,46 @@ const QuanLyPhong = () => {
 
           <input
             type="text"
-            placeholder="Tìm theo tên phòng..."
+            placeholder="Tìm theo tên phòng và nhấn Enter..."
             className="QuanLyPhong-input"
-            value={searchTerm}
-            onChange={handleSearch}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
         </div>
+
+        {/* ============================================= */}
+        {/* ✨ PHẦN BỘ LỌC ĐÃ CẬP NHẬT                */}
+        {/* ============================================= */}
+        {(searchTerm || statusFilter !== 'all') && (
+          <div className="QuanLyPhong-activeFilters">
+            <span>Đang lọc với:</span>
+            {searchTerm && (
+              <span className="QuanLyPhong-filterTag">
+                Từ khóa: "{searchTerm}"
+                <button 
+                  onClick={clearSearchFilter} 
+                  className="QuanLyPhong-filterTag-close" 
+                  title="Xóa bộ lọc từ khóa"
+                >
+                  &times;
+                </button>
+              </span>
+            )}
+            {statusFilter !== 'all' && (
+              <span className="QuanLyPhong-filterTag">
+                Trạng thái: {statusMap[statusFilter]}
+                <button 
+                  onClick={clearStatusFilter} 
+                  className="QuanLyPhong-filterTag-close" 
+                  title="Xóa bộ lọc trạng thái"
+                >
+                  &times;
+                </button>
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="QuanLyPhong-tableWrapper">
           <table className="QuanLyPhong-table">
@@ -324,20 +345,13 @@ const QuanLyPhong = () => {
                     <td className="QuanLyPhong-td">{room.members}</td>
                     <td className="QuanLyPhong-td">
                       <span className={`QuanLyPhong-status ${
-                        room.status === "waiting"
-                          ? "QuanLyPhong-waiting"
-                          : room.status === "live"
-                            ? "QuanLyPhong-live"
-                            : room.status === "ended"
-                              ? "QuanLyPhong-ended"
-                              : room.isBanned
-                                ? "QuanLyPhong-banned"
-                                : "QuanLyPhong-ended"
+                        room.isBanned ? "QuanLyPhong-banned"
+                        : room.status === "waiting" ? "QuanLyPhong-waiting"
+                        : room.status === "live" ? "QuanLyPhong-live"
+                        : "QuanLyPhong-ended"
                         }`}>
-                        {room.status === "waiting" ? "Đang chờ" :
-                          room.status === "live" ? "Hoạt động" :
-                            room.status === "ended" ? "Đã kết thúc" :
-                              room.isBanned ? "Bị cấm" : "Không xác định"}
+                        {room.isBanned ? "Bị cấm" 
+                        : statusMap[room.status] || "Không xác định"}
                       </span>
                     </td>
                     <td className="QuanLyPhong-td">{room.created}</td>
@@ -348,27 +362,21 @@ const QuanLyPhong = () => {
                           onClick={() => openRoomDetail(room.id)}
                           title="Xem chi tiết"
                         >
-                          <Eye className="QuanLyPhong-eyeIcon" />
+                          <Eye size={18} />
                         </button>
-
                         <button
                           className={room.isBanned ? "QuanLyPhong-unbanBtn" : "QuanLyPhong-banBtn"}
                           onClick={() => toggleBanRoom(room.id, room.isBanned, room.name)}
                           title={room.isBanned ? "Bỏ cấm" : "Cấm phòng"}
                         >
-                          {room.isBanned ? (
-                            <CheckCircle size={16} />
-                          ) : (
-                            <Ban size={16} />
-                          )}
+                          {room.isBanned ? <CheckCircle size={16} /> : <Ban size={16} />}
                         </button>
-
                         <button
                           className="QuanLyPhong-trashBtn"
                           onClick={() => deleteRoom(room.id, room.name)}
                           title="Xóa phòng"
                         >
-                          <Trash2 className="QuanLyPhong-trashIcon" />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -377,7 +385,8 @@ const QuanLyPhong = () => {
               ) : (
                 <tr>
                   <td colSpan="6" className="text-center py-4">
-                    {searchTerm ? "Không tìm thấy phòng nào" : "Chưa có phòng nào"}
+                    {loading ? "Đang tìm kiếm..." : 
+                      searchTerm ? `Không tìm thấy phòng nào với từ khóa "${searchTerm}"` : "Chưa có phòng nào"}
                   </td>
                 </tr>
               )}
@@ -386,9 +395,8 @@ const QuanLyPhong = () => {
         </div>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", marginTop: "1rem" }}>
+        <div className="QuanLyPhong-pagination">
           <ChuyenTrang
             totalPages={totalPages}
             currentPage={currentPage}
@@ -399,58 +407,11 @@ const QuanLyPhong = () => {
         </div>
       )}
 
-      {/* Modal xem chi tiết */}
-      {selectedRoom && (
-        <div className="QuanLyPhong-modalOverlay">
-          <div className="QuanLyPhong-modal">
-            <div className="QuanLyPhong-modalHeader">
-              <h3>Chi tiết phòng</h3>
-              <button className="QuanLyPhong-closeBtn" onClick={closeRoomDetail}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="QuanLyPhong-modalContent">
-              <p><strong>Tên phòng:</strong> {selectedRoom.name}</p>
-              <p><strong>Mô tả:</strong> {selectedRoom.description || "Không có"}</p>
-              <p><strong>Host:</strong> {selectedRoom.host}</p>
-              <p><strong>Email Host:</strong> {selectedRoom.hostEmail}</p>
-              <p><strong>Số thành viên:</strong> {selectedRoom.totalMembers}</p>
-              <p><strong>Quyền riêng tư:</strong> {
-                selectedRoom.privacy === 'public' ? 'Công khai' :
-                  selectedRoom.privacy === 'manual' ? 'Phê duyệt' : 'Riêng tư'
-              }</p>
-              {selectedRoom.roomCode && (
-                <p><strong>Mã phòng:</strong> {selectedRoom.roomCode}</p>
-              )}
-              <p><strong>Trạng thái:</strong> {
-                selectedRoom.status === "waiting" ? "Đang chờ" :
-                  selectedRoom.status === "live" ? "Hoạt động" :
-                    selectedRoom.status === "ended" ? "Đã kết thúc" :
-                      selectedRoom.isBanned ? "Bị cấm" : "Không xác định"
-              }</p>
-              {selectedRoom.isBanned && (
-                <p><strong>Lý do cấm:</strong> {selectedRoom.banReason}</p>
-              )}
-              <p><strong>Ngày tạo:</strong> {new Date(selectedRoom.createdAt).toLocaleString('vi-VN')}</p>
-              {selectedRoom.startedAt && (
-                <p><strong>Bắt đầu:</strong> {new Date(selectedRoom.startedAt).toLocaleString('vi-VN')}</p>
-              )}
-              {selectedRoom.endedAt && (
-                <p><strong>Kết thúc:</strong> {new Date(selectedRoom.endedAt).toLocaleString('vi-VN')}</p>
-              )}
-
-              <hr style={{ margin: "15px 0", border: "1px solid #e5e7eb" }} />
-
-              <p><strong>Thống kê:</strong></p>
-              <ul style={{ marginLeft: "20px" }}>
-                <li>Tổng lượt tham gia: {selectedRoom.statistics?.totalJoins || 0}</li>
-                <li>Số người tối đa: {selectedRoom.statistics?.peakMembers || 0}</li>
-                <li>Tổng tin nhắn: {selectedRoom.statistics?.totalMessages || 0}</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
+      <ModalPhong
+        isOpen={!!selectedRoom}
+        onClose={closeRoomDetail}
+        room={selectedRoom}
+      />
     </div>
   );
 };
