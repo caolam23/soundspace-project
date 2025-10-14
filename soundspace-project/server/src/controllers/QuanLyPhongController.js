@@ -18,12 +18,8 @@ exports.getAllRooms = async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    console.log('📊 [getAllRooms] Query params:', { status, search, page, limit });
-
-    // Build filter object
     const filter = {};
     
-    // ✅ Lọc theo status - FIX LOGIC
     if (status && status !== 'all') {
       if (status === 'waiting') {
         filter.status = 'waiting';
@@ -36,18 +32,13 @@ exports.getAllRooms = async (req, res) => {
       }
     }
 
-    // Tìm kiếm theo tên phòng
     if (search && search.trim()) {
       filter.name = { $regex: search.trim(), $options: 'i' };
     }
 
-    console.log('🔍 [getAllRooms] Filter:', JSON.stringify(filter));
-
-    // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
 
-    // Fetch rooms with populated owner
     const rooms = await Room.find(filter)
       .populate('owner', 'username avatar email')
       .populate('members', 'username')
@@ -56,42 +47,28 @@ exports.getAllRooms = async (req, res) => {
       .limit(parseInt(limit))
       .lean();
 
-    console.log(`✅ [getAllRooms] Found ${rooms.length} rooms`);
-
-    // Get total count for pagination
     const totalRooms = await Room.countDocuments(filter);
 
-    // ✅ Transform data - GIỮ NGUYÊN STATUS TỪ DATABASE
-    const transformedRooms = rooms.map(room => {
-      console.log(`🏠 Room: ${room.name} | Status DB: ${room.status} | isBanned: ${room.isBanned}`);
-      
-      return {
-        id: room._id.toString(),
-        name: room.name,
-        host: room.owner?.username || 'Unknown',
-        hostId: room.owner?._id?.toString() || null,
-        hostAvatar: room.owner?.avatar || '/default-avatar.png',
-        members: room.members?.length || 0,
-        status: room.status, // ✅ GIỮ NGUYÊN: "waiting", "live", "ended"
-        created: new Date(room.createdAt).toLocaleDateString('vi-VN'),
-        createdAt: room.createdAt,
-        privacy: room.privacy,
-        description: room.description,
-        coverImage: room.coverImage,
-        isBanned: room.isBanned || false, // ✅ Thêm flag này
-        banReason: room.banReason || '',
-        roomCode: room.roomCode,
-        startedAt: room.startedAt,
-        endedAt: room.endedAt,
-        statistics: room.statistics
-      };
-    });
-
-    console.log('📤 [getAllRooms] Sending response with rooms:', transformedRooms.map(r => ({
-      name: r.name,
-      status: r.status,
-      isBanned: r.isBanned
-    })));
+    const transformedRooms = rooms.map(room => ({
+      id: room._id.toString(),
+      name: room.name,
+      host: room.owner?.username || 'Unknown',
+      hostId: room.owner?._id?.toString() || null,
+      hostAvatar: room.owner?.avatar || '/default-avatar.png',
+      members: room.members?.length || 0,
+      status: room.status,
+      created: new Date(room.createdAt).toLocaleDateString('vi-VN'),
+      createdAt: room.createdAt,
+      privacy: room.privacy,
+      description: room.description,
+      coverImage: room.coverImage,
+      isBanned: room.isBanned || false,
+      banReason: room.banReason || '',
+      roomCode: room.roomCode,
+      startedAt: room.startedAt,
+      endedAt: room.endedAt,
+      statistics: room.statistics
+    }));
 
     res.status(200).json({
       success: true,
@@ -105,7 +82,6 @@ exports.getAllRooms = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ Lỗi getAllRooms:", err);
     res.status(500).json({ 
       success: false,
       msg: 'Lỗi server khi lấy danh sách phòng', 
@@ -135,7 +111,6 @@ exports.getRoomById = async (req, res) => {
       });
     }
 
-    // ✅ Transform data - GIỮ NGUYÊN STATUS
     const roomDetail = {
       id: room._id.toString(),
       name: room.name,
@@ -147,7 +122,7 @@ exports.getRoomById = async (req, res) => {
       hostAvatar: room.owner?.avatar,
       members: room.members || [],
       totalMembers: room.members?.length || 0,
-      status: room.status, // ✅ GIỮ NGUYÊN
+      status: room.status,
       privacy: room.privacy,
       roomCode: room.roomCode,
       isBanned: room.isBanned || false,
@@ -166,7 +141,6 @@ exports.getRoomById = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ Lỗi getRoomById:", err);
     res.status(500).json({ 
       success: false,
       msg: 'Lỗi server khi lấy chi tiết phòng', 
@@ -192,7 +166,6 @@ exports.deleteRoom = async (req, res) => {
       });
     }
 
-    // Emit socket để thông báo phòng bị xóa
     const io = req.app.get('io');
     if (io) {
       io.to(roomId).emit('room-deleted', {
@@ -200,7 +173,6 @@ exports.deleteRoom = async (req, res) => {
       });
     }
 
-    // Xóa phòng
     await Room.findByIdAndDelete(roomId);
 
     res.status(200).json({
@@ -210,7 +182,6 @@ exports.deleteRoom = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ Lỗi deleteRoom:", err);
     res.status(500).json({ 
       success: false,
       msg: 'Lỗi server khi xóa phòng', 
@@ -237,13 +208,11 @@ exports.toggleBanRoom = async (req, res) => {
       });
     }
 
-    // Toggle ban status
     room.isBanned = !room.isBanned;
     room.banReason = room.isBanned ? (banReason || 'Vi phạm chính sách') : '';
     
     await room.save();
 
-    // Emit socket notification
     const io = req.app.get('io');
     if (io && room.isBanned) {
       io.to(roomId).emit('room-banned', {
@@ -262,7 +231,6 @@ exports.toggleBanRoom = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ Lỗi toggleBanRoom:", err);
     res.status(500).json({ 
       success: false,
       msg: 'Lỗi server khi cấm/bỏ cấm phòng', 
@@ -296,7 +264,6 @@ exports.getRoomStatistics = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ Lỗi getRoomStatistics:", err);
     res.status(500).json({ 
       success: false,
       msg: 'Lỗi server khi lấy thống kê', 
