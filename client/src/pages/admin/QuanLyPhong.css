@@ -118,6 +118,31 @@
   border-radius: 9999px;
 }
 
+/* ⏳ Đang chờ - Màu vàng/cam nhạt */
+.QuanLyPhong-waiting {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+/* ✅ Hoạt động (Live) - Màu xanh lá */
+.QuanLyPhong-live {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+/* 🔴 Đã kết thúc - Màu xám */
+.QuanLyPhong-ended {
+  background-color: #e5e7eb;
+  color: #4b5563;
+}
+
+/* ⛔ Bị cấm - Màu đỏ */
+.QuanLyPhong-banned {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Legacy support - giữ lại nếu có code cũ */
 .QuanLyPhong-active {
   background-color: #d1fae5;
   color: #065f46;
@@ -134,13 +159,18 @@
 }
 
 .QuanLyPhong-eyeBtn,
-.QuanLyPhong-trashBtn {
+.QuanLyPhong-trashBtn,
+.QuanLyPhong-banBtn,
+.QuanLyPhong-unbanBtn {
   padding: 0.5rem;
   border-radius: 0.5rem;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: background-color 0.2s;
 }
 
 .QuanLyPhong-eyeBtn {
@@ -157,6 +187,24 @@
 
 .QuanLyPhong-trashBtn:hover {
   background-color: #fef2f2;
+}
+
+/* 🆕 Nút cấm phòng */
+.QuanLyPhong-banBtn {
+  color: #f59e0b;
+}
+
+.QuanLyPhong-banBtn:hover {
+  background-color: #fef3c7;
+}
+
+/* 🆕 Nút bỏ cấm phòng */
+.QuanLyPhong-unbanBtn {
+  color: #10b981;
+}
+
+.QuanLyPhong-unbanBtn:hover {
+  background-color: #d1fae5;
 }
 
 /* Pagination wrapper */
@@ -184,8 +232,10 @@
   background: #fff;
   padding: 20px;
   border-radius: 12px;
-  width: 400px;
+  width: 500px;
   max-width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
@@ -193,14 +243,64 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 15px;
+}
+
+.QuanLyPhong-modalHeader h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .QuanLyPhong-closeBtn {
   background: none;
   border: none;
   cursor: pointer;
+  color: #6b7280;
+  transition: color 0.2s;
+}
+
+.QuanLyPhong-closeBtn:hover {
+  color: #111827;
 }
 
 .QuanLyPhong-modalContent p {
   margin: 10px 0;
+  line-height: 1.6;
+}
+
+.QuanLyPhong-modalContent strong {
+  color: #374151;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .QuanLyPhong-filters {
+    flex-direction: column;
+  }
+  
+  .QuanLyPhong-select,
+  .QuanLyPhong-input {
+    width: 100%;
+  }
+  
+  .QuanLyPhong-td {
+    font-size: 0.8rem;
+    padding: 0.75rem 1rem;
+  }
+  
+  .QuanLyPhong-actions {
+    flex-direction: column;
+  }
+}
+
+/* Loading state */
+.text-center {
+  text-align: center;
+}
+
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }

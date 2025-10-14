@@ -173,12 +173,25 @@ exports.endSession = async (req, res) => {
 
     await room.save();
 
-    // ✅ Gửi socket thông báo
-    const io = req.app.get('io');
-    io.to(roomId).emit('room-ended', {
-      message: 'Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.'
-    });
-    io.emit('room-ended-homepage', { roomId: roomId });
+    // ✅ Gửi socket thông báo tới tất cả thành viên TRỪ chủ phòng
+const io = req.app.get('io');
+
+if (io) {
+  // Lấy danh sách socket của room
+  const roomSockets = await io.in(roomId).fetchSockets();
+
+  // Lọc socket của chủ phòng ra
+  roomSockets.forEach(socket => {
+    if (socket.user?.id !== req.user.id) {
+      socket.emit('room-ended', {
+        message: 'Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.'
+      });
+    }
+  });
+
+  // Gửi cho tất cả client ở homepage (ví dụ danh sách phòng)
+  io.emit('room-ended-homepage', { roomId });
+}
 
     console.log(`📢 Phòng ${room.name} đã kết thúc lúc ${room.endedAt}`);
     console.log(`📢 Emitted 'room-ended-homepage' for room ID: ${roomId}`);
