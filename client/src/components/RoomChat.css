@@ -89,7 +89,7 @@
 .roomchat-input input::placeholder { color: rgba(255,255,255,0.6); }
 
 .roomchat-send-btn {
-  background: linear-gradient(180deg,#1d4ed8,#2563eb);
+  background: linear-gradient(180deg,#9900ff,#aa00ff);
   color:#fff; border:none; padding:8px 12px; border-radius:10px; cursor:pointer;
   display:flex; align-items:center; justify-content:center; box-shadow: 0 6px 14px rgba(37,99,235,0.14);
 }
