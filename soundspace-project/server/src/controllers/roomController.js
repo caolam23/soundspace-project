@@ -334,11 +334,39 @@ exports.requestJoinRoom = async (req, res) => {
 // ==========================
 exports.getRoomDetails = async (req, res) => {
   try {
+    // populateRoom helper đã lấy sẵn owner và members
     const room = await populateRoom(req.params.roomId);
     if (!room) {
       return res.status(404).json({ msg: 'Không tìm thấy phòng.' });
     }
-    res.json(room);
+
+    // Chuyển sang plain object để có thể chỉnh sửa
+    const roomObject = room.toObject();
+
+    // =============================================================
+    // ▼▼▼ THAY ĐỔI: BỔ SUNG isHost VÀO DỮ LIỆU ▼▼▼
+    // =============================================================
+    
+    // 1. Thêm `isHost` vào danh sách thành viên (members)
+    if (roomObject.members && roomObject.members.length > 0) {
+      roomObject.members = roomObject.members.map(member => ({
+        ...member,
+        isHost: roomObject.owner._id.equals(member._id)
+      }));
+    }
+
+    // 2. Thêm `isHost` vào lịch sử trò chuyện (chat)
+    if (roomObject.chat && roomObject.chat.length > 0) {
+      roomObject.chat = roomObject.chat.map(message => ({
+        ...message,
+        id: message._id, // Đổi _id thành id cho nhất quán
+        isHost: roomObject.owner._id.equals(message.userId)
+      }));
+    }
+    
+    // 3. Trả về object đã được chỉnh sửa
+    res.json(roomObject);
+
   } catch (err) {
     console.error("❌ Lỗi getRoomDetails:", err);
     res.status(500).json({ msg: 'Lỗi server', error: err.message });

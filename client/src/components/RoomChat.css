@@ -2,22 +2,25 @@
 .roomchat-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100%; /* hiện tại full trong khung cha */
+  min-height: 600px; /* 👉 tăng chiều dài tối thiểu */
   gap: 8px;
   padding: 8px;
   box-sizing: border-box;
 }
 
+
 /* Panel look: translucent, blurred background like livestream overlays */
 .roomchat-panel {
   display: flex;
   flex-direction: column;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--bg-secondary);
   backdrop-filter: blur(6px);
+  border: none; /* Tắt viền */
+  box-shadow: none; /* Tắt đổ bóng */
   border-radius: 12px;
   padding: 8px;
   height: 100%;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
 }
 
 .roomchat-list {
@@ -36,18 +39,18 @@
   align-items: flex-start;
   padding: 8px 10px;
   border-radius: 14px;
-  transition: transform .12s ease, opacity .12s ease, background .12s ease;
-  background: rgba(255,255,255,0.03);
+  transition: background .12s ease;
+  background: none;
   color: #fff;
-  align-self: flex-start;
-  max-width: 100%;
+  position: relative;
+  width: 100%; /* ✅ THÊM: Buộc khối tin nhắn chiếm hết chiều rộng */
+  box-sizing: border-box; /* ✅ THÊM: Đảm bảo padding không làm tràn layout */
 }
 
 .roomchat-msg.roomchat-new {
   animation: roomchatPop .18s ease;
 }
 
-.roomchat-msg:hover { transform: translateY(-1px); }
 
 .roomchat-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 
@@ -57,7 +60,13 @@
 .roomchat-time { color:#c9d6e6; font-size:11px; opacity:0.85; }
 .roomchat-text { margin-top:6px; font-size:13px; color:#f0f6ff; line-height:1.35; word-break: break-word; }
 
-.roomchat-actions { display:flex; gap:6px; align-items:center; margin-left:8px; }
+/* Container cho nút trigger và menu */
+.roomchat-actions {
+  position: absolute; /* Giữ nguyên: định vị tuyệt đối so với .roomchat-msg */
+  top: 8px;         /* Đẩy từ trên xuống một chút cho cân đối */
+  right: 8px;       /* Đặt cách mép phải 8px (luôn luôn cố định) */
+  z-index: 5;       /* Đảm bảo nó nổi lên trên các thành phần khác */
+}
 .roomchat-action-btn { background:transparent; border:none; cursor:pointer; color:#bcd3ff; padding:4px; border-radius:6px; }
 .roomchat-action-btn:hover { background: rgba(255,255,255,0.04); }
 
@@ -65,34 +74,70 @@
 .roomchat-reply-compact { color: #dcefff; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display:block; max-width: 100%; }
 
 /* Messages sent by current user: subtle accent and align to right */
-.roomchat-msg { background: rgba(255,255,255,0.03); }
+.roomchat-msg { background: transparent; }
 .roomchat-msg .roomchat-username { color: #ffffff; }
 
 /* Input area (sticky at bottom of the panel) */
 .roomchat-input {
-  display:flex;
-  gap:8px;
-  padding:8px;
+  display: flex;
   align-items: center;
+  gap: 4px;
+  background-color: #262626;
+  border-radius: 20px;
+  padding: 0 6px 0 16px;
+  border: 1px solid #363636;
+}
+.roomchat-input-wrapper {
+  flex: 1; /* Để chiếm hết không gian còn lại */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.roomchat-input textarea {
+  flex: 1;
   background: transparent;
-}
-.roomchat-input input {
-  flex:1 1 auto;
-  padding:10px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.03);
-  color: #fff;
+  border: none;
   outline: none;
+  color: #f5f5f5;
   font-size: 14px;
+  padding: 12px 0;
+  resize: none;
+  overflow-y: hidden;
+  line-height: 1.4;
+  font-family: inherit;
 }
-.roomchat-input input::placeholder { color: rgba(255,255,255,0.6); }
+.roomchat-char-counter {
+  position: absolute;
+  bottom: 2px;
+  right: 5px;
+  font-size: 11px;
+  color: #8e8e8e;
+  pointer-events: none;
+}
+.roomchat-input textarea::placeholder {
+  color: #8e8e8e;
+}
 
 .roomchat-send-btn {
-  background: linear-gradient(180deg,#9900ff,#aa00ff);
-  color:#fff; border:none; padding:8px 12px; border-radius:10px; cursor:pointer;
-  display:flex; align-items:center; justify-content:center; box-shadow: 0 6px 14px rgba(37,99,235,0.14);
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: #fafafa;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
 }
+
+
+.roomchat-send-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
 .roomchat-reply-preview {
   background: rgba(255,255,255,0.03);
   border-left: 3px solid rgba(37,99,235,0.6);
@@ -129,4 +174,86 @@
   0% { transform: scale(0.98); opacity: 0; }
   60% { transform: scale(1.02); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
+}
+.roomchat-action-menu-trigger {
+  background: rgba(0,0,0,0.3);
+  border: none;
+  cursor: pointer;
+  color: #c9d6e6;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.roomchat-msg:hover .roomchat-action-menu-trigger {
+  opacity: 1;
+}
+
+.roomchat-action-menu-trigger:hover {
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+}
+
+.roomchat-action-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: #2c2c2e;
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.roomchat-action-menu .roomchat-action-btn {
+  background: transparent;
+  border: none;
+  color: #e6eef8;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.roomchat-action-menu .roomchat-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+
+/* ============================================================= */
+/* ▼▼▼ STYLE MỚI CHO TÊN NGƯỜI DÙNG ĐƯỢC TRẢ LỜI ▼▼▼ */
+/* ============================================================= */
+.roomchat-mention {
+  color: #58a6ff; /* Màu xanh dương nổi bật */
+  font-weight: 600; /* In đậm để dễ thấy hơn */
+  background-color: rgba(56, 139, 253, 0.15); /* Thêm nền mờ để tăng độ tương phản */
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+
+
+.roomchat-host-badge {
+  background-color: #9147ff; /* Màu tím đặc trưng như Twitch */
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 6px; /* Tạo khoảng cách với username */
+  text-transform: uppercase;
+  vertical-align: middle; /* Căn huy hiệu với dòng chữ */
+  line-height: 1; /* Đảm bảo chiều cao vừa vặn */
 }
