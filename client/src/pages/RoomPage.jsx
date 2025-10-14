@@ -33,10 +33,11 @@ function RoomPage() {
   const { user, socket } = useContext(AuthContext);
 
   const [room, setRoom] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
   const [members, setMembers] = useState([]);
   const [joinNotification, setJoinNotification] = useState(null);
   const [joinRequests, setJoinRequests] = useState([]);
-   const [leaveNotification, setLeaveNotification] = useState(null);
+  const [leaveNotification, setLeaveNotification] = useState(null);
   const [hostFeedback, setHostFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -49,17 +50,26 @@ function RoomPage() {
   const isHost = user && room && user._id === room.owner._id;
 
   // Append incoming saved chat message into room state so tab switches keep messages
+  // HÀM MỚI ĐÃ SỬA LỖI
   const appendChatMessage = (msg) => {
     try {
-      setRoom((prev) => {
-        if (!prev) return prev;
-        const next = { ...prev };
-        next.chat = next.chat ? [...next.chat] : [];
-        // avoid duplicates
-        if (!next.chat.some((c) => String(c._id || c.id) === String(msg.id || msg._id))) {
-          next.chat.push({ _id: msg.id || msg._id, userId: msg.userId, username: msg.username, avatar: msg.avatar, text: msg.text, meta: msg.meta, createdAt: msg.createdAt });
+      setChatMessages((prevMessages) => {
+        // Tránh thêm tin nhắn trùng lặp nếu đã tồn tại
+        if (prevMessages.some((c) => String(c._id || c.id) === String(msg.id || msg._id))) {
+          return prevMessages;
         }
-        return next;
+        // Tạo object tin nhắn mới để đảm bảo cấu trúc nhất quán
+        const newMsg = {
+          _id: msg.id || msg._id,
+          userId: msg.userId,
+          username: msg.username,
+          avatar: msg.avatar,
+          text: msg.text,
+          meta: msg.meta,
+          createdAt: msg.createdAt
+        };
+        // Thêm tin nhắn mới vào mảng
+        return [...prevMessages, newMsg];
       });
     } catch (e) {
       console.warn('appendChatMessage error', e);
@@ -229,6 +239,7 @@ function RoomPage() {
         if (cleanedUp) return;
         
         setRoom(fetchedRoom);
+        setChatMessages(fetchedRoom.chat || []);
 
         const owner = fetchedRoom.owner ? [fetchedRoom.owner] : [];
         const otherMembers = (fetchedRoom.members || []).filter(
@@ -570,7 +581,7 @@ function RoomPage() {
               }`}
               onClick={() => setActiveTab("chat")}
             >
-              Trò chuyện ({room.chat?.length || 0})
+              Trò chuyện ({chatMessages.length})
             </div>
             <div
               className={`roompage-tab ${
@@ -585,7 +596,11 @@ function RoomPage() {
           {/* Chat box (realtime) */}
           {activeTab === "chat" && (
             <div style={{ height: '570px', display: 'flex', flexDirection: 'column' }}>
-              <RoomChat roomId={roomId} initialMessages={room.chat || []} onNewMessage={appendChatMessage} />
+              <RoomChat 
+                roomId={roomId} 
+                initialMessages={chatMessages} // <-- SỬA Ở ĐÂY
+                onNewMessage={appendChatMessage} 
+              />
             </div>
           )}
 
