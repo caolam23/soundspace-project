@@ -171,6 +171,24 @@ const roomSchema = new mongoose.Schema(
     playbackStartTime: {
       type: Date, // thời điểm bắt đầu phát bài hiện tại
     },
+    // =============================================
+    // Chat messages (realtime + persisted)
+    // =============================================
+    chat: {
+      type: [
+        new mongoose.Schema(
+          {
+            userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+            username: { type: String, required: true, trim: true },
+            avatar: { type: String, trim: true },
+            text: { type: String, required: true, trim: true },
+            meta: { type: Object, default: {} }, // optional metadata (e.g., emojis)
+          },
+          { timestamps: true, _id: true }
+        ),
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );
@@ -182,6 +200,8 @@ roomSchema.index({ privacy: 1 });
 roomSchema.index({ owner: 1 });
 roomSchema.index({ isBanned: 1 });
 roomSchema.index({ createdAt: -1 });
+// Index chat timestamps for faster retrieval of recent messages
+roomSchema.index({ 'chat.createdAt': -1 });
 
 // =======================================================
 // Luôn hiển thị đầy đủ các trường khi trả JSON

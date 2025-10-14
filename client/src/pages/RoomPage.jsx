@@ -10,7 +10,6 @@ import {
   SkipBack,
   SkipForward,
   Pause,
-  Smile,
   Flag,
   XCircle,
   UserPlus,
@@ -20,6 +19,7 @@ import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import MusicPlayer from "../components/MusicPlayer";
+import RoomChat from "../components/RoomChat";
 import { toastConfig } from "../services/toastConfig"; // hoặc đường dẫn bạn lưu file config
 
 function RoomPage() {
@@ -47,6 +47,24 @@ function RoomPage() {
   }, [room]);
 
   const isHost = user && room && user._id === room.owner._id;
+
+  // Append incoming saved chat message into room state so tab switches keep messages
+  const appendChatMessage = (msg) => {
+    try {
+      setRoom((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        next.chat = next.chat ? [...next.chat] : [];
+        // avoid duplicates
+        if (!next.chat.some((c) => String(c._id || c.id) === String(msg.id || msg._id))) {
+          next.chat.push({ _id: msg.id || msg._id, userId: msg.userId, username: msg.username, avatar: msg.avatar, text: msg.text, meta: msg.meta, createdAt: msg.createdAt });
+        }
+        return next;
+      });
+    } catch (e) {
+      console.warn('appendChatMessage error', e);
+    }
+  };
 
   // API kết thúc phòng
   const endRoomAPI = useCallback(async () => {
@@ -564,31 +582,10 @@ function RoomPage() {
             </div>
           </div>
 
-          {/* Chat box */}
+          {/* Chat box (realtime) */}
           {activeTab === "chat" && (
-            <div className="roompage-chat">
-              {room.chat?.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`roompage-chat-msg ${
-                    msg.userId === room.owner._id ? "is-host" : ""
-                  }`}
-                >
-                  <img src={msg.avatar} alt={msg.username} />
-                  <div className="roompage-chat-body">
-                    <div className="roompage-chat-username">{msg.username}</div>
-                    <div className="roompage-chat-text">{msg.text}</div>
-                    <div className="roompage-chat-actions">
-                      <button className="roompage-btn-icon">
-                        <Smile size={16} />
-                      </button>
-                      <button className="roompage-btn-icon">
-                        <Flag size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div style={{ height: '570px', display: 'flex', flexDirection: 'column' }}>
+              <RoomChat roomId={roomId} initialMessages={room.chat || []} onNewMessage={appendChatMessage} />
             </div>
           )}
 
@@ -616,13 +613,7 @@ function RoomPage() {
             </div>
           )}
 
-          {/* Chat input */}
-          <div className="roompage-chat-input">
-            <input type="text" placeholder="Nhập tin nhắn..." />
-            <button className="roompage-btn-icon">
-              <Send size={18} />
-            </button>
-          </div>
+          {/* Chat input is included inside RoomChat component */}
         </aside>
       </main>
       
