@@ -8,8 +8,8 @@ export const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [socketReady, setSocketReady] = useState(false); // 🆕 Track socket ready state
   const [blockModal, setBlockModal] = useState({ show: false, message: "" });
-  // 🔥 State mới cho password reset modal
   const [passwordResetModal, setPasswordResetModal] = useState({ show: false, message: "" });
 
   // Hàm xử lý login thành công
@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
       socket.disconnect();
     }
 
-    // Gắn token mới và kết nối lại. Server sẽ tự động đăng ký user qua middleware.
+    // Gắn token mới và kết nối lại
     socket.auth = { token };
     socket.connect();
     console.log("✅ Socket re-connected with new token after login.");
@@ -50,54 +50,85 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // useEffect chính: Chạy 1 lần khi App khởi động
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      socket.auth = { token };
-      socket.connect();
-      console.log("✅ Socket connected on App initial load.");
-      fetchUser();
-    } else {
-      setLoading(false);
+  // 🆕 useEffect chính: Chạy 1 lần khi App khởi động
+ // Thêm vào AuthContext.jsx để debug socket connection
+
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  
+  const onConnect = () => {
+    console.log("✅ [AuthContext] Socket connected:", socket.id);
+    console.log("   - Connected to:", socket.io.uri);
+    setSocketReady(true);
+  };
+
+  const onDisconnect = () => {
+    console.log("❌ [AuthContext] Socket disconnected");
+    setSocketReady(false);
+  };
+
+  const onConnectError = (error) => {
+    console.error("🔥 [AuthContext] Socket connection error:", error);
+  };
+
+  const onUserBlocked = (data) => {
+    console.log("🚫 [AuthContext] User blocked event received:", data);
+    if (data.blocked) {
+      setBlockModal({ show: true, message: data.message });
     }
+  };
 
-    // 🔥 Handler cho event user-blocked
-    const onUserBlocked = (data) => {
-      console.log("🚫 User blocked event received:", data);
-      if (data.blocked) {
-        setBlockModal({ show: true, message: data.message });
-      }
-    };
+  const onPasswordReset = (data) => {
+    console.log("🔐 [AuthContext] Password reset event received:", data);
+    setPasswordResetModal({ 
+      show: true, 
+      message: data.message || "Mật khẩu của bạn đã được thay đổi. Vui lòng đăng nhập lại." 
+    });
+  };
 
-    // 🔥 Handler cho event password-reset
-    const onPasswordReset = (data) => {
-      console.log("🔐 Password reset event received:", data);
-      setPasswordResetModal({ 
-        show: true, 
-        message: data.message || "Mật khẩu của bạn đã được thay đổi. Vui lòng đăng nhập lại." 
-      });
-    };
+  // ✅ Test listener for room-status-changed
+  const onRoomStatusChanged = (data) => {
+    console.log("🎵 [AuthContext] room-status-changed event received:", data);
+  };
 
-    // Đăng ký các socket listeners
-    socket.on("user-blocked", onUserBlocked);
-    socket.on("password-reset", onPasswordReset);
+  socket.on("connect", onConnect);
+  socket.on("disconnect", onDisconnect);
+  socket.on("connect_error", onConnectError);
+  socket.on("user-blocked", onUserBlocked);
+  socket.on("password-reset", onPasswordReset);
+  socket.on("room-status-changed", onRoomStatusChanged); // 🆕 Test listener
 
-    // Cleanup
-    return () => {
-      socket.off("user-blocked", onUserBlocked);
-      socket.off("password-reset", onPasswordReset);
-      if (socket.connected) {
-        socket.disconnect();
-      }
-    };
-  }, []);
+  if (token) {
+    socket.auth = { token };
+    if (!socket.connected) {
+      socket.connect();
+      console.log("🔌 [AuthContext] Initiating socket connection...");
+    }
+    fetchUser();
+  } else {
+    setLoading(false);
+  }
+
+  return () => {
+    socket.off("connect", onConnect);
+    socket.off("disconnect", onDisconnect);
+    socket.off("connect_error", onConnectError);
+    socket.off("user-blocked", onUserBlocked);
+    socket.off("password-reset", onPasswordReset);
+    socket.off("room-status-changed", onRoomStatusChanged); // 🆕 Cleanup
+    
+    if (socket.connected) {
+      socket.disconnect();
+    }
+  };
+}, []);
 
   // Hàm Logout
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     setUser(null);
+    setSocketReady(false);
 
     if (socket.connected) {
       socket.disconnect();
@@ -110,7 +141,15 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, loginSuccess, logout, fetchUser, socket }}
+      value={{ 
+        user, 
+        loading, 
+        loginSuccess, 
+        logout, 
+        fetchUser, 
+        socket,
+        socketReady // 🆕 Export socketReady để components biết khi nào socket sẵn sàng
+      }}
     >
       {children}
 
@@ -191,7 +230,7 @@ export const AuthProvider = ({ children }) => {
          </div>
        )}
 
-      {/* 🔥 Modal: Password Reset */}
+      {/* Modal: Password Reset */}
       {passwordResetModal.show && (
          <div style={{ 
            position: "fixed", 
