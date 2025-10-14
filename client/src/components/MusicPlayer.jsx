@@ -37,7 +37,7 @@ const parseJwt = (token) => {
 // ====================================================================
 // 🎵 COMPONENT CHÍNH
 // ====================================================================
-const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
+const MusicPlayer = ({ roomData, isHost, roomId, socket, onPlaybackStateChange }) => {
   // --- STATE CHÍNH ---
   const [playlist, setPlaylist] = useState([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
@@ -123,7 +123,12 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
     const rdPlaylistIds = (roomData.playlist || []).map(t => t._id || t.sourceId).join(',');
     const localPlaylistIds = (playlist || []).map(t => t._id || t.sourceId).join(',');
 
-    if (rdPlaylistIds !== localPlaylistIds) setPlaylist(roomData.playlist || []);
+    // Only update playlist if server provided a valid array. This prevents
+    // accidentally clearing the host's playlist when roomData is partial.
+    if (rdPlaylistIds !== localPlaylistIds && Array.isArray(roomData.playlist)) {
+      console.debug('[MusicPlayer] roomData effect updating playlist, roomData.playlist.length=', roomData.playlist.length);
+      setPlaylist(roomData.playlist);
+    }
     if ((roomData.currentTrackIndex ?? -1) !== currentTrackIndex)
       setCurrentTrackIndex(roomData.currentTrackIndex ?? -1);
     if ((roomData.isPlaying ?? false) !== isPlaying)
@@ -195,8 +200,14 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
   // ====================================================================
   useEffect(() => {
     if (!socket) return;
-    const handlePlaylistUpdate = (newPlaylist) => setPlaylist(newPlaylist || []);
+    const handlePlaylistUpdate = (newPlaylist) => {
+      // Only update if server sent a valid array. Avoid setting to [] when payload
+      // is undefined or malformed which would clear local playlist unexpectedly.
+      console.debug('[MusicPlayer] playlist-updated event received, newPlaylist=', Array.isArray(newPlaylist) ? newPlaylist.length : newPlaylist);
+      if (Array.isArray(newPlaylist)) setPlaylist(newPlaylist);
+    };
     const handlePlaybackChange = (newState) => {
+      console.debug('[MusicPlayer] playback-state-changed event received, newState:', newState);
       if (newState?.playlist) setPlaylist(newState.playlist);
       if (typeof newState?.currentTrackIndex !== 'undefined')
         setCurrentTrackIndex(newState.currentTrackIndex);
@@ -214,6 +225,20 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
         }
       } else {
         setInitialSeekTime(null);
+      }
+
+      // Inform parent (RoomPage) so its `room` state stays in sync with playback
+      try {
+        if (typeof onPlaybackStateChange === 'function') {
+          onPlaybackStateChange({
+            playlist: newState.playlist,
+            currentTrackIndex: newState.currentTrackIndex,
+            isPlaying: newState.isPlaying,
+            playbackStartTime: newState.playbackStartTime,
+          });
+        }
+      } catch (e) {
+        // ignore
       }
     };
     const handleTimeUpdateFromServer = ({ currentTime }) => {

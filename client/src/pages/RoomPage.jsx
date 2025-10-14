@@ -59,6 +59,10 @@ function RoomPage() {
         if (!next.chat.some((c) => String(c._id || c.id) === String(msg.id || msg._id))) {
           next.chat.push({ _id: msg.id || msg._id, userId: msg.userId, username: msg.username, avatar: msg.avatar, text: msg.text, meta: msg.meta, createdAt: msg.createdAt });
         }
+        // debug: log playlist lengths to trace accidental clears
+        try {
+          console.debug('[appendChatMessage] playlist before:', prev.playlist ? prev.playlist.length : 0, 'after:', next.playlist ? next.playlist.length : 0);
+        } catch (e) {}
         return next;
       });
     } catch (e) {
@@ -228,7 +232,16 @@ function RoomPage() {
 
         if (cleanedUp) return;
         
-        setRoom(fetchedRoom);
+        // Merge fetched room defensively to avoid losing local playback state
+        setRoom((prev) => {
+          if (!prev) return fetchedRoom;
+          const merged = { ...prev, ...fetchedRoom };
+          merged.playlist = fetchedRoom?.playlist ?? prev.playlist ?? [];
+          merged.currentTrackIndex = typeof fetchedRoom?.currentTrackIndex !== 'undefined' ? fetchedRoom.currentTrackIndex : prev.currentTrackIndex;
+          merged.isPlaying = typeof fetchedRoom?.isPlaying !== 'undefined' ? fetchedRoom.isPlaying : prev.isPlaying;
+          merged.playbackStartTime = typeof fetchedRoom?.playbackStartTime !== 'undefined' ? fetchedRoom.playbackStartTime : prev.playbackStartTime;
+          return merged;
+        });
 
         const owner = fetchedRoom.owner ? [fetchedRoom.owner] : [];
         const otherMembers = (fetchedRoom.members || []).filter(
@@ -327,6 +340,45 @@ function RoomPage() {
     };
   }, [roomId, user, socket, navigate, handleNewJoinRequest, endRoomAPI, location.state]);
 
+  // If playlist unexpectedly disappears for the host (was present then becomes undefined),
+  // try to re-fetch the canonical room state and merge it. This avoids the host losing the
+  // playlist when some partial payload overwrote `room`.
+  const prevPlaylistRef = useRef(null);
+  useEffect(() => {
+    if (!room) return;
+    // track previous playlist array
+    const prev = prevPlaylistRef.current;
+    const nowHas = Array.isArray(room.playlist);
+
+    // If previously had a playlist and now playlist is missing (not an array), try to recover
+    if (isHost && prev && prev.length > 0 && !nowHas) {
+      (async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const { data: freshRoom } = await axios.get(
+            `http://localhost:8800/api/rooms/${roomId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (freshRoom) {
+            setRoom((prevRoom) => {
+              if (!prevRoom) return freshRoom;
+              const merged = { ...prevRoom, ...freshRoom };
+              merged.playlist = freshRoom?.playlist ?? prevRoom.playlist ?? [];
+              merged.currentTrackIndex = typeof freshRoom?.currentTrackIndex !== 'undefined' ? freshRoom.currentTrackIndex : prevRoom.currentTrackIndex;
+              merged.isPlaying = typeof freshRoom?.isPlaying !== 'undefined' ? freshRoom.isPlaying : prevRoom.isPlaying;
+              merged.playbackStartTime = typeof freshRoom?.playbackStartTime !== 'undefined' ? freshRoom.playbackStartTime : prevRoom.playbackStartTime;
+              return merged;
+            });
+          }
+        } catch (err) {
+          console.warn('Could not auto-recover playlist:', err);
+        }
+      })();
+    }
+
+    if (nowHas) prevPlaylistRef.current = room.playlist;
+  }, [room, isHost, roomId]);
+
   useEffect(() => {
         const handleUserLeft = ({ username, avatar, userId }) => { // ⚠️ Nên thêm userId để lọc chính xác hơn
             // Lọc bỏ nếu người rời phòng là chính mình (đã chuyển hướng về /home)
@@ -356,8 +408,17 @@ function RoomPage() {
       
       try {
         socket.emit("join-room", roomId);
-        
-        setRoom(payload);
+        // Merge incoming room payload into existing room state to avoid
+        // accidentally overwriting playback/playlist when payload is partial.
+        setRoom((prev) => {
+          const merged = { ...(prev || {}), ...(payload || {}) };
+          // Preserve playback fields from prev if missing in payload
+          merged.playlist = payload?.playlist ?? prev?.playlist ?? [];
+          merged.currentTrackIndex = typeof payload?.currentTrackIndex !== 'undefined' ? payload.currentTrackIndex : prev?.currentTrackIndex;
+          merged.isPlaying = typeof payload?.isPlaying !== 'undefined' ? payload.isPlaying : prev?.isPlaying;
+          merged.playbackStartTime = typeof payload?.playbackStartTime !== 'undefined' ? payload.playbackStartTime : prev?.playbackStartTime;
+          return merged;
+        });
         const owner = payload.owner ? [payload.owner] : [];
         const otherMembers = (payload.members || []).filter(
           (m) => String(m._id) !== String(payload.owner?._id)
@@ -375,7 +436,15 @@ function RoomPage() {
         );
         
         if (freshRoom.members.length >= payload.members.length) {
-          setRoom(freshRoom);
+          setRoom((prev) => {
+            if (!prev) return freshRoom;
+            const merged = { ...prev, ...freshRoom };
+            merged.playlist = freshRoom?.playlist ?? prev.playlist ?? [];
+            merged.currentTrackIndex = typeof freshRoom?.currentTrackIndex !== 'undefined' ? freshRoom.currentTrackIndex : prev.currentTrackIndex;
+            merged.isPlaying = typeof freshRoom?.isPlaying !== 'undefined' ? freshRoom.isPlaying : prev.isPlaying;
+            merged.playbackStartTime = typeof freshRoom?.playbackStartTime !== 'undefined' ? freshRoom.playbackStartTime : prev.playbackStartTime;
+            return merged;
+          });
           const freshOwner = freshRoom.owner ? [freshRoom.owner] : [];
           const freshOthers = (freshRoom.members || []).filter(
             (m) => String(m._id) !== String(freshRoom.owner?._id)
@@ -558,6 +627,18 @@ function RoomPage() {
             isHost={isHost}
             roomId={roomId}
             socket={socket}
+            onPlaybackStateChange={(playback) => {
+              // Merge playback fields into room to keep canonical state
+              setRoom((prev) => {
+                if (!prev) return { ...prev, ...playback };
+                const merged = { ...prev, ...(playback || {}) };
+                merged.playlist = playback?.playlist ?? prev.playlist ?? [];
+                merged.currentTrackIndex = typeof playback?.currentTrackIndex !== 'undefined' ? playback.currentTrackIndex : prev.currentTrackIndex;
+                merged.isPlaying = typeof playback?.isPlaying !== 'undefined' ? playback.isPlaying : prev.isPlaying;
+                merged.playbackStartTime = typeof playback?.playbackStartTime !== 'undefined' ? playback.playbackStartTime : prev.playbackStartTime;
+                return merged;
+              });
+            }}
           />
         </div>
 
