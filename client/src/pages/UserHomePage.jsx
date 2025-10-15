@@ -133,6 +133,37 @@ function UserHomePage() {
     setVisibleRoomsCount(prevCount => prevCount + 9);
   };
 
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRoomUpdate = ({ roomId, memberCount, status }) => {
+      console.log(`⚡️ Realtime update for room ${roomId}:`, { memberCount, status });
+      setRooms(prevRooms =>
+        prevRooms.map(room => {
+          if (room._id === roomId) {
+            // Tạo một object mới với thông tin được cập nhật
+            const updatedRoom = { ...room };
+            if (memberCount !== undefined) {
+              updatedRoom.memberCount = memberCount;
+            }
+            if (status) {
+              updatedRoom.status = status;
+            }
+            return updatedRoom;
+          }
+          return room;
+        })
+      );
+    };
+
+    socket.on('room-info-update', handleRoomUpdate);
+
+    // Dọn dẹp listener khi component unmount
+    return () => {
+      socket.off('room-info-update', handleRoomUpdate);
+    };
+  }, [socket]);
+
   // FETCH ACTIVE ROOMS khi load trang
   useEffect(() => {
     const fetchActiveRooms = async () => {

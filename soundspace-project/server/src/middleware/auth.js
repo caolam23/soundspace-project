@@ -63,4 +63,28 @@ function isAdmin(req, res, next) {
   next();
 }
 
-module.exports = { verifyToken, auth, isAdmin };
+// ============================================
+// 🆕 MIDDLEWARE ATTACH SOCKET.IO
+// ============================================
+/**
+ * Middleware để attach io và userSockets vào req object
+ * Cho phép controllers có thể emit socket events
+ * 
+ * @param {Object} io - Socket.IO server instance
+ * @param {Map} userSockets - Map chứa userId -> Set<socketId>
+ * @returns {Function} Express middleware
+ */
+function attachSocketIO(io, userSockets) {
+  return (req, res, next) => {
+    req.io = io;
+    req.userSockets = userSockets;
+    next();
+  };
+}
+
+module.exports = { 
+  verifyToken, 
+  auth, 
+  isAdmin,
+  attachSocketIO // 🆕 Export middleware mới
+};

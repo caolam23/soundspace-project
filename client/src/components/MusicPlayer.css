@@ -434,3 +434,26 @@
   height: 16px;
   fill: #fff;
 }
+/* Thêm vào cuối file MusicPlayer.css của bạn */
+
+@keyframes beat-animation {
+  0% {
+    transform: scale(1.05); /* Kích thước ban đầu khi có nhịp */
+    filter: brightness(1.1);
+  }
+  100% {
+    transform: scale(1); /* Trở về kích thước bình thường */
+    filter: brightness(1);
+  }
+}
+
+.roompage-thumbnail-img.beat,
+.roompage-thumbnail-placeholder.beat {
+  /*
+   * Quan trọng: Ghi đè transform inline để animation hoạt động
+   * nhưng chỉ áp dụng cho scale, để transform từ `style` vẫn có tác dụng.
+   * Cách tốt hơn là dùng các thuộc tính transform riêng lẻ nếu có thể.
+   * Ở đây, ta sẽ dùng animation để ghi đè.
+   */
+  animation: beat-animation 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}

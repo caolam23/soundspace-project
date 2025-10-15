@@ -1,51 +1,317 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import "./QuanLyPhong.css";
-import { Music, Eye, Trash2, X } from "lucide-react";
-import ChuyenTrang from "../../components/ChuyenTrang"; 
+import { Music, Eye, Trash2, Ban, CheckCircle } from "lucide-react";
+import ChuyenTrang from "../../components/ChuyenTrang";
+import axios from "axios";
+import { AuthContext } from "../../contexts/AuthContext";
+import Swal from "sweetalert2";
+import { toast } from "react-toastify";
+import ModalPhong from '../../components/ModalPhong';
+
+// Helper object để dịch status
+const statusMap = {
+  waiting: "Đang chờ",
+  live: "Hoạt động",
+  ended: "Đã kết thúc",
+  banned: "Bị cấm",
+};
 
 const QuanLyPhong = () => {
-  // Mock data phòng
-  const [activeRooms, setActiveRooms] = useState([
-    { id: 1, name: "Phòng 1", host: "Alice", members: 5, status: "active", created: "28/09/2025" },
-    { id: 2, name: "Phòng 2", host: "Bob", members: 3, status: "reported", created: "27/09/2025" },
-    { id: 3, name: "Phòng 3", host: "Charlie", members: 8, status: "active", created: "26/09/2025" },
-    { id: 4, name: "Phòng 4", host: "David", members: 2, status: "active", created: "25/09/2025" },
-    { id: 5, name: "Phòng 5", host: "Eve", members: 6, status: "reported", created: "24/09/2025" },
-    { id: 6, name: "Phòng 6", host: "Frank", members: 4, status: "active", created: "23/09/2025" },
-    { id: 7, name: "Phòng 7", host: "Grace", members: 7, status: "active", created: "22/09/2025" },
-  ]);
+  const { socket } = useContext(AuthContext);
+
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+
+  // Filter & Search
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [inputValue, setInputValue] = useState(""); // State cho giá trị input trực tiếp
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [jumpPage, setJumpPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const roomsPerPage = 5;
-  const indexOfLastRoom = currentPage * roomsPerPage;
-  const indexOfFirstRoom = indexOfLastRoom - roomsPerPage;
-  const currentRooms = activeRooms.slice(indexOfFirstRoom, indexOfLastRoom);
-  const totalPages = Math.ceil(activeRooms.length / roomsPerPage);
 
-  // Xóa phòng
-  const deleteRoom = (id) => {
-    setActiveRooms(activeRooms.filter(room => room.id !== id));
-    if ((currentPage - 1) * roomsPerPage >= activeRooms.length - 1) {
-      setCurrentPage(Math.max(currentPage - 1, 1));
+  // =============================================
+  // FETCH ROOMS FROM API
+  // =============================================
+  const fetchRooms = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+
+      const params = {
+        page: currentPage,
+        limit: roomsPerPage,
+        status: statusFilter,
+        search: searchTerm,
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      };
+
+      const { data } = await axios.get(
+        "http://localhost:8800/api/admin/rooms",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params
+        }
+      );
+
+      if (data.success) {
+        setRooms(data.data);
+        setTotalPages(data.pagination.totalPages);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi fetch rooms:", err);
+      toast.error(err.response?.data?.msg || "Không thể tải danh sách phòng");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Modal xem chi tiết
-  const [selectedRoom, setSelectedRoom] = useState(null);
+  // =============================================
+  // REALTIME SOCKET UPDATES
+  // =============================================
+  useEffect(() => {
+    if (!socket) {
+      console.warn('⚠️ [QuanLyPhong] Socket not available');
+      return;
+    }
 
-  const openRoomDetail = (room) => setSelectedRoom(room);
-  const closeRoomDetail = () => setSelectedRoom(null);
+     // Stable handler references so we can remove them on cleanup
+    const handleRoomCreated = () => fetchRooms();
+    const handleRoomDeleted = ({ roomId }) => {
+      setRooms(prev => prev.filter(r => r.id !== roomId));
+      toast.info("Một phòng vừa bị xóa");
+    };
+    const handleRoomEnded = () => fetchRooms();
+    const handleRoomStatusChanged = () => fetchRooms();
+    const handleRoomMembersChanged = (payload) => {
+      // payload: { roomId, membersCount, totalJoins, peakMembers }
+      console.debug('[QuanLyPhong] room-members-changed received', payload);
 
-  // Hàm xử lý chuyển trang khi Enter hoặc blur
-  const handleJump = () => {
-    let page = parseInt(jumpPage);
-    if (isNaN(page)) page = 1;
-    page = Math.max(1, Math.min(totalPages, page));
-    setCurrentPage(page);
-    setJumpPage(page);
+      const pid = String(payload.roomId || payload.id || payload._id || '');
+
+      let found = false;
+      setRooms(prev => prev.map(r => {
+        // Support multiple id shapes: r.id, r._id, r.roomId
+        const rid = String(r.id ?? r._id ?? r.roomId ?? '');
+        if (rid === pid) {
+          found = true;
+          return {
+            ...r,
+            members: (typeof payload.membersCount === 'number') ? payload.membersCount : r.members,
+            statistics: {
+              ...r.statistics,
+              totalJoins: payload.totalJoins ?? r.statistics?.totalJoins,
+              peakMembers: payload.peakMembers ?? r.statistics?.peakMembers,
+            }
+          };
+        }
+        return r;
+      }));
+
+      // If we didn't find a matching room row locally, refresh the list to pick up changes
+      if (!found) {
+        console.debug('[QuanLyPhong] changed room not in current page, fetching fresh list');
+        fetchRooms().catch(e => console.warn('[QuanLyPhong] fetchRooms after members-changed failed', e));
+      } else {
+        // If we did find it, perform a single-room fetch to guarantee canonical members count
+        // (fixes cases where some emits carry stale counts)
+        (async () => {
+          try {
+            const token = localStorage.getItem('token');
+            const { data } = await axios.get(`http://localhost:8800/api/admin/rooms/${payload.roomId}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (data && data.success) {
+              setRooms(prev => prev.map(r => {
+                if (String(r.id) === String(payload.roomId) || String(r._id) === String(payload.roomId) || String(r.roomId) === String(payload.roomId)) {
+                  const updated = data.data;
+                  return {
+                    ...r,
+                    members: updated.members?.length ?? updated.members ?? r.members,
+                    statistics: {
+                      ...r.statistics,
+                      totalJoins: updated.statistics?.totalJoins ?? r.statistics?.totalJoins,
+                      peakMembers: updated.statistics?.peakMembers ?? r.statistics?.peakMembers,
+                    }
+                  };
+                }
+                return r;
+              }));
+            }
+          } catch (e) {
+            console.warn('[QuanLyPhong] fetch single room after members-changed failed', e);
+          }
+        })();
+      }
+    };
+
+    // Attach listeners immediately so they survive reconnects; on reconnect we refresh
+    socket.on("room-created", handleRoomCreated);
+    socket.on("room-deleted", handleRoomDeleted);
+    socket.on("room-ended-homepage", handleRoomEnded);
+    socket.on("room-status-changed", handleRoomStatusChanged);
+    socket.on("room-members-changed", handleRoomMembersChanged);
+
+    const onConnectRefresh = () => {
+      console.log('[QuanLyPhong] socket connected - refreshing rooms');
+      fetchRooms().catch(e => console.warn('[QuanLyPhong] fetchRooms on connect failed', e));
+    };
+    socket.on('connect', onConnectRefresh);
+    return () => {
+      socket.off("room-created", handleRoomCreated);
+      socket.off("room-deleted", handleRoomDeleted);
+      socket.off("room-ended-homepage", handleRoomEnded);
+      socket.off("room-status-changed", handleRoomStatusChanged);
+      socket.off("room-members-changed", handleRoomMembersChanged);
+      socket.off('connect', onConnectRefresh);
+    };
+  }, [socket]);
+
+  // =============================================
+  // FETCH WHEN FILTERS CHANGE
+  // =============================================
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+        fetchRooms();
+    }, 300); // Thêm một chút delay để tránh gọi API liên tục khi filter
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [currentPage, statusFilter, searchTerm]);
+
+  // =============================================
+  // DELETE ROOM
+  // =============================================
+  const deleteRoom = async (roomId, roomName) => {
+    const result = await Swal.fire({
+      title: "Xác nhận xóa",
+      text: `Bạn có chắc muốn xóa phòng "${roomName}"?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Xóa",
+      cancelButtonText: "Hủy",
+      confirmButtonColor: "#dc2626"
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const token = localStorage.getItem("token");
+        const { data } = await axios.delete(
+          `http://localhost:8800/api/admin/rooms/${roomId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (data.success) {
+          toast.success("Xóa phòng thành công!");
+          fetchRooms();
+        }
+      } catch (err) {
+        console.error("❌ Lỗi xóa phòng:", err);
+        toast.error(err.response?.data?.msg || "Không thể xóa phòng");
+      }
+    }
   };
+
+  // =============================================
+  // BAN/UNBAN ROOM
+  // =============================================
+  const toggleBanRoom = async (roomId, isBanned, roomName) => {
+    const action = isBanned ? "bỏ cấm" : "cấm";
+    let banReason = "";
+
+    if (!isBanned) {
+      const { value } = await Swal.fire({
+        title: `Cấm phòng "${roomName}"`,
+        input: 'textarea',
+        inputLabel: 'Lý do cấm',
+        inputPlaceholder: 'Nhập lý do cấm phòng...',
+        showCancelButton: true,
+        confirmButtonText: 'Cấm',
+        cancelButtonText: 'Hủy'
+      });
+      if (!value) return;
+      banReason = value;
+    } else {
+      const result = await Swal.fire({
+        title: `Bỏ cấm phòng "${roomName}"?`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Bỏ cấm",
+        cancelButtonText: "Hủy"
+      });
+      if (!result.isConfirmed) return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const { data } = await axios.patch(
+        `http://localhost:8800/api/admin/rooms/${roomId}/ban`,
+        { banReason },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data.success) {
+        toast.success(data.msg);
+        fetchRooms();
+      }
+    } catch (err) {
+      console.error(`❌ Lỗi ${action} phòng:`, err);
+      toast.error(err.response?.data?.msg || `Không thể ${action} phòng`);
+    }
+  };
+  
+  // =============================================
+  // VIEW ROOM DETAILS
+  // =============================================
+  const openRoomDetail = async (roomId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const { data } = await axios.get(
+        `http://localhost:8800/api/admin/rooms/${roomId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data.success) setSelectedRoom(data.data);
+    } catch (err) {
+      console.error("❌ Lỗi lấy chi tiết phòng:", err);
+      toast.error("Không thể tải chi tiết phòng");
+    }
+  };
+
+  const closeRoomDetail = () => setSelectedRoom(null);
+  
+  // =============================================
+  // HANDLE SEARCH ON ENTER
+  // =============================================
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setSearchTerm(inputValue);
+      setCurrentPage(1);
+    }
+  };
+
+  // =============================================
+  // CLEAR FILTERS (✨ ĐÃ CẬP NHẬT)
+  // =============================================
+  const clearSearchFilter = () => {
+    setSearchTerm('');
+    setInputValue('');
+    setCurrentPage(1);
+  };
+
+  const clearStatusFilter = () => {
+    setStatusFilter('all');
+    setCurrentPage(1);
+  };
+
+  // =============================================
+  // RENDER
+  // =============================================
+  if (loading && rooms.length === 0) {
+    return <div className="QuanLyPhong-wrapper">Đang tải dữ liệu phòng...</div>;
+  }
 
   return (
     <div className="QuanLyPhong-wrapper">
@@ -55,18 +321,63 @@ const QuanLyPhong = () => {
 
       <div className="QuanLyPhong-card">
         <div className="QuanLyPhong-filters">
-          <select className="QuanLyPhong-select">
-            <option>Tất cả trạng thái</option>
-            <option>Đang hoạt động</option>
-            <option>Bị báo cáo</option>
-            <option>Đã đóng</option>
+          <select
+            className="QuanLyPhong-select"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="waiting">Đang chờ</option>
+            <option value="live">Hoạt động</option>
+            <option value="ended">Đã kết thúc</option>
+            <option value="banned">Bị cấm</option>
           </select>
+
           <input
             type="text"
-            placeholder="Tìm theo tên phòng..."
+            placeholder="Tìm theo tên phòng và nhấn Enter..."
             className="QuanLyPhong-input"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
         </div>
+
+        {/* ============================================= */}
+        {/* ✨ PHẦN BỘ LỌC ĐÃ CẬP NHẬT                */}
+        {/* ============================================= */}
+        {(searchTerm || statusFilter !== 'all') && (
+          <div className="QuanLyPhong-activeFilters">
+            <span>Đang lọc với:</span>
+            {searchTerm && (
+              <span className="QuanLyPhong-filterTag">
+                Từ khóa: "{searchTerm}"
+                <button 
+                  onClick={clearSearchFilter} 
+                  className="QuanLyPhong-filterTag-close" 
+                  title="Xóa bộ lọc từ khóa"
+                >
+                  &times;
+                </button>
+              </span>
+            )}
+            {statusFilter !== 'all' && (
+              <span className="QuanLyPhong-filterTag">
+                Trạng thái: {statusMap[statusFilter]}
+                <button 
+                  onClick={clearStatusFilter} 
+                  className="QuanLyPhong-filterTag-close" 
+                  title="Xóa bộ lọc trạng thái"
+                >
+                  &times;
+                </button>
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="QuanLyPhong-tableWrapper">
           <table className="QuanLyPhong-table">
@@ -81,8 +392,8 @@ const QuanLyPhong = () => {
               </tr>
             </thead>
             <tbody className="QuanLyPhong-tbody">
-              {currentRooms.length > 0 ? (
-                currentRooms.map(room => (
+              {rooms.length > 0 ? (
+                rooms.map(room => (
                   <tr key={room.id} className="QuanLyPhong-tr">
                     <td className="QuanLyPhong-td">
                       <div className="QuanLyPhong-roomName">
@@ -96,11 +407,13 @@ const QuanLyPhong = () => {
                     <td className="QuanLyPhong-td">{room.members}</td>
                     <td className="QuanLyPhong-td">
                       <span className={`QuanLyPhong-status ${
-                        room.status === "active"
-                          ? "QuanLyPhong-active"
-                          : "QuanLyPhong-reported"
-                      }`}>
-                        {room.status === "active" ? "Hoạt động" : "Báo cáo"}
+                        room.isBanned ? "QuanLyPhong-banned"
+                        : room.status === "waiting" ? "QuanLyPhong-waiting"
+                        : room.status === "live" ? "QuanLyPhong-live"
+                        : "QuanLyPhong-ended"
+                        }`}>
+                        {room.isBanned ? "Bị cấm" 
+                        : statusMap[room.status] || "Không xác định"}
                       </span>
                     </td>
                     <td className="QuanLyPhong-td">{room.created}</td>
@@ -108,15 +421,24 @@ const QuanLyPhong = () => {
                       <div className="QuanLyPhong-actions">
                         <button
                           className="QuanLyPhong-eyeBtn"
-                          onClick={() => openRoomDetail(room)}
+                          onClick={() => openRoomDetail(room.id)}
+                          title="Xem chi tiết"
                         >
-                          <Eye className="QuanLyPhong-eyeIcon" />
+                          <Eye size={18} />
+                        </button>
+                        <button
+                          className={room.isBanned ? "QuanLyPhong-unbanBtn" : "QuanLyPhong-banBtn"}
+                          onClick={() => toggleBanRoom(room.id, room.isBanned, room.name)}
+                          title={room.isBanned ? "Bỏ cấm" : "Cấm phòng"}
+                        >
+                          {room.isBanned ? <CheckCircle size={16} /> : <Ban size={16} />}
                         </button>
                         <button
                           className="QuanLyPhong-trashBtn"
-                          onClick={() => deleteRoom(room.id)}
+                          onClick={() => deleteRoom(room.id, room.name)}
+                          title="Xóa phòng"
                         >
-                          <Trash2 className="QuanLyPhong-trashIcon" />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -124,45 +446,34 @@ const QuanLyPhong = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center py-4">Chưa có phòng nào</td>
+                  <td colSpan="6" className="text-center py-4">
+                    {loading ? "Đang tìm kiếm..." : 
+                      searchTerm ? `Không tìm thấy phòng nào với từ khóa "${searchTerm}"` : "Chưa có phòng nào"}
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      </div> {/* ✅ Đóng QuanLyPhong-card */}
-
-      {/* Pagination thay bằng component */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: "1rem" }}>
-        <ChuyenTrang
-          totalPages={totalPages}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          jumpPage={jumpPage}
-          setJumpPage={setJumpPage}
-        />      
       </div>
 
-      {/* Modal xem chi tiết */}
-      {selectedRoom && (
-        <div className="QuanLyPhong-modalOverlay">
-          <div className="QuanLyPhong-modal">
-            <div className="QuanLyPhong-modalHeader">
-              <h3>Chi tiết phòng</h3>
-              <button className="QuanLyPhong-closeBtn" onClick={closeRoomDetail}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="QuanLyPhong-modalContent">
-              <p><strong>Tên phòng:</strong> {selectedRoom.name}</p>
-              <p><strong>Host:</strong> {selectedRoom.host}</p>
-              <p><strong>Số thành viên:</strong> {selectedRoom.members}</p>
-              <p><strong>Trạng thái:</strong> {selectedRoom.status === "active" ? "Hoạt động" : "Báo cáo"}</p>
-              <p><strong>Ngày tạo:</strong> {selectedRoom.created}</p>
-            </div>
-          </div>
+      {totalPages > 1 && (
+        <div className="QuanLyPhong-pagination">
+          <ChuyenTrang
+            totalPages={totalPages}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            jumpPage={jumpPage}
+            setJumpPage={setJumpPage}
+          />
         </div>
       )}
+
+      <ModalPhong
+        isOpen={!!selectedRoom}
+        onClose={closeRoomDetail}
+        room={selectedRoom}
+      />
     </div>
   );
 };

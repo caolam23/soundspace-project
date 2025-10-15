@@ -108,6 +108,11 @@ const roomSchema = new mongoose.Schema(
       ref: "User",
       default: [],
     },
+    uniqueJoiners: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "User",
+      default: [],
+    },
 
     // =============================================
     // Thống kê
@@ -171,9 +176,39 @@ const roomSchema = new mongoose.Schema(
     playbackStartTime: {
       type: Date, // thời điểm bắt đầu phát bài hiện tại
     },
+
+    // =============================================
+    // Chat messages (realtime + persisted)
+    // =============================================
+    chat: {
+      type: [
+        new mongoose.Schema(
+          {
+            userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+            username: { type: String, required: true, trim: true },
+            avatar: { type: String, trim: true },
+            text: { type: String, required: true, trim: true },
+            meta: { type: Object, default: {} }, // optional metadata (e.g., emojis)
+          },
+          { timestamps: true, _id: true }
+        ),
+      ],
+      default: [],
+    },
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { virtuals: true },   // ✅ Cho phép xuất virtual khi chuyển sang JSON
+    toObject: { virtuals: true }  // ✅ Cho phép xuất virtual khi chuyển sang Object
+  }
 );
+
+// =======================================================
+// ✅ THÊM MỚI: Virtual property đếm số lượng thành viên
+// =======================================================
+roomSchema.virtual("memberCount").get(function () {
+  return this.members ? this.members.length : 0;
+});
 
 // =======================================================
 // Index hỗ trợ tìm kiếm & quản lý nhanh
@@ -182,6 +217,8 @@ roomSchema.index({ privacy: 1 });
 roomSchema.index({ owner: 1 });
 roomSchema.index({ isBanned: 1 });
 roomSchema.index({ createdAt: -1 });
+// Index chat timestamps for faster retrieval of recent messages
+roomSchema.index({ 'chat.createdAt': -1 });
 
 // =======================================================
 // Luôn hiển thị đầy đủ các trường khi trả JSON

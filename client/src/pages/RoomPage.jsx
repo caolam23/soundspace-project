@@ -10,7 +10,6 @@ import {
   SkipBack,
   SkipForward,
   Pause,
-  Smile,
   Flag,
   XCircle,
   UserPlus,
@@ -20,6 +19,7 @@ import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import MusicPlayer from "../components/MusicPlayer";
+import RoomChat from "../components/RoomChat";
 import { toastConfig } from "../services/toastConfig"; // hoặc đường dẫn bạn lưu file config
 
 function RoomPage() {
@@ -33,10 +33,11 @@ function RoomPage() {
   const { user, socket } = useContext(AuthContext);
 
   const [room, setRoom] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
   const [members, setMembers] = useState([]);
   const [joinNotification, setJoinNotification] = useState(null);
   const [joinRequests, setJoinRequests] = useState([]);
-   const [leaveNotification, setLeaveNotification] = useState(null);
+  const [leaveNotification, setLeaveNotification] = useState(null);
   const [hostFeedback, setHostFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -47,6 +48,33 @@ function RoomPage() {
   }, [room]);
 
   const isHost = user && room && user._id === room.owner._id;
+
+  // Append incoming saved chat message into room state so tab switches keep messages
+  // HÀM MỚI ĐÃ SỬA LỖI
+  const appendChatMessage = (msg) => {
+    try {
+      setChatMessages((prevMessages) => {
+        // Tránh thêm tin nhắn trùng lặp nếu đã tồn tại
+        if (prevMessages.some((c) => String(c._id || c.id) === String(msg.id || msg._id))) {
+          return prevMessages;
+        }
+        // Tạo object tin nhắn mới để đảm bảo cấu trúc nhất quán
+        const newMsg = {
+          _id: msg.id || msg._id,
+          userId: msg.userId,
+          username: msg.username,
+          avatar: msg.avatar,
+          text: msg.text,
+          meta: msg.meta,
+          createdAt: msg.createdAt
+        };
+        // Thêm tin nhắn mới vào mảng
+        return [...prevMessages, newMsg];
+      });
+    } catch (e) {
+      console.warn('appendChatMessage error', e);
+    }
+  };
 
   // API kết thúc phòng
   const endRoomAPI = useCallback(async () => {
@@ -210,7 +238,14 @@ function RoomPage() {
 
         if (cleanedUp) return;
         
-        setRoom(fetchedRoom);
+        // Merge fetchedRoom with existing room to avoid accidentally
+        // removing properties like playlist when the server returns
+        // a partial room object in some socket callbacks.
+        setRoom((prev) => {
+          if (!prev) return fetchedRoom;
+          return { ...prev, ...fetchedRoom };
+        });
+        setChatMessages(fetchedRoom.chat || []);
 
         const owner = fetchedRoom.owner ? [fetchedRoom.owner] : [];
         const otherMembers = (fetchedRoom.members || []).filter(
@@ -339,7 +374,10 @@ function RoomPage() {
       try {
         socket.emit("join-room", roomId);
         
-        setRoom(payload);
+        setRoom((prev) => {
+          if (!prev) return payload;
+          return { ...prev, ...payload, playlist: payload.playlist ?? prev.playlist };
+        });
         const owner = payload.owner ? [payload.owner] : [];
         const otherMembers = (payload.members || []).filter(
           (m) => String(m._id) !== String(payload.owner?._id)
@@ -357,7 +395,10 @@ function RoomPage() {
         );
         
         if (freshRoom.members.length >= payload.members.length) {
-          setRoom(freshRoom);
+          setRoom((prev) => {
+            if (!prev) return freshRoom;
+            return { ...prev, ...freshRoom };
+          });
           const freshOwner = freshRoom.owner ? [freshRoom.owner] : [];
           const freshOthers = (freshRoom.members || []).filter(
             (m) => String(m._id) !== String(freshRoom.owner?._id)
@@ -552,7 +593,7 @@ function RoomPage() {
               }`}
               onClick={() => setActiveTab("chat")}
             >
-              Trò chuyện ({room.chat?.length || 0})
+              Trò chuyện ({chatMessages.length})
             </div>
             <div
               className={`roompage-tab ${
@@ -564,31 +605,15 @@ function RoomPage() {
             </div>
           </div>
 
-          {/* Chat box */}
+          {/* Chat box (realtime) */}
           {activeTab === "chat" && (
-            <div className="roompage-chat">
-              {room.chat?.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`roompage-chat-msg ${
-                    msg.userId === room.owner._id ? "is-host" : ""
-                  }`}
-                >
-                  <img src={msg.avatar} alt={msg.username} />
-                  <div className="roompage-chat-body">
-                    <div className="roompage-chat-username">{msg.username}</div>
-                    <div className="roompage-chat-text">{msg.text}</div>
-                    <div className="roompage-chat-actions">
-                      <button className="roompage-btn-icon">
-                        <Smile size={16} />
-                      </button>
-                      <button className="roompage-btn-icon">
-                        <Flag size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div style={{ height: '570px', display: 'flex', flexDirection: 'column' }}>
+              <RoomChat
+                roomId={roomId}
+                ownerId={room?.owner?._id}
+                initialMessages={chatMessages} // <-- SỬA Ở ĐÂY
+                onNewMessage={appendChatMessage} 
+              />
             </div>
           )}
 
@@ -616,13 +641,7 @@ function RoomPage() {
             </div>
           )}
 
-          {/* Chat input */}
-          <div className="roompage-chat-input">
-            <input type="text" placeholder="Nhập tin nhắn..." />
-            <button className="roompage-btn-icon">
-              <Send size={18} />
-            </button>
-          </div>
+          {/* Chat input is included inside RoomChat component */}
         </aside>
       </main>
       

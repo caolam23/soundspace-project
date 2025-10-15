@@ -9,6 +9,7 @@ const connectDB = require('./config/db');
 const createApp = require('./app');
 const Room = require('./models/room');
 const User = require('./models/User');
+const registerChatHandlers = require('./controllers/chatHandler');
 
 // 1. Connect to Database
 connectDB();
@@ -154,6 +155,31 @@ io.on('connection', (socket) => {
         return;
       }
 
+      // If this socket is authenticated and user is not yet recorded as member in DB,
+      // add them and increment statistics.totalJoins (counts unique joins)
+      try {
+        const uid = socket.userId || null;
+        if (uid && !room.members.some(m => String(m._id || m) === String(uid)) && room.status !== 'ended') {
+          // add to members array and update stats
+          await Room.findByIdAndUpdate(roomId, {
+            $push: { members: uid },
+            $inc: { 'statistics.totalJoins': 1 }
+          });
+          // update peakMembers if needed
+          try {
+            const fresh = await Room.findById(roomId).select('statistics members').lean();
+            if (fresh) {
+              const peak = Math.max(fresh.statistics?.peakMembers || 0, (fresh.members || []).length);
+              await Room.findByIdAndUpdate(roomId, { 'statistics.peakMembers': peak });
+            }
+          } catch (e) {
+            console.warn('[JOIN-ROOM] Could not update peakMembers:', e.message);
+          }
+        }
+      } catch (e) {
+        console.warn('[JOIN-ROOM] Auto-join stats update failed:', e.message);
+      }
+
       // Send initial playback state to the new socket
       const currentPlaybackState = {
         playlist: room.playlist,
@@ -171,12 +197,63 @@ io.on('connection', (socket) => {
       const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : room.members;
       
       io.to(roomId).emit('update-members', sortedMembers);
+        // Emit room-members-changed for admin pages so member count updates realtime
+        try {
+          const roomObj = await Room.findById(roomId).select('statistics members').lean();
+          if (roomObj) {
+            const payload = {
+              roomId: String(roomId),
+              membersCount: roomObj.members?.length || 0,
+              totalJoins: roomObj.statistics?.totalJoins || 0,
+              peakMembers: roomObj.statistics?.peakMembers || 0,
+            };
+            io.emit('room-members-changed', payload);
+            console.log('[LEAVE-ROOM] Emitted room-members-changed', payload);
+          }
+        } catch (e) {
+          console.warn('[LEAVE-ROOM] Could not emit room-members-changed:', e.message);
+        }
       console.log(`[JOIN-ROOM] Emitted update-members with ${sortedMembers.length} members`);
+      // Emit room-members-changed so admin pages update
+      try {
+        const roomObj = await Room.findById(roomId).select('statistics members').lean();
+        if (roomObj) {
+          const payload = {
+            roomId: String(roomId),
+            membersCount: roomObj.members?.length || 0,
+            totalJoins: roomObj.statistics?.totalJoins || 0,
+            peakMembers: roomObj.statistics?.peakMembers || 0,
+          };
+          io.emit('room-members-changed', payload);
+          console.log('[JOIN-ROOM] Emitted room-members-changed', payload);
+        }
+      } catch (e) {
+        console.warn('[JOIN-ROOM] Could not emit room-members-changed:', e.message);
+      }
+      // Emit global member stats for admin pages
+      try {
+        const roomObj = await Room.findById(roomId).select('statistics members').lean();
+        if (roomObj) {
+          const payload = {
+            roomId: String(roomId),
+            membersCount: sortedMembers.length,
+            totalJoins: roomObj.statistics?.totalJoins || 0,
+            peakMembers: roomObj.statistics?.peakMembers || sortedMembers.length,
+          };
+          io.emit('room-members-changed', payload);
+          console.log('[JOIN-ROOM] Emitted room-members-changed', payload);
+        }
+      } catch (e) {
+        console.warn('[JOIN-ROOM] Could not emit room-members-changed:', e.message);
+      }
       
     } catch (err) {
       console.error('[JOIN-ROOM] Error:', err);
     }
   });
+
+  // --- Chat: receive message from client, persist, and broadcast ---
+  registerChatHandlers(io, socket);
 
   // --- Request to join ---
   socket.on('request-to-join', async ({ roomId, requester }) => {
@@ -213,6 +290,59 @@ io.on('connection', (socket) => {
         const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
 
         io.to(roomId).emit('update-members', sortedMembers);
+
+        // Update statistics (only if room not ended) and emit room-members-changed
+        try {
+          const roomDoc = await Room.findById(roomId);
+          if (roomDoc && roomDoc.status !== 'ended') {
+            roomDoc.statistics = roomDoc.statistics || {};
+            // Only count unique joiners once
+            const reqIdStr = toId(requesterId);
+            if (reqIdStr && !roomDoc.uniqueJoiners.some(u => String(u) === reqIdStr)) {
+              roomDoc.uniqueJoiners.push(reqIdStr);
+              roomDoc.statistics.totalJoins = (roomDoc.statistics.totalJoins || 0) + 1;
+            }
+            roomDoc.statistics.peakMembers = Math.max(roomDoc.statistics.peakMembers || 0, sortedMembers.length);
+            await roomDoc.save();
+
+            const payload = {
+              roomId: String(roomId),
+              membersCount: sortedMembers.length,
+              totalJoins: roomDoc.statistics.totalJoins,
+              peakMembers: roomDoc.statistics.peakMembers,
+            };
+            io.emit('room-members-changed', payload);
+            console.log('[RESPOND] Emitted room-members-changed', payload);
+          }
+        } catch (e) {
+          console.warn('[RESPOND] Could not update stats or emit room-members-changed:', e.message);
+        }
+
+        // Update statistics (only if room not ended) and emit a single room-members-changed
+        try {
+          const roomDoc = await Room.findById(roomId);
+          if (roomDoc && roomDoc.status !== 'ended') {
+            roomDoc.statistics = roomDoc.statistics || {};
+            const reqIdStr = toId(requester._id);
+            if (reqIdStr && !roomDoc.uniqueJoiners.some(u => String(u) === reqIdStr)) {
+              roomDoc.uniqueJoiners.push(reqIdStr);
+              roomDoc.statistics.totalJoins = (roomDoc.statistics.totalJoins || 0) + 1;
+            }
+            roomDoc.statistics.peakMembers = Math.max(roomDoc.statistics.peakMembers || 0, sortedMembers.length);
+            await roomDoc.save();
+
+            const payload = {
+              roomId: String(roomId),
+              membersCount: sortedMembers.length,
+              totalJoins: roomDoc.statistics.totalJoins,
+              peakMembers: roomDoc.statistics.peakMembers,
+            };
+            io.emit('room-members-changed', payload);
+            console.log('[REQUEST-JOIN] Emitted room-members-changed', payload);
+          }
+        } catch (e) {
+          console.warn('[REQUEST-JOIN] Could not update stats or emit room-members-changed:', e.message);
+        }
 
         // Notify everyone in the room
         try {
@@ -333,124 +463,139 @@ io.on('connection', (socket) => {
         const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
         
         io.to(roomId).emit('update-members', sortedMembers);
+        // Emit global room-members-changed for admin pages so they see leave events
+        try {
+          const roomObj = await Room.findById(roomId).select('statistics members').lean();
+          if (roomObj) {
+            const payload = {
+              roomId: String(roomId),
+              membersCount: sortedMembers.length,
+              totalJoins: roomObj.statistics?.totalJoins || 0,
+              peakMembers: roomObj.statistics?.peakMembers || sortedMembers.length,
+            };
+            io.emit('room-members-changed', payload);
+            console.log('[LEAVE-ROOM] Emitted room-members-changed', payload);
+          }
+        } catch (e) {
+          console.warn('[LEAVE-ROOM] Could not emit room-members-changed:', e.message);
+        }
       }
     } catch (err) {
       console.error('[LEAVE-ROOM] Error:', err);
     }
   });
 
-  // --- Music Control Events ---
-  socket.on('music-control', async ({ roomId, action }) => {
-      try {
-          // 1️⃣ Kiểm tra và lấy thông tin phòng
-          const room = await Room.findById(roomId);
-          if (!room) {
-              console.warn(`[MUSIC_CONTROL] Room not found: ${roomId}`);
-              return;
-          }
+// server/src/server.js
 
-          // Chỉ cho phép chủ phòng điều khiển nhạc
-          if (socket.userId !== room.owner.toString()) {
-              console.warn(`[MUSIC_CONTROL] Unauthorized user tried to control music in room ${roomId}`);
-              return;
-          }
+// --- Music Control Events ---
+socket.on('music-control', async ({ roomId, action }) => {
+    try {
+        // 1️⃣ Lấy thông tin phòng và trạng thái CŨ
+        const room = await Room.findById(roomId);
+        if (!room) {
+            console.warn(`[MUSIC_CONTROL] Room not found: ${roomId}`);
+            return;
+        }
 
-          let updatedState = {};
+        // Chỉ cho phép chủ phòng điều khiển
+        if (socket.userId !== room.owner.toString()) {
+            console.warn(`[MUSIC_CONTROL] Unauthorized user tried to control music in room ${roomId}`);
+            return;
+        }
 
-          // 2️⃣ Xử lý từng loại hành động điều khiển
-          switch (action.type) {
+        // ✅ LƯU LẠI TRẠNG THÁI CŨ
+        const oldStatus = room.status; 
+        let updatedState = {};
 
-              // ▶️ PHÁT NHẠC
-              case 'PLAY': {
-                  const trackIndexToPlay =
-                      action.payload?.trackIndex ??
-                      (room.currentTrackIndex === -1 ? 0 : room.currentTrackIndex);
+        // 2️⃣ Xử lý các hành động điều khiển
+        switch (action.type) {
+            case 'PLAY':
+            case 'SKIP_NEXT':
+            case 'SKIP_PREVIOUS': {
+                const isPlayAction = action.type === 'PLAY';
+                let trackIndexToPlay = room.currentTrackIndex;
 
-                  if (trackIndexToPlay < 0 || trackIndexToPlay >= room.playlist.length) {
-                      console.warn(`[MUSIC_CONTROL] Invalid track index: ${trackIndexToPlay}`);
-                      return;
-                  }
+                if (isPlayAction) {
+                    trackIndexToPlay = action.payload?.trackIndex ?? (room.currentTrackIndex === -1 ? 0 : room.currentTrackIndex);
+                } else if (action.type === 'SKIP_NEXT') {
+                    if (!room.playlist.length) return;
+                    trackIndexToPlay = (room.currentTrackIndex + 1) % room.playlist.length;
+                } else { // SKIP_PREVIOUS
+                    if (!room.playlist.length) return;
+                    trackIndexToPlay = (room.currentTrackIndex - 1 + room.playlist.length) % room.playlist.length;
+                }
 
-                  updatedState = {
-                      isPlaying: true,
-                      currentTrackIndex: trackIndexToPlay,
-                      playbackStartTime: new Date()
-                  };
-                  break;
-              }
+                if (trackIndexToPlay < 0 || trackIndexToPlay >= room.playlist.length) {
+                    console.warn(`[MUSIC_CONTROL] Invalid track index: ${trackIndexToPlay}`);
+                    return;
+                }
 
-              // ⏸️ TẠM DỪNG NHẠC
-              case 'PAUSE': {
-                  updatedState = { isPlaying: false };
-                  break;
-              }
+                updatedState = {
+                    isPlaying: true,
+                    currentTrackIndex: trackIndexToPlay,
+                    playbackStartTime: new Date()
+                };
 
-              // ⏭️ CHUYỂN BÀI TIẾP
-              case 'SKIP_NEXT': {
-                  if (!room.playlist.length) return;
-                  const nextIndex = (room.currentTrackIndex + 1) % room.playlist.length;
-                  updatedState = {
-                      currentTrackIndex: nextIndex,
-                      isPlaying: true,
-                      playbackStartTime: new Date()
-                  };
-                  break;
-              }
+                // ✅ Luôn kiểm tra và chuyển sang "live" nếu đang ở "waiting"
+                if (oldStatus === "waiting") {
+                    updatedState.status = "live";
+                    updatedState.startedAt = new Date();
+                    console.log(`🎵 [MUSIC_CONTROL] Room ${roomId} status changing: waiting → live`);
+                }
+                break;
+            }
 
-              // ⏮️ LÙI VỀ BÀI TRƯỚC
-              case 'SKIP_PREVIOUS': {
-                  if (!room.playlist.length) return;
-                  // Nếu đang ở bài đầu, lùi về bài cuối
-                  const prevIndex = (room.currentTrackIndex - 1 + room.playlist.length) % room.playlist.length;
-                  updatedState = {
-                      currentTrackIndex: prevIndex,
-                      isPlaying: true,
-                      playbackStartTime: new Date()
-                  };
-                  break;
-              }
+            case 'PAUSE': {
+                updatedState = { isPlaying: false };
+                break;
+            }
+            
+            case 'SEEK_TO': {
+                if (typeof action.payload?.time === 'number') {
+                    const seekTimeInSeconds = action.payload.time;
+                    updatedState = {
+                        playbackStartTime: new Date(Date.now() - seekTimeInSeconds * 1000)
+                    };
+                } else {
+                    return;
+                }
+                break;
+            }
 
-              // ⏩ TUA NHẠC (SEEK_TO)
-              case 'SEEK_TO': {
-                  if (typeof action.payload?.time === 'number') {
-                      const seekTimeInSeconds = action.payload.time;
-                      const newPlaybackStartTime = new Date(Date.now() - seekTimeInSeconds * 1000);
+            default:
+                return;
+        }
 
-                      updatedState = {
-                          playbackStartTime: newPlaybackStartTime
-                      };
+        // 3️⃣ Cập nhật trạng thái phòng và lưu vào DB
+        Object.assign(room, updatedState);
+        await room.save();
+        
+        // ✅ 4️⃣ SO SÁNH TRỰC TIẾP và GỬI SỰ KIỆN NẾU CÓ THAY ĐỔI
+        const newStatus = room.status; // Lấy trạng thái MỚI nhất sau khi save
+        if (oldStatus !== newStatus) {
+            const payload = {
+                roomId: room._id.toString(),
+                status: newStatus,
+                startedAt: room.startedAt
+            };
+            // ⚡ Phát sự kiện đi toàn cục
+            io.emit('room-status-changed', payload);
+            console.log(`📢 [MUSIC_CONTROL] ✅ Broadcasted room-status-changed globally:`, JSON.stringify(payload));
+        }
 
-                      console.log(`[MUSIC_CONTROL] Seek to ${seekTimeInSeconds}s in room ${roomId}`);
-                  } else {
-                      console.warn(`[MUSIC_CONTROL] Invalid SEEK_TO payload`);
-                      return;
-                  }
-                  break;
-              }
+        // 5️⃣ Gửi trạng thái playback cho client trong phòng
+        const playbackState = {
+            playlist: room.playlist,
+            currentTrackIndex: room.currentTrackIndex,
+            isPlaying: room.isPlaying,
+            playbackStartTime: room.playbackStartTime,
+        };
+        io.to(roomId).emit('playback-state-changed', playbackState);
 
-              default:
-                  console.warn(`[MUSIC_CONTROL] Unknown action type: ${action.type}`);
-                  return;
-          }
-
-          // 3️⃣ Cập nhật trạng thái phòng
-          Object.assign(room, updatedState);
-          await room.save();
-
-          // 4️⃣ Gửi trạng thái mới cho toàn bộ client trong phòng
-          const playbackState = {
-              playlist: room.playlist,
-              currentTrackIndex: room.currentTrackIndex,
-              isPlaying: room.isPlaying,
-              playbackStartTime: room.playbackStartTime,
-          };
-
-          io.to(roomId).emit('playback-state-changed', playbackState);
-
-      } catch (error) {
-          console.error(`[MUSIC_CONTROL] Error:`, error);
-      }
-  });
+    } catch (error) {
+        console.error(`[MUSIC_CONTROL] Error:`, error);
+    }
+});
 
 
   // --- Sync time from host ---
