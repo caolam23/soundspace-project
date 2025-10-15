@@ -136,7 +136,7 @@ exports.addTrack = async (req, res) => {
         const io = req.app.get("io");
 
         if (io) {
-            // Gửi cập nhật playback state
+            // 1️⃣ Gửi cập nhật playback state
             io.to(roomId).emit("playback-state-changed", {
                 playlist: room.playlist,
                 currentTrackIndex: room.currentTrackIndex,
@@ -144,15 +144,20 @@ exports.addTrack = async (req, res) => {
                 playbackStartTime: room.playbackStartTime,
             });
 
-            // ✅ Gửi sự kiện thay đổi trạng thái nếu có
+            // 2️⃣ Gửi sự kiện thay đổi trạng thái nếu có (PHIÊN BẢN KẾT HỢP ĐẦY ĐỦ)
             if (oldStatus !== newStatus) {
-                const payload = {
+                const statusPayload = {
                     roomId: room._id.toString(),
                     status: newStatus,
-                    memberCount: room.memberCount
+                    startedAt: room.startedAt,  // ✅ Từ Code 1
+                    memberCount: room.memberCount  // ✅ Từ Code 2
                 };
-                io.emit('room-info-update', payload); 
-                console.log(`📢 Broadcasted room-info-update (status change):`, payload);
+                
+                // Emit cả 2 event để tương thích với frontend hiện tại
+                io.emit('room-status-changed', statusPayload);  // Event gốc
+                io.emit('room-info-update', statusPayload);      // Event mới
+                
+                console.log(`📢 [ADD_TRACK_YT] Broadcasted room status change:`, statusPayload);
             }
         }
 
@@ -304,7 +309,7 @@ exports.addTrackByUpload = async (req, res) => {
         const io = req.app.get("io");
 
         if (io) {
-            // Gửi cập nhật playback state
+            // 1️⃣ Gửi cập nhật playback state
             io.to(roomId).emit("playback-state-changed", {
                 playlist: room.playlist,
                 currentTrackIndex: room.currentTrackIndex,
@@ -314,17 +319,21 @@ exports.addTrackByUpload = async (req, res) => {
 
             console.log(`[UPLOAD] Đã emit playback-state-changed cho room ${roomId}`);
 
-            // ✅ Gửi sự kiện thay đổi trạng thái nếu có
+            // 2️⃣ Gửi sự kiện thay đổi trạng thái nếu có (PHIÊN BẢN KẾT HỢP ĐẦY ĐỦ)
             if (oldStatus !== newStatus) {
-            const payload = {
-                roomId: room._id.toString(),
-                status: newStatus,
-                memberCount: room.memberCount
-            };
-            // 🔄 THAY ĐỔI: Đổi tên sự kiện cho nhất quán
-            io.emit('room-info-update', payload); 
-            console.log(`📢 Broadcasted room-info-update (status change):`, payload);
-        }
+                const statusPayload = {
+                    roomId: room._id.toString(),
+                    status: newStatus,
+                    startedAt: room.startedAt,  // ✅ Từ Code 1
+                    memberCount: room.memberCount  // ✅ Từ Code 2
+                };
+                
+                // Emit cả 2 event để tương thích với frontend hiện tại
+                io.emit('room-status-changed', statusPayload);  // Event gốc
+                io.emit('room-info-update', statusPayload);      // Event mới
+                
+                console.log(`📢 [UPLOAD_TRACK] Broadcasted room status change:`, statusPayload);
+            }
         }
 
         return res.status(201).json({ msg: "Tải lên thành công!", playlist: room.playlist });

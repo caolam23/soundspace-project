@@ -10,7 +10,7 @@ const createApp = require('./app');
 const Room = require('./models/room');
 const User = require('./models/User');
 const registerChatHandlers = require('./controllers/chatHandler');
-
+const { attachSocketIO } = require('./middleware/auth');
 // 1. Connect to Database
 connectDB();
 
@@ -46,6 +46,15 @@ const APPROVAL_TTL = 2 * 60 * 1000; // 2 minutes
 
 // Helper to normalize IDs to strings
 const toId = (v) => (v === undefined || v === null) ? null : String(v);
+
+// ============================================
+// 🆕 ATTACH SOCKET MIDDLEWARE - TRƯỚC KHI LOAD ROUTES
+// ============================================
+app.use(attachSocketIO(io, userSockets));
+
+// ============================================
+// Socket middleware to verify token from handshake
+// ============================================
 
 // Socket middleware to verify token from handshake
 io.use((socket, next) => {
@@ -376,117 +385,106 @@ io.on('connection', (socket) => {
 });
 
 
-// server/src/server.js
-
-// --- Music Control Events ---
-socket.on('music-control', async ({ roomId, action }) => {
+ // --- Music Control Events ---
+  socket.on('music-control', async ({ roomId, action }) => {
     try {
-        // 1️⃣ Lấy thông tin phòng và trạng thái CŨ
-        const room = await Room.findById(roomId);
-        if (!room) {
-            console.warn(`[MUSIC_CONTROL] Room not found: ${roomId}`);
+      const room = await Room.findById(roomId);
+      if (!room) {
+        console.warn(`[MUSIC_CONTROL] Room not found: ${roomId}`);
+        return;
+      }
+
+      if (socket.userId !== room.owner.toString()) {
+        console.warn(`[MUSIC_CONTROL] Unauthorized user tried to control music in room ${roomId}`);
+        return;
+      }
+
+      const oldStatus = room.status;
+      let updatedState = {};
+
+      switch (action.type) {
+        case 'PLAY':
+        case 'SKIP_NEXT':
+        case 'SKIP_PREVIOUS': {
+          const isPlayAction = action.type === 'PLAY';
+          let trackIndexToPlay = room.currentTrackIndex;
+
+          if (isPlayAction) {
+            trackIndexToPlay = action.payload?.trackIndex ?? (room.currentTrackIndex === -1 ? 0 : room.currentTrackIndex);
+          } else if (action.type === 'SKIP_NEXT') {
+            if (!room.playlist.length) return;
+            trackIndexToPlay = (room.currentTrackIndex + 1) % room.playlist.length;
+          } else {
+            if (!room.playlist.length) return;
+            trackIndexToPlay = (room.currentTrackIndex - 1 + room.playlist.length) % room.playlist.length;
+          }
+
+          if (trackIndexToPlay < 0 || trackIndexToPlay >= room.playlist.length) {
+            console.warn(`[MUSIC_CONTROL] Invalid track index: ${trackIndexToPlay}`);
             return;
+          }
+
+          updatedState = {
+            isPlaying: true,
+            currentTrackIndex: trackIndexToPlay,
+            playbackStartTime: new Date()
+          };
+
+          if (oldStatus === "waiting") {
+            updatedState.status = "live";
+            updatedState.startedAt = new Date();
+            console.log(`🎵 [MUSIC_CONTROL] Room ${roomId} status changing: waiting → live`);
+          }
+          break;
         }
 
-        // Chỉ cho phép chủ phòng điều khiển
-        if (socket.userId !== room.owner.toString()) {
-            console.warn(`[MUSIC_CONTROL] Unauthorized user tried to control music in room ${roomId}`);
-            return;
+        case 'PAUSE': {
+          updatedState = { isPlaying: false };
+          break;
         }
-
-        // ✅ LƯU LẠI TRẠNG THÁI CŨ
-        const oldStatus = room.status; 
-        let updatedState = {};
-
-        // 2️⃣ Xử lý các hành động điều khiển
-        switch (action.type) {
-            case 'PLAY':
-            case 'SKIP_NEXT':
-            case 'SKIP_PREVIOUS': {
-                const isPlayAction = action.type === 'PLAY';
-                let trackIndexToPlay = room.currentTrackIndex;
-
-                if (isPlayAction) {
-                    trackIndexToPlay = action.payload?.trackIndex ?? (room.currentTrackIndex === -1 ? 0 : room.currentTrackIndex);
-                } else if (action.type === 'SKIP_NEXT') {
-                    if (!room.playlist.length) return;
-                    trackIndexToPlay = (room.currentTrackIndex + 1) % room.playlist.length;
-                } else { // SKIP_PREVIOUS
-                    if (!room.playlist.length) return;
-                    trackIndexToPlay = (room.currentTrackIndex - 1 + room.playlist.length) % room.playlist.length;
-                }
-
-                if (trackIndexToPlay < 0 || trackIndexToPlay >= room.playlist.length) {
-                    console.warn(`[MUSIC_CONTROL] Invalid track index: ${trackIndexToPlay}`);
-                    return;
-                }
-
-                updatedState = {
-                    isPlaying: true,
-                    currentTrackIndex: trackIndexToPlay,
-                    playbackStartTime: new Date()
-                };
-
-                // ✅ Luôn kiểm tra và chuyển sang "live" nếu đang ở "waiting"
-                if (oldStatus === "waiting") {
-                    updatedState.status = "live";
-                    updatedState.startedAt = new Date();
-                    console.log(`🎵 [MUSIC_CONTROL] Room ${roomId} status changing: waiting → live`);
-                }
-                break;
-            }
-
-            case 'PAUSE': {
-                updatedState = { isPlaying: false };
-                break;
-            }
-            
-            case 'SEEK_TO': {
-                if (typeof action.payload?.time === 'number') {
-                    const seekTimeInSeconds = action.payload.time;
-                    updatedState = {
-                        playbackStartTime: new Date(Date.now() - seekTimeInSeconds * 1000)
-                    };
-                } else {
-                    return;
-                }
-                break;
-            }
-
-            default:
-                return;
-        }
-
-        // 3️⃣ Cập nhật trạng thái phòng và lưu vào DB
-        Object.assign(room, updatedState);
-        await room.save();
         
-        // ✅ 4️⃣ SO SÁNH TRỰC TIẾP và GỬI SỰ KIỆN NẾU CÓ THAY ĐỔI
-        const newStatus = room.status; // Lấy trạng thái MỚI nhất sau khi save
-        if (oldStatus !== newStatus) {
-            const payload = {
-                roomId: room._id.toString(),
-                status: newStatus,
-                startedAt: room.startedAt
+        case 'SEEK_TO': {
+          if (typeof action.payload?.time === 'number') {
+            const seekTimeInSeconds = action.payload.time;
+            updatedState = {
+              playbackStartTime: new Date(Date.now() - seekTimeInSeconds * 1000)
             };
-            // ⚡ Phát sự kiện đi toàn cục
-            io.emit('room-status-changed', payload);
-            console.log(`📢 [MUSIC_CONTROL] ✅ Broadcasted room-status-changed globally:`, JSON.stringify(payload));
+          } else {
+            return;
+          }
+          break;
         }
 
-        // 5️⃣ Gửi trạng thái playback cho client trong phòng
-        const playbackState = {
-            playlist: room.playlist,
-            currentTrackIndex: room.currentTrackIndex,
-            isPlaying: room.isPlaying,
-            playbackStartTime: room.playbackStartTime,
+        default:
+          return;
+      }
+
+      Object.assign(room, updatedState);
+      await room.save();
+      
+      const newStatus = room.status;
+      if (oldStatus !== newStatus) {
+        const payload = {
+          roomId: room._id.toString(),
+          status: newStatus,
+          startedAt: room.startedAt
         };
-        io.to(roomId).emit('playback-state-changed', playbackState);
+        io.emit('room-status-changed', payload);
+        console.log(`📢 [MUSIC_CONTROL] ✅ Broadcasted room-status-changed globally:`, JSON.stringify(payload));
+      }
+
+      const playbackState = {
+        playlist: room.playlist,
+        currentTrackIndex: room.currentTrackIndex,
+        isPlaying: room.isPlaying,
+        playbackStartTime: room.playbackStartTime,
+      };
+      io.to(roomId).emit('playback-state-changed', playbackState);
 
     } catch (error) {
-        console.error(`[MUSIC_CONTROL] Error:`, error);
+      console.error(`[MUSIC_CONTROL] Error:`, error);
     }
-});
+  });
 
 
   // --- Sync time from host ---
