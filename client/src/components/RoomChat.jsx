@@ -48,7 +48,11 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
     const normalized = (initialMessages || []).map((m) => ({
       ...m,
       id: m.id || m._id,
-      isHost: ownerId && (String(m.userId) === String(ownerId) || String(m._id) === String(ownerId) || String(m.userId) === String(ownerId)),
+      isHost: Boolean(ownerId) && (
+        String(m.userId) === String(ownerId) ||
+        String(m._id) === String(ownerId) ||
+        String(m.username) === String(ownerId)
+      ),
     }));
     setMessages(normalized);
   }, [initialMessages, ownerId]);
@@ -70,7 +74,11 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
       setMessages((prev) => {
         const tempIndex = prev.findIndex((m) => m.id && String(m.id).startsWith('temp-') && m.text === msg.text && m.username === msg.username);
         const normalizedMsg = { ...msg, id: msg.id || msg._id };
-        if (ownerId && (String(normalizedMsg.userId) === String(ownerId) || String(normalizedMsg.username) === String(ownerId))) {
+        if (ownerId && (
+          String(normalizedMsg.userId) === String(ownerId) ||
+          String(normalizedMsg._id) === String(ownerId) ||
+          String(normalizedMsg.username) === String(ownerId)
+        )) {
           normalizedMsg.isHost = true;
         }
         if (tempIndex !== -1) {

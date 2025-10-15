@@ -238,7 +238,13 @@ function RoomPage() {
 
         if (cleanedUp) return;
         
-        setRoom(fetchedRoom);
+        // Merge fetchedRoom with existing room to avoid accidentally
+        // removing properties like playlist when the server returns
+        // a partial room object in some socket callbacks.
+        setRoom((prev) => {
+          if (!prev) return fetchedRoom;
+          return { ...prev, ...fetchedRoom };
+        });
         setChatMessages(fetchedRoom.chat || []);
 
         const owner = fetchedRoom.owner ? [fetchedRoom.owner] : [];
@@ -276,52 +282,23 @@ function RoomPage() {
 
     // Socket event handlers
     const handleUpdateMembers = (data) => {
-      try {
-        const updatedMembers = data.members || data;
-        console.debug('[RoomPage] update-members payload', updatedMembers);
-        if (!updatedMembers || (Array.isArray(updatedMembers) && updatedMembers.length === 0)) return;
-
-        // Normalize members: server may send array of ids or objects
-        const normalized = (updatedMembers || []).map((m) => (typeof m === 'string' || typeof m === 'number') ? { _id: String(m) } : m);
-
-        const currentRoom = roomRef.current;
-        if (!currentRoom || !currentRoom.owner) {
-          setMembers(normalized);
-          return;
-        }
-
-        const ownerId = String(currentRoom.owner._id);
-        const ownerObj = normalized.find((m) => String(m._id) === ownerId);
-
-        if (ownerObj) {
-          const others = normalized.filter((m) => String(m._id) !== ownerId);
-          setMembers([ownerObj, ...others]);
-        } else {
-          setMembers(normalized);
-        }
-      } catch (e) {
-        console.warn('handleUpdateMembers error', e, data);
+      const updatedMembers = data.members || data;
+      if (!updatedMembers || updatedMembers.length === 0) return;
+      
+      const currentRoom = roomRef.current;
+      if (!currentRoom || !currentRoom.owner) {
+        setMembers(updatedMembers);
+        return;
       }
-    };
 
-    const handleRoomMembersChanged = (payload) => {
-      // payload: { roomId, membersCount, totalJoins, peakMembers }
-      try {
-        if (String(payload.roomId) !== String(roomId)) return;
-        setRoom((r) => {
-          if (!r) return r;
-          const next = { ...r };
-          next.members = payload.membersCount ?? next.members;
-          next.statistics = { ...next.statistics, totalJoins: payload.totalJoins ?? next.statistics?.totalJoins };
-          return next;
-        });
-
-        // keep participants list consistent
-        if (payload.membersCount != null) {
-          // We can't reconstruct full members array here, but members length shown elsewhere is derived from `members` state; leave that alone.
-        }
-      } catch (e) {
-        console.warn('handleRoomMembersChanged error', e);
+      const ownerId = String(currentRoom.owner._id);
+      const ownerObj = updatedMembers.find((m) => String(m._id) === ownerId);
+      
+      if (ownerObj) {
+        const others = updatedMembers.filter((m) => String(m._id) !== ownerId);
+        setMembers([ownerObj, ...others]);
+      } else {
+        setMembers(updatedMembers);
       }
     };
 
@@ -343,7 +320,6 @@ function RoomPage() {
     socket.on("update-members", handleUpdateMembers);
     socket.on("user-joined-notification", handleUserJoined);
     socket.on("room-ended", handleRoomEnded);
-  socket.on('room-members-changed', handleRoomMembersChanged);
 
     // Cleanup
     return () => {
@@ -365,43 +341,30 @@ function RoomPage() {
       socket.off("user-joined-notification", handleUserJoined);
       socket.off("room-ended", handleRoomEnded);
       socket.off("new-join-request", handleNewJoinRequest);
-      socket.off('room-members-changed', handleRoomMembersChanged);
     };
   }, [roomId, user, socket, navigate, handleNewJoinRequest, endRoomAPI, location.state]);
 
   useEffect(() => {
-    const handleUserLeft = ({ username, avatar, userId }) => {
-      try {
-        // Lọc bỏ nếu người rời phòng là chính mình (đã chuyển hướng về /home)
-        if (user && String(user._id) === String(userId)) return;
+        const handleUserLeft = ({ username, avatar, userId }) => { // ⚠️ Nên thêm userId để lọc chính xác hơn
+            // Lọc bỏ nếu người rời phòng là chính mình (đã chuyển hướng về /home)
+            if (user && user._id === userId) return; // Lọc bằng _id sẽ chính xác hơn
 
-        const memberAvatar = avatar || "/default-avatar.png";
+            const memberAvatar = avatar || "/default-avatar.png";
 
-        // Hiển thị thông báo rời phòng
-        setLeaveNotification({ username, avatar: memberAvatar, id: Date.now() });
+            // Hiển thị thông báo rời phòng
+            setLeaveNotification({ username, avatar: memberAvatar, id: Date.now() });
 
-        // Cập nhật danh sách thành viên realtime (hỗ trợ m là object hoặc id string)
-        setMembers((prevMembers) => {
-          console.debug('[RoomPage] before remove members', prevMembers.map(m => (m && (m._id || m))));
-          const next = prevMembers.filter(m => String(m?._id ?? m) !== String(userId));
-          console.debug('[RoomPage] after remove members', next.map(m => (m && (m._id || m))));
-          return next;
-        });
+            // Tự động ẩn sau 4 giây
+            const timer = setTimeout(() => setLeaveNotification(null), 4000);
+            return () => clearTimeout(timer);
+        };
 
-        // Tự động ẩn sau 4 giây
-        const timer = setTimeout(() => setLeaveNotification(null), 4000);
-        return () => clearTimeout(timer);
-      } catch (e) {
-        console.warn('handleUserLeft error', e, { username, userId });
-      }
-    };
+        socket.on("user-left-notification", handleUserLeft);
 
-    socket.on("user-left-notification", handleUserLeft);
-
-    return () => {
-      socket.off("user-left-notification", handleUserLeft);
-    };
-  }, [socket, user])
+        return () => {
+            socket.off("user-left-notification", handleUserLeft);
+        };
+    }, [socket, user])
 
   // Guest join approval handling
   useEffect(() => {
@@ -411,7 +374,10 @@ function RoomPage() {
       try {
         socket.emit("join-room", roomId);
         
-        setRoom(payload);
+        setRoom((prev) => {
+          if (!prev) return payload;
+          return { ...prev, ...payload, playlist: payload.playlist ?? prev.playlist };
+        });
         const owner = payload.owner ? [payload.owner] : [];
         const otherMembers = (payload.members || []).filter(
           (m) => String(m._id) !== String(payload.owner?._id)
@@ -429,7 +395,10 @@ function RoomPage() {
         );
         
         if (freshRoom.members.length >= payload.members.length) {
-          setRoom(freshRoom);
+          setRoom((prev) => {
+            if (!prev) return freshRoom;
+            return { ...prev, ...freshRoom };
+          });
           const freshOwner = freshRoom.owner ? [freshRoom.owner] : [];
           const freshOthers = (freshRoom.members || []).filter(
             (m) => String(m._id) !== String(freshRoom.owner?._id)
@@ -521,7 +490,6 @@ function RoomPage() {
         <div className="roompage-header-info">
           <h1>{room.name}</h1>
           {room.description && <p>{room.description}</p>}
-              {/* Tổng lượt tham gia đã bị ẩn theo yêu cầu */}
           {room.privacy === "private" && isHost && (
             <div className="roompage-roomcode">
               Mã phòng: <strong>{room.roomCode}</strong>
@@ -640,11 +608,11 @@ function RoomPage() {
           {/* Chat box (realtime) */}
           {activeTab === "chat" && (
             <div style={{ height: '570px', display: 'flex', flexDirection: 'column' }}>
-              <RoomChat 
-                roomId={roomId} 
-                ownerId={room.owner?._id}
+              <RoomChat
+                roomId={roomId}
+                ownerId={room?.owner?._id}
                 initialMessages={chatMessages} // <-- SỬA Ở ĐÂY
-                onNewMessage={appendChatMessage} 
+                onNewMessage={appendChatMessage}
               />
             </div>
           )}

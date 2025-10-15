@@ -1,7 +1,7 @@
 const Room = require("../models/room");
 const ytdl = require("@distube/ytdl-core");
 const { cloudinary } = require("../config/uploadConfig");
-const getAudioDuration = require("get-audio-duration");
+const { getAudioDurationInSeconds } = require("get-audio-duration");
 
 // ======================================================
 // ⚙️ HÀM HỖ TRỢ: LẤY THÔNG TIN VIDEO CÓ TIMEOUT AN TOÀN
@@ -18,32 +18,85 @@ const getVideoInfoWithTimeout = (url, timeoutMs = 8000) => {
 // ======================================================
 // 🎵 THÊM BÀI HÁT TỪ LINK YOUTUBE
 // ======================================================
-// controllers/playlistController.js
-
 exports.addTrack = async (req, res) => {
     const { roomId } = req.params;
     const { url } = req.body;
     const userId = req.user?.id || req.user?._id;
 
-    if (!url?.trim()) return res.status(400).json({ msg: "Vui lòng cung cấp URL hợp lệ." });
-    if (!ytdl.validateURL(url)) return res.status(400).json({ msg: "URL YouTube không hợp lệ." });
+    // 🔍 LOG REQUEST
+    console.log('========================================');
+    console.log('[ADD_TRACK_YT] Request received');
+    console.log('[ADD_TRACK_YT] roomId:', roomId);
+    console.log('[ADD_TRACK_YT] userId:', userId);
+    console.log('[ADD_TRACK_YT] url:', url);
+    console.log('========================================');
+
+    if (!url?.trim()) {
+        console.error('[ADD_TRACK_YT] ❌ URL is empty');
+        return res.status(400).json({ msg: "Vui lòng cung cấp URL hợp lệ." });
+    }
+
+    console.log('[ADD_TRACK_YT] 🔍 Validating YouTube URL...');
+    const isValid = ytdl.validateURL(url);
+    console.log('[ADD_TRACK_YT] Validation result:', isValid);
+    
+    if (!isValid) {
+        console.error('[ADD_TRACK_YT] ❌ Invalid YouTube URL');
+        return res.status(400).json({ msg: "URL YouTube không hợp lệ." });
+    }
+    
+    console.log('[ADD_TRACK_YT] ✅ URL is valid');
 
     try {
         const room = await Room.findById(roomId);
-        if (!room) return res.status(404).json({ msg: "Không tìm thấy phòng." });
-        if (room.owner.toString() !== userId.toString())
+        if (!room) {
+            console.error('[ADD_TRACK_YT] ❌ Room not found:', roomId);
+            return res.status(404).json({ msg: "Không tìm thấy phòng." });
+        }
+        
+        console.log('[ADD_TRACK_YT] ✅ Room found:', room.name);
+        
+        if (room.owner.toString() !== userId.toString()) {
+            console.error('[ADD_TRACK_YT] ❌ Unauthorized');
             return res.status(403).json({ msg: "Chỉ chủ phòng mới được thêm nhạc." });
+        }
+        
+        console.log('[ADD_TRACK_YT] ✅ User authorized');
 
         const ytCount = room.playlist.filter(t => t.source === "youtube").length;
-        if (ytCount >= 8)
+        console.log('[ADD_TRACK_YT] Current YouTube tracks:', ytCount + '/8');
+        
+        if (ytCount >= 8) {
+            console.error('[ADD_TRACK_YT] ❌ YouTube limit reached');
             return res.status(400).json({ msg: "Bạn đã đạt giới hạn 8 bài hát YouTube." });
+        }
 
-        const info = await getVideoInfoWithTimeout(url).catch(() => null);
-        if (!info) return res.status(400).json({ msg: "Không thể lấy thông tin video." });
+        console.log('[ADD_TRACK_YT] 📥 Fetching video info from YouTube...');
+        console.log('[ADD_TRACK_YT] Timeout: 8000ms');
+        
+        const info = await getVideoInfoWithTimeout(url, 8000).catch(err => {
+            console.error('[ADD_TRACK_YT] ❌ Failed to get video info:', err.message);
+            return null;
+        });
+        
+        if (!info) {
+            console.error('[ADD_TRACK_YT] ❌ No video info returned');
+            return res.status(400).json({ msg: "Không thể lấy thông tin video. Video có thể bị giới hạn hoặc không tồn tại." });
+        }
+        
+        console.log('[ADD_TRACK_YT] ✅ Video info retrieved successfully');
 
         const details = info.videoDetails;
-        if (room.playlist.some(t => t.sourceId === details.videoId))
+        console.log('[ADD_TRACK_YT] Video ID:', details.videoId);
+        console.log('[ADD_TRACK_YT] Title:', details.title);
+        console.log('[ADD_TRACK_YT] Duration:', details.lengthSeconds, 'seconds');
+        
+        if (room.playlist.some(t => t.sourceId === details.videoId)) {
+            console.error('[ADD_TRACK_YT] ❌ Video already in playlist');
             return res.status(409).json({ msg: "Bài hát đã tồn tại trong playlist." });
+        }
+        
+        console.log('[ADD_TRACK_YT] ✅ Video not duplicated');
 
         const newTrack = {
             title: details.title,
@@ -61,6 +114,7 @@ exports.addTrack = async (req, res) => {
 
         room.playlist.push(newTrack);
 
+        // 🎵 Tự động phát nếu là bài đầu tiên
         if (room.playlist.length === 1 && !room.isPlaying) {
             room.currentTrackIndex = 0;
             room.isPlaying = true;
@@ -74,12 +128,15 @@ exports.addTrack = async (req, res) => {
 
         await room.save();
         
+        console.log('[ADD_TRACK_YT] ✅ Track saved to database');
+        console.log('[ADD_TRACK_YT] New playlist length:', room.playlist.length);
+        
         // ✅ LẤY TRẠNG THÁI MỚI
         const newStatus = room.status;
         const io = req.app.get("io");
 
         if (io) {
-            // Gửi cập nhật cho người trong phòng
+            // Gửi cập nhật playback state
             io.to(roomId).emit("playback-state-changed", {
                 playlist: room.playlist,
                 currentTrackIndex: room.currentTrackIndex,
@@ -87,7 +144,7 @@ exports.addTrack = async (req, res) => {
                 playbackStartTime: room.playbackStartTime,
             });
 
-            // ✅ BỔ SUNG: Gửi sự kiện thay đổi trạng thái nếu có
+            // ✅ Gửi sự kiện thay đổi trạng thái nếu có
             if (oldStatus !== newStatus) {
                 const payload = {
                     roomId: room._id.toString(),
@@ -101,38 +158,115 @@ exports.addTrack = async (req, res) => {
 
         return res.status(201).json({ msg: "🎶 Đã thêm bài hát thành công!", playlist: room.playlist });
     } catch (error) {
-        console.error("🔥 Lỗi khi thêm nhạc:", error);
-        return res.status(500).json({ msg: "Lỗi máy chủ.", error: error.message });
+        console.error("========================================");
+        console.error("🔥 [ADD_TRACK_YT] ERROR CAUGHT:");
+        console.error("Message:", error.message);
+        console.error("Stack:", error.stack);
+        console.error("========================================");
+        return res.status(500).json({ 
+            msg: "Lỗi máy chủ.", 
+            error: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 };
+
 // ======================================================
 // 🎧 THÊM BÀI HÁT QUA UPLOAD FILE (CLOUDINARY)
 // ======================================================
-// controllers/playlistController.js
-
 exports.addTrackByUpload = async (req, res) => {
     const { roomId } = req.params;
     const userId = req.user?.id || req.user?._id;
 
+    // 🔍 LOG REQUEST
+    console.log('========================================');
+    console.log('[UPLOAD] Request received');
+    console.log('[UPLOAD] roomId:', roomId);
+    console.log('[UPLOAD] userId:', userId);
+    console.log('[UPLOAD] req.files:', req.files ? Object.keys(req.files) : 'null');
+    console.log('[UPLOAD] req.body:', req.body);
+    console.log('========================================');
+
     try {
-        if (!req.files || !req.files.audio || !req.files.thumbnail)
-            return res.status(400).json({ msg: "Vui lòng cung cấp cả file âm thanh và ảnh bìa." });
+        // ✅ Kiểm tra file
+        if (!req.files) {
+            console.error('[UPLOAD] ❌ req.files is null or undefined');
+            return res.status(400).json({ msg: "Không có file nào được tải lên." });
+        }
+
+        if (!req.files.audio) {
+            console.error('[UPLOAD] ❌ req.files.audio is missing');
+            console.log('[UPLOAD] Available fields:', Object.keys(req.files));
+            return res.status(400).json({ msg: "Thiếu file âm thanh." });
+        }
+
+        if (!req.files.thumbnail) {
+            console.error('[UPLOAD] ❌ req.files.thumbnail is missing');
+            console.log('[UPLOAD] Available fields:', Object.keys(req.files));
+            return res.status(400).json({ msg: "Thiếu file ảnh bìa." });
+        }
+
+        console.log('[UPLOAD] ✅ Files validated successfully');
+        console.log('[UPLOAD] Audio file:', req.files.audio[0]?.originalname);
+        console.log('[UPLOAD] Thumbnail file:', req.files.thumbnail[0]?.originalname);
 
         const room = await Room.findById(roomId);
-        if (!room) return res.status(404).json({ msg: "Không tìm thấy phòng." });
-        if (room.owner.toString() !== userId.toString())
+        if (!room) {
+            console.error('[UPLOAD] ❌ Room not found:', roomId);
+            return res.status(404).json({ msg: "Không tìm thấy phòng." });
+        }
+        
+        console.log('[UPLOAD] ✅ Room found:', room.name);
+        
+        if (room.owner.toString() !== userId.toString()) {
+            console.error('[UPLOAD] ❌ Unauthorized:', { owner: room.owner, user: userId });
             return res.status(403).json({ msg: "Chỉ chủ phòng mới có thể tải nhạc lên." });
+        }
+        
+        console.log('[UPLOAD] ✅ User authorized');
             
         const uploadCount = room.playlist.filter(t => t.source === "upload").length;
-        if (uploadCount >= 5)
+        if (uploadCount >= 5) {
+            console.error('[UPLOAD] ❌ Upload limit reached:', uploadCount);
             return res.status(400).json({ msg: "Bạn đã đạt giới hạn 5 bài hát tải lên." });
+        }
+        
+        console.log('[UPLOAD] ✅ Upload limit OK:', uploadCount + '/5');
 
+        // ✅ Upload lên Cloudinary
+        console.log(`[UPLOAD] 📤 Uploading to Cloudinary...`);
+        console.log(`[UPLOAD] Audio path:`, req.files.audio[0].path);
+        console.log(`[UPLOAD] Thumbnail path:`, req.files.thumbnail[0].path);
+        
         const [audioUpload, thumbnailUpload] = await Promise.all([
-            cloudinary.uploader.upload(req.files.audio[0].path, { resource_type: "video", folder: "soundspace-tracks" }),
-            cloudinary.uploader.upload(req.files.thumbnail[0].path, { folder: "soundspace-thumbnails" }),
+            cloudinary.uploader.upload(req.files.audio[0].path, { 
+                resource_type: "video", 
+                folder: "soundspace-tracks" 
+            }).catch(err => {
+                console.error('[UPLOAD] ❌ Audio upload failed:', err.message);
+                throw new Error(`Audio upload failed: ${err.message}`);
+            }),
+            cloudinary.uploader.upload(req.files.thumbnail[0].path, { 
+                folder: "soundspace-thumbnails" 
+            }).catch(err => {
+                console.error('[UPLOAD] ❌ Thumbnail upload failed:', err.message);
+                throw new Error(`Thumbnail upload failed: ${err.message}`);
+            }),
         ]);
 
-        const durationInSeconds = await getAudioDuration(audioUpload.secure_url).catch(() => 0);
+        console.log(`[UPLOAD] ✅ Audio uploaded:`, audioUpload.secure_url);
+        console.log(`[UPLOAD] ✅ Thumbnail uploaded:`, thumbnailUpload.secure_url);
+
+        // ✅ Lấy duration
+        console.log('[UPLOAD] 🔍 Getting audio duration...');
+        console.log('[UPLOAD] getAudioDurationInSeconds type:', typeof getAudioDurationInSeconds);
+        
+        const durationInSeconds = await getAudioDurationInSeconds(audioUpload.secure_url).catch(err => {
+            console.warn(`[UPLOAD] ⚠️ Cannot get duration:`, err.message);
+            return 0;
+        });
+        
+        console.log('[UPLOAD] ✅ Duration:', durationInSeconds, 'seconds');
 
         const newTrack = {
             title: req.files.audio[0].originalname.replace(/\.[^/.]+$/, ""),
@@ -150,6 +284,7 @@ exports.addTrackByUpload = async (req, res) => {
 
         room.playlist.push(newTrack);
     
+        // 🎵 Tự động phát nếu là bài đầu tiên
         if (room.playlist.length === 1 && !room.isPlaying) {
             room.currentTrackIndex = 0;
             room.isPlaying = true;
@@ -162,13 +297,14 @@ exports.addTrackByUpload = async (req, res) => {
         }
     
         await room.save();
+        console.log(`[UPLOAD] Đã lưu track vào DB, playlist length: ${room.playlist.length}`);
         
         // ✅ LẤY TRẠNG THÁI MỚI
         const newStatus = room.status;
         const io = req.app.get("io");
 
         if (io) {
-            // Gửi cập nhật cho người trong phòng
+            // Gửi cập nhật playback state
             io.to(roomId).emit("playback-state-changed", {
                 playlist: room.playlist,
                 currentTrackIndex: room.currentTrackIndex,
@@ -176,7 +312,9 @@ exports.addTrackByUpload = async (req, res) => {
                 playbackStartTime: room.playbackStartTime,
             });
 
-            // ✅ BỔ SUNG: Gửi sự kiện thay đổi trạng thái nếu có
+            console.log(`[UPLOAD] Đã emit playback-state-changed cho room ${roomId}`);
+
+            // ✅ Gửi sự kiện thay đổi trạng thái nếu có
             if (oldStatus !== newStatus) {
                 const payload = {
                     roomId: room._id.toString(),
@@ -190,8 +328,16 @@ exports.addTrackByUpload = async (req, res) => {
 
         return res.status(201).json({ msg: "Tải lên thành công!", playlist: room.playlist });
     } catch (err) {
-        console.error("🔥 Lỗi khi upload nhạc:", err);
-        return res.status(500).json({ msg: "Lỗi máy chủ." });
+        console.error("========================================");
+        console.error("🔥 [UPLOAD] ERROR CAUGHT:");
+        console.error("Message:", err.message);
+        console.error("Stack:", err.stack);
+        console.error("========================================");
+        return res.status(500).json({ 
+            msg: "Lỗi máy chủ.", 
+            error: err.message,
+            details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        });
     }
 };
 
