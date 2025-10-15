@@ -212,77 +212,84 @@ exports.joinRoom = async (req, res) => {
     const userId = req.user.id;
 
     // ✅ 1. Chỉ lấy field cần thiết (tăng tốc truy vấn)
-    let room = await Room.findById(roomId).select('owner members status privacy roomCode');
-    if (!room || room.status === 'ended') {
-      return res.status(404).json({ msg: 'Phòng không tồn tại hoặc đã kết thúc.' });
+    let room = await Room.findById(roomId).select("owner members status privacy roomCode");
+    if (!room || room.status === "ended") {
+      return res.status(404).json({ msg: "Phòng không tồn tại hoặc đã kết thúc." });
     }
 
     // ✅ 2. Kiểm tra đã là member chưa
-    const isMember = room.members.some(m => m.toString() === userId);
+    const isMember = room.members.some((m) => m.toString() === userId);
     if (isMember) {
       // Dùng promise để trả về nhanh, populate chạy nền
       populateRoom(room._id).then((popRoom) => {
-        const io = req.app.get('io');
+        const io = req.app.get("io");
         if (io) {
-          io.to(roomId).emit('update-members', popRoom.members);
+          io.to(roomId).emit("update-members", popRoom.members);
         }
       });
-      return res.status(200).json({ msg: 'Đã ở trong phòng.', roomId });
+      return res.status(200).json({ msg: "Đã ở trong phòng.", roomId });
     }
 
     // ✅ 3. Kiểm tra quyền vào phòng (theo privacy)
-    if (room.privacy === 'private') {
+    if (room.privacy === "private") {
       const { roomCode } = req.body;
       if (!roomCode || room.roomCode !== roomCode) {
-        return res.status(403).json({ msg: 'Mã phòng không chính xác.' });
+        return res.status(403).json({ msg: "Mã phòng không chính xác." });
       }
-    } else if (room.privacy === 'manual') {
-      return res.status(403).json({ msg: 'Phòng này cần sự phê duyệt của chủ phòng.' });
+    } else if (room.privacy === "manual") {
+      return res.status(403).json({ msg: "Phòng này cần sự phê duyệt của chủ phòng." });
     }
 
     // ✅ 4. Thêm thành viên và lưu (chỉ lưu ID, không populate lúc này)
     room.members.push(userId);
     await room.save();
 
-    // ⚡️ 5. Trả phản hồi NGAY LẬP TỨC cho frontend (frontend sẽ hiển thị tạm)
+    // ⚡️ 5. Trả phản hồi NGAY LẬP TỨC cho frontend (join nhanh)
     res.status(200).json({
-      msg: 'Tham gia phòng thành công!',
+      msg: "Tham gia phòng thành công!",
       roomId: room._id,
-      fastJoin: true, // đánh dấu để frontend biết đây là join nhanh
+      fastJoin: true,
     });
 
     // ✅ 6. Phần populate + socket emit sẽ chạy song song ở background
     (async () => {
       const fullRoom = await populateRoom(room._id);
-      const io = req.app.get('io');
+      const io = req.app.get("io");
       if (!io) return;
 
       // Đảm bảo chủ phòng đứng đầu danh sách
       const ownerId = String(fullRoom.owner._id);
       const sortedMembers = [
         fullRoom.owner,
-        ...fullRoom.members.filter(m => String(m._id) !== ownerId),
+        ...fullRoom.members.filter((m) => String(m._id) !== ownerId),
       ];
 
-      // ⚡️ Emit realtime update nhanh hơn
-      io.to(roomId.toString()).emit('update-members', sortedMembers);
+      // ⚡️ Emit realtime cập nhật danh sách thành viên trong phòng
+      io.to(roomId.toString()).emit("update-members", sortedMembers);
       console.log(`✅ [JOIN-ROOM FAST] User ${userId} joined room ${roomId}`);
 
-      // ⚡️ Emit thông báo user mới vào phòng
-      const joinedUser = sortedMembers.find(m => String(m._id) === userId);
+      // ⚡️ Emit thông báo người mới tham gia
+      const joinedUser = sortedMembers.find((m) => String(m._id) === userId);
       if (joinedUser) {
-        io.to(roomId.toString()).emit('user-joined-notification', {
+        io.to(roomId.toString()).emit("user-joined-notification", {
           username: joinedUser.username,
           avatar: joinedUser.avatar,
         });
       }
 
       console.log(`📤 [JOIN-ROOM FAST] Emitted update-members + user-joined-notification`);
-    })().catch(e => console.error('⚠️ Background joinRoom error:', e));
 
+      // ✅ THÊM MỚI: Phát sự kiện cập nhật thông tin phòng ra ngoài trang chủ
+      io.emit("room-info-update", {
+        roomId: fullRoom._id,
+        memberCount: fullRoom.memberCount, // 🧠 Virtual property từ roomSchema
+        status: fullRoom.status,
+      });
+      console.log(`📢 [BROADCAST] Emitted 'room-info-update' for homepage`);
+    })().catch((e) => console.error("⚠️ Background joinRoom error:", e));
   } catch (err) {
     console.error("❌ Lỗi joinRoom:", err);
-    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+    res.status(500).json({ msg: "Lỗi server", error: err.message });
   }
 };
 

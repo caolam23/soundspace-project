@@ -1,10 +1,9 @@
-// client/src/components/RoomCard.jsx
 import React, { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { X, Lock } from 'react-feather';
-import { toast } from 'react-toastify';
-import { toastConfig } from '../services/toastConfig';
+import { X, Lock, Users, Globe, Edit2, Radio } from "react-feather";
+import { toast } from "react-toastify";
+import { toastConfig } from "../services/toastConfig";
 import "./RoomCard.css";
 import { AuthContext } from "../contexts/AuthContext";
 import socket from "../services/socket";
@@ -17,12 +16,15 @@ function RoomCard({ room }) {
   const [resultMessage, setResultMessage] = useState("");
   const [acceptedBox, setAcceptedBox] = useState(false);
   const [acceptedRoomIdNav, setAcceptedRoomIdNav] = useState(null);
-  
+
   // State cho modal nhập mã phòng
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
-  const [roomCode, setRoomCode] = useState('');
+  const [roomCode, setRoomCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
 
+  // =========================================
+  // JOIN ROOM LOGIC
+  // =========================================
   const handleJoinRoom = async () => {
     const token = localStorage.getItem("token");
     if (!user || !token) {
@@ -37,12 +39,11 @@ function RoomCard({ room }) {
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        navigate(`/room/${room._id}`, { 
+        navigate(`/room/${room._id}`, {
           state: { fromJoin: true },
-          replace: true 
+          replace: true,
         });
       } else if (room.privacy === "private") {
-        // Mở modal nhập mã phòng thay vì dùng prompt
         setIsCodeModalOpen(true);
       } else if (room.privacy === "manual") {
         socket.emit("request-to-join", {
@@ -53,68 +54,66 @@ function RoomCard({ room }) {
             avatar: user.avatar,
           },
         });
-
         setPendingRoomId(room._id);
         setWaiting(true);
       }
     } catch (err) {
       console.error("Lỗi khi tham gia phòng:", err);
-      toast.error(err.response?.data?.msg || "Không thể tham gia phòng. Vui lòng thử lại.", toastConfig);
+      toast.error(
+        err.response?.data?.msg || "Không thể tham gia phòng. Vui lòng thử lại.",
+        toastConfig
+      );
     }
   };
 
   const handleCloseCodeModal = () => {
     setIsCodeModalOpen(false);
-    setRoomCode('');
+    setRoomCode("");
   };
 
   const handleInputChange = (e) => {
-    const value = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
-    if (value.length <= 6) {
-      setRoomCode(value);
-    }
+    const value = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "");
+    if (value.length <= 6) setRoomCode(value);
   };
 
   const handleSubmitCode = async (e) => {
     e.preventDefault();
-    
+
     if (!roomCode || roomCode.length !== 6) {
-      toast.error('Vui lòng nhập đúng 6 ký tự mã phòng!', toastConfig);
+      toast.error("Vui lòng nhập đúng 6 ký tự mã phòng!", toastConfig);
       return;
     }
 
     setIsJoining(true);
 
     try {
-      const token = localStorage.getItem('token');
-      
+      const token = localStorage.getItem("token");
       await axios.post(
         `http://localhost:8800/api/rooms/${room._id}/join`,
         { roomCode },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      toast.success('Đang vào phòng...', {
-        ...toastConfig,
-        icon: '🎉',
-      });
-
+      toast.success("Đang vào phòng...", { ...toastConfig, icon: "🎉" });
       handleCloseCodeModal();
-      
-      navigate(`/room/${room._id}`, { 
-        state: { fromJoin: true },
-        replace: true 
-      });
 
+      navigate(`/room/${room._id}`, {
+        state: { fromJoin: true },
+        replace: true,
+      });
     } catch (err) {
-      console.error('Lỗi khi tham gia phòng:', err);
-      const errorMsg = err.response?.data?.msg || 'Mã phòng không đúng. Vui lòng thử lại.';
+      console.error("Lỗi khi tham gia phòng:", err);
+      const errorMsg =
+        err.response?.data?.msg || "Mã phòng không đúng. Vui lòng thử lại.";
       toast.error(errorMsg, toastConfig);
     } finally {
       setIsJoining(false);
     }
   };
 
+  // =========================================
+  // SOCKET XỬ LÝ KHI ĐƯỢC DUYỆT / TỪ CHỐI
+  // =========================================
   useEffect(() => {
     const handleAccepted = ({ roomId: acceptedRoomId }) => {
       if (!pendingRoomId) return;
@@ -144,8 +143,29 @@ function RoomCard({ room }) {
     };
   }, [pendingRoomId]);
 
+  // =========================================
+  // HIỂN THỊ ICON VÀ TEXT THEO QUYỀN RIÊNG TƯ
+  // =========================================
+  const getPrivacyInfo = (privacy) => {
+    switch (privacy) {
+      case "private":
+        return { icon: <Lock size={14} />, text: "Dùng mã" };
+      case "manual":
+        return { icon: <Edit2 size={14} />, text: "Xét duyệt" };
+      case "public":
+      default:
+        return { icon: <Globe size={14} />, text: "Công khai" };
+    }
+  };
+
+  const privacyInfo = getPrivacyInfo(room.privacy);
+
+  // =========================================
+  // JSX TRẢ VỀ
+  // =========================================
   return (
     <>
+      {/* Overlay chờ duyệt */}
       {waiting && (
         <div className="join-wait-overlay">
           <div className="join-wait-box">
@@ -163,7 +183,9 @@ function RoomCard({ room }) {
       {acceptedBox && (
         <div className="join-wait-overlay">
           <div className="join-accepted-box modal-black">
-            <div style={{ fontSize: 18, fontWeight: 800 }}>Yêu cầu được chấp nhận!</div>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>
+              Yêu cầu được chấp nhận!
+            </div>
             <div style={{ marginTop: 8, color: "var(--text-secondary)" }}>
               Bạn sẽ được chuyển vào phòng.
             </div>
@@ -173,9 +195,9 @@ function RoomCard({ room }) {
                 onClick={() => {
                   setAcceptedBox(false);
                   if (acceptedRoomIdNav) {
-                    navigate(`/room/${acceptedRoomIdNav}`, { 
+                    navigate(`/room/${acceptedRoomIdNav}`, {
                       state: { fromApproval: true },
-                      replace: true 
+                      replace: true,
                     });
                   }
                 }}
@@ -189,9 +211,18 @@ function RoomCard({ room }) {
 
       {/* Modal nhập mã phòng */}
       {isCodeModalOpen && (
-        <div className="ThamGiaPhong-modal-overlay" onClick={handleCloseCodeModal}>
-          <div className="ThamGiaPhong-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button onClick={handleCloseCodeModal} className="ThamGiaPhong-modal-close">
+        <div
+          className="ThamGiaPhong-modal-overlay"
+          onClick={handleCloseCodeModal}
+        >
+          <div
+            className="ThamGiaPhong-modal-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={handleCloseCodeModal}
+              className="ThamGiaPhong-modal-close"
+            >
               <X size={24} />
             </button>
 
@@ -222,8 +253,8 @@ function RoomCard({ room }) {
                 </div>
               </div>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="ThamGiaPhong-submit-btn"
                 disabled={isJoining || roomCode.length !== 6}
               >
@@ -248,15 +279,41 @@ function RoomCard({ room }) {
         </div>
       )}
 
-      {/* Thẻ card chính */}
+      {/* ============================== */}
+      {/* 🔄 Thẻ chính của RoomCard */}
+      {/* ============================== */}
       <div className="room-card">
-        <img
-          className="room-card-image"
-          src={room.coverImage}
-          alt={`Ảnh bìa của phòng ${room.name}`}
-        />
+        <div className="room-card-image-wrapper">
+          <img
+            className="room-card-image"
+            src={room.coverImage}
+            alt={`Ảnh bìa của phòng ${room.name}`}
+          />
+          <div className={`room-status-badge status-${room.status}`}>
+            {room.status === "live" ? (
+              <>
+                <Radio size={12} className="live-icon-blink" /> LIVE
+              </>
+            ) : (
+              "WAITING"
+            )}
+          </div>
+        </div>
+
         <div className="room-card-content">
           <h3>{room.name}</h3>
+
+          <div className="room-info-bar">
+            <span className="info-item">
+              <Users size={14} />
+              <span>{room.memberCount ?? room.members.length} người</span>
+            </span>
+            <span className="info-item">
+              {privacyInfo.icon}
+              <span>{privacyInfo.text}</span>
+            </span>
+          </div>
+
           <p>{room.description}</p>
           <div className="room-card-actions">
             <button onClick={handleJoinRoom} className="btn-join-session">

@@ -171,6 +171,7 @@ const roomSchema = new mongoose.Schema(
     playbackStartTime: {
       type: Date, // thời điểm bắt đầu phát bài hiện tại
     },
+
     // =============================================
     // Chat messages (realtime + persisted)
     // =============================================
@@ -178,7 +179,7 @@ const roomSchema = new mongoose.Schema(
       type: [
         new mongoose.Schema(
           {
-            userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+            userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
             username: { type: String, required: true, trim: true },
             avatar: { type: String, trim: true },
             text: { type: String, required: true, trim: true },
@@ -190,8 +191,19 @@ const roomSchema = new mongoose.Schema(
       default: [],
     },
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { virtuals: true },   // ✅ Cho phép xuất virtual khi chuyển sang JSON
+    toObject: { virtuals: true }  // ✅ Cho phép xuất virtual khi chuyển sang Object
+  }
 );
+
+// =======================================================
+// ✅ THÊM MỚI: Virtual property đếm số lượng thành viên
+// =======================================================
+roomSchema.virtual("memberCount").get(function () {
+  return this.members ? this.members.length : 0;
+});
 
 // =======================================================
 // Index hỗ trợ tìm kiếm & quản lý nhanh

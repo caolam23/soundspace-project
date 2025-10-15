@@ -145,6 +145,7 @@ io.on('connection', (socket) => {
     try {
       socket.join(roomId);
       console.log(`[JOIN-ROOM] Socket ${socket.id} joined room ${roomId}`);
+      socket.roomId = roomId;
 
       const room = await Room.findById(roomId)
         .populate('owner', 'username avatar')
@@ -247,101 +248,133 @@ io.on('connection', (socket) => {
 
   // --- Host respond to request ---
   socket.on('respond-to-request', async ({ requesterId, roomId, accepted }) => {
-    try {
-      console.log(`[RESPOND] Host responding: roomId=${roomId}, requesterId=${requesterId}, accepted=${accepted}`);
-      
-      let room = await Room.findById(roomId);
-      if (!room) return;
+  try {
+    console.log(`[RESPOND] Host responding: roomId=${roomId}, requesterId=${requesterId}, accepted=${accepted}`);
 
-      const reqIdStr = toId(requesterId);
-      const requesterSockets = userSockets.get(reqIdStr);
+    let room = await Room.findById(roomId);
+    if (!room) return;
 
-      if (accepted) {
-        if (!room.members.some(m => String(m) === reqIdStr)) {
-          room.members.push(reqIdStr);
-          await room.save();
-        }
-        joinApprovals.set(`${roomId}-${reqIdStr}`, Date.now());
+    const reqIdStr = toId(requesterId);
+    const requesterSockets = userSockets.get(reqIdStr);
 
-        const populatedRoom = await Room.findById(roomId)
-          .populate('owner', 'username avatar')
-          .populate('members', 'username avatar');
-        
-        const ownerId = String(populatedRoom.owner._id);
-        const ownerMember = populatedRoom.members.find(m => String(m._id) === ownerId);
-        const otherMembers = populatedRoom.members.filter(m => String(m._id) !== ownerId);
-        const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
-
-        if (requesterSockets) {
-          requesterSockets.forEach(sid => {
-            io.to(sid).emit('join-request-accepted', { roomId, room: populatedRoom });
-          });
-        }
-
-        io.to(roomId).emit('update-members', sortedMembers);
-
-        // Notify everyone in the room
-        try {
-          const joinedMember = sortedMembers.find(m => String(m._id) === reqIdStr);
-          if (joinedMember) {
-            io.to(roomId).emit('user-joined-notification', { 
-              username: joinedMember.username, 
-              avatar: joinedMember.avatar 
-            });
-          }
-        } catch (e) {
-          console.warn('[RESPOND] Could not emit user-joined-notification:', e.message);
-        }
-      } else {
-        if (requesterSockets) {
-          requesterSockets.forEach(sid => {
-            io.to(sid).emit('join-request-denied', { 
-              message: 'Yêu cầu tham gia đã bị từ chối.' 
-            });
-          });
-        }
+    if (accepted) {
+      // ======= Thêm người dùng vào danh sách members nếu chưa có =======
+      if (!room.members.some(m => String(m) === reqIdStr)) {
+        room.members.push(reqIdStr);
+        await room.save();
       }
-    } catch (err) {
-      console.error('[RESPOND] Error:', err);
+
+      // Lưu thời điểm duyệt để tránh spam
+      joinApprovals.set(`${roomId}-${reqIdStr}`, Date.now());
+
+      // ======= Populate lại room để gửi thông tin đầy đủ =======
+      const populatedRoom = await Room.findById(roomId)
+        .populate('owner', 'username avatar')
+        .populate('members', 'username avatar');
+
+      const ownerId = String(populatedRoom.owner._id);
+      const ownerMember = populatedRoom.members.find(m => String(m._id) === ownerId);
+      const otherMembers = populatedRoom.members.filter(m => String(m._id) !== ownerId);
+      const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
+
+      // ======= Gửi thông báo cho người được chấp nhận =======
+      if (requesterSockets) {
+        requesterSockets.forEach(sid => {
+          io.to(sid).emit('join-request-accepted', { roomId, room: populatedRoom });
+        });
+      }
+
+      // ======= Cập nhật danh sách thành viên cho tất cả người trong phòng =======
+      io.to(roomId).emit('update-members', sortedMembers);
+
+      // ✅ THÊM MỚI: GỬI CẬP NHẬT RA TRANG CHỦ (Realtime)
+      io.emit('room-info-update', {
+        roomId: populatedRoom._id.toString(),
+        memberCount: populatedRoom.members.length, // Tổng số thành viên
+        status: populatedRoom.status
+      });
+      console.log(`📢 [BROADCAST] Emitted room-info-update from respond-to-request`);
+
+      // ======= Gửi thông báo user vừa tham gia =======
+      try {
+        const joinedMember = sortedMembers.find(m => String(m._id) === reqIdStr);
+        if (joinedMember) {
+          io.to(roomId).emit('user-joined-notification', {
+            username: joinedMember.username,
+            avatar: joinedMember.avatar
+          });
+        }
+      } catch (e) {
+        console.warn('[RESPOND] Could not emit user-joined-notification:', e.message);
+      }
+
+    } else {
+      // ======= Xử lý khi bị từ chối =======
+      if (requesterSockets) {
+        requesterSockets.forEach(sid => {
+          io.to(sid).emit('join-request-denied', {
+            message: 'Yêu cầu tham gia đã bị từ chối.'
+          });
+        });
+      }
     }
-  });
+  } catch (err) {
+    console.error('[RESPOND] Error:', err);
+  }
+});
 
   // --- Leave room ---
   socket.on('leave-room', async ({ roomId, userId }) => {
-    socket.leave(roomId);
-    try {
-      // 🆕 1. Lấy thông tin người dùng trước khi họ bị xoá khỏi room
-      const leavingUser = await User.findById(userId).select('username avatar');
+  // Người dùng rời khỏi socket room
+  socket.leave(roomId);
 
-      // 2. Xóa thành viên khỏi phòng
-      await Room.findByIdAndUpdate(roomId, { $pull: { members: userId } });
+  try {
+    console.log(`[LEAVE-ROOM] User leaving room: roomId=${roomId}, userId=${userId}`);
 
-      // 🆕 3. Gửi thông báo người dùng rời phòng
-      if (leavingUser) {
-        io.to(roomId).emit('user-left-notification', {
-          userId: userId,
-          username: leavingUser.username,
-          avatar: leavingUser.avatar
-        });
-        console.log(`[LEAVE-ROOM] Emitted user-left-notification for ${leavingUser.username}`);
-      }
+    // 🆕 1. Lấy thông tin người dùng trước khi họ bị xóa khỏi room
+    const leavingUser = await User.findById(userId).select('username avatar');
 
-      // 4. Populate lại room và gửi update members
-      const populatedRoom = await Room.findById(roomId)
-        .populate('owner', 'username avatar')
-        .populate('members', 'username avatar');
-      if (populatedRoom) {
-        const ownerId = String(populatedRoom.owner._id);
-        const ownerMember = populatedRoom.members.find(m => String(m._id) === ownerId);
-        const otherMembers = populatedRoom.members.filter(m => String(m._id) !== ownerId);
-        const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
-        
-        io.to(roomId).emit('update-members', sortedMembers);
-      }
-    } catch (err) {
-      console.error('[LEAVE-ROOM] Error:', err);
-    }
-  });
+    // 2. Xóa thành viên khỏi phòng trong DB
+    await Room.findByIdAndUpdate(roomId, { $pull: { members: userId } });
+
+    // 🆕 3. Gửi thông báo người dùng rời phòng
+    if (leavingUser) {
+      io.to(roomId).emit('user-left-notification', {
+        userId: userId,
+        username: leavingUser.username,
+        avatar: leavingUser.avatar
+      });
+      console.log(`[LEAVE-ROOM] Emitted user-left-notification for ${leavingUser.username}`);
+    }
+
+    // 4. Populate lại thông tin phòng để gửi update
+    const populatedRoom = await Room.findById(roomId)
+      .populate('owner', 'username avatar')
+      .populate('members', 'username avatar');
+
+    if (populatedRoom) {
+      const ownerId = String(populatedRoom.owner._id);
+      const ownerMember = populatedRoom.members.find(m => String(m._id) === ownerId);
+      const otherMembers = populatedRoom.members.filter(m => String(m._id) !== ownerId);
+      const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
+
+      // 5. Gửi cập nhật danh sách thành viên mới cho tất cả trong phòng
+      io.to(roomId).emit('update-members', sortedMembers);
+
+      // ✅ 6. THÊM MỚI: GỬI CẬP NHẬT RA TRANG CHỦ (broadcast toàn hệ thống)
+      io.emit('room-info-update', {
+        roomId: populatedRoom._id.toString(),
+        memberCount: populatedRoom.members.length, // Tổng số thành viên còn lại
+        status: populatedRoom.status
+      });
+      console.log(`📢 [BROADCAST] Emitted room-info-update from leave-room`);
+    }
+
+  } catch (err) {
+    console.error('[LEAVE-ROOM] Error:', err);
+  }
+});
+
 
 // server/src/server.js
 
