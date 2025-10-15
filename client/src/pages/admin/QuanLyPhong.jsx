@@ -80,33 +80,96 @@ const QuanLyPhong = () => {
       return;
     }
 
-    const setupListeners = () => {
-      const handleRoomCreated = () => fetchRooms();
-      const handleRoomDeleted = ({ roomId }) => {
-        setRooms(prev => prev.filter(r => r.id !== roomId));
-        toast.info("Một phòng vừa bị xóa");
-      };
-      const handleRoomEnded = () => fetchRooms();
-      const handleRoomStatusChanged = () => fetchRooms();
+    // Stable handler references so we can remove them on cleanup
+    const handleRoomCreated = () => fetchRooms();
+    const handleRoomDeleted = ({ roomId }) => {
+      setRooms(prev => prev.filter(r => r.id !== roomId));
+      toast.info("Một phòng vừa bị xóa");
+    };
+    const handleRoomEnded = () => fetchRooms();
+    const handleRoomStatusChanged = () => fetchRooms();
+    const handleRoomMembersChanged = (payload) => {
+      // payload: { roomId, membersCount, totalJoins, peakMembers }
+      console.debug('[QuanLyPhong] room-members-changed received', payload);
 
-      socket.on("room-created", handleRoomCreated);
-      socket.on("room-deleted", handleRoomDeleted);
-      socket.on("room-ended-homepage", handleRoomEnded);
-      socket.on("room-status-changed", handleRoomStatusChanged);
+      const pid = String(payload.roomId || payload.id || payload._id || '');
+
+      let found = false;
+      setRooms(prev => prev.map(r => {
+        // Support multiple id shapes: r.id, r._id, r.roomId
+        const rid = String(r.id ?? r._id ?? r.roomId ?? '');
+        if (rid === pid) {
+          found = true;
+          return {
+            ...r,
+            members: (typeof payload.membersCount === 'number') ? payload.membersCount : r.members,
+            statistics: {
+              ...r.statistics,
+              totalJoins: payload.totalJoins ?? r.statistics?.totalJoins,
+              peakMembers: payload.peakMembers ?? r.statistics?.peakMembers,
+            }
+          };
+        }
+        return r;
+      }));
+
+      // If we didn't find a matching room row locally, refresh the list to pick up changes
+      if (!found) {
+        console.debug('[QuanLyPhong] changed room not in current page, fetching fresh list');
+        fetchRooms().catch(e => console.warn('[QuanLyPhong] fetchRooms after members-changed failed', e));
+      } else {
+        // If we did find it, perform a single-room fetch to guarantee canonical members count
+        // (fixes cases where some emits carry stale counts)
+        (async () => {
+          try {
+            const token = localStorage.getItem('token');
+            const { data } = await axios.get(`http://localhost:8800/api/admin/rooms/${payload.roomId}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (data && data.success) {
+              setRooms(prev => prev.map(r => {
+                if (String(r.id) === String(payload.roomId) || String(r._id) === String(payload.roomId) || String(r.roomId) === String(payload.roomId)) {
+                  const updated = data.data;
+                  return {
+                    ...r,
+                    members: updated.members?.length ?? updated.members ?? r.members,
+                    statistics: {
+                      ...r.statistics,
+                      totalJoins: updated.statistics?.totalJoins ?? r.statistics?.totalJoins,
+                      peakMembers: updated.statistics?.peakMembers ?? r.statistics?.peakMembers,
+                    }
+                  };
+                }
+                return r;
+              }));
+            }
+          } catch (e) {
+            console.warn('[QuanLyPhong] fetch single room after members-changed failed', e);
+          }
+        })();
+      }
     };
 
-    if (socket.connected) {
-      setupListeners();
-    } else {
-      socket.once('connect', setupListeners);
-    }
+    // Attach listeners immediately so they survive reconnects; on reconnect we refresh
+    socket.on("room-created", handleRoomCreated);
+    socket.on("room-deleted", handleRoomDeleted);
+    socket.on("room-ended-homepage", handleRoomEnded);
+    socket.on("room-status-changed", handleRoomStatusChanged);
+    socket.on("room-members-changed", handleRoomMembersChanged);
+
+    const onConnectRefresh = () => {
+      console.log('[QuanLyPhong] socket connected - refreshing rooms');
+      fetchRooms().catch(e => console.warn('[QuanLyPhong] fetchRooms on connect failed', e));
+    };
+    socket.on('connect', onConnectRefresh);
 
     return () => {
-      socket.off("room-created");
-      socket.off("room-deleted");
-      socket.off("room-ended-homepage");
-      socket.off("room-status-changed");
-      socket.off('connect', setupListeners);
+      socket.off("room-created", handleRoomCreated);
+      socket.off("room-deleted", handleRoomDeleted);
+      socket.off("room-ended-homepage", handleRoomEnded);
+      socket.off("room-status-changed", handleRoomStatusChanged);
+      socket.off("room-members-changed", handleRoomMembersChanged);
+      socket.off('connect', onConnectRefresh);
     };
   }, [socket]);
 

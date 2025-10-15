@@ -108,6 +108,11 @@ const roomSchema = new mongoose.Schema(
       ref: "User",
       default: [],
     },
+    uniqueJoiners: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "User",
+      default: [],
+    },
 
     // =============================================
     // Thống kê

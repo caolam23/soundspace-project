@@ -155,6 +155,31 @@ io.on('connection', (socket) => {
         return;
       }
 
+      // If this socket is authenticated and user is not yet recorded as member in DB,
+      // add them and increment statistics.totalJoins (counts unique joins)
+      try {
+        const uid = socket.userId || null;
+        if (uid && !room.members.some(m => String(m._id || m) === String(uid)) && room.status !== 'ended') {
+          // add to members array and update stats
+          await Room.findByIdAndUpdate(roomId, {
+            $push: { members: uid },
+            $inc: { 'statistics.totalJoins': 1 }
+          });
+          // update peakMembers if needed
+          try {
+            const fresh = await Room.findById(roomId).select('statistics members').lean();
+            if (fresh) {
+              const peak = Math.max(fresh.statistics?.peakMembers || 0, (fresh.members || []).length);
+              await Room.findByIdAndUpdate(roomId, { 'statistics.peakMembers': peak });
+            }
+          } catch (e) {
+            console.warn('[JOIN-ROOM] Could not update peakMembers:', e.message);
+          }
+        }
+      } catch (e) {
+        console.warn('[JOIN-ROOM] Auto-join stats update failed:', e.message);
+      }
+
       // Send initial playback state to the new socket
       const currentPlaybackState = {
         playlist: room.playlist,
@@ -172,7 +197,55 @@ io.on('connection', (socket) => {
       const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : room.members;
       
       io.to(roomId).emit('update-members', sortedMembers);
+        // Emit room-members-changed for admin pages so member count updates realtime
+        try {
+          const roomObj = await Room.findById(roomId).select('statistics members').lean();
+          if (roomObj) {
+            const payload = {
+              roomId: String(roomId),
+              membersCount: roomObj.members?.length || 0,
+              totalJoins: roomObj.statistics?.totalJoins || 0,
+              peakMembers: roomObj.statistics?.peakMembers || 0,
+            };
+            io.emit('room-members-changed', payload);
+            console.log('[LEAVE-ROOM] Emitted room-members-changed', payload);
+          }
+        } catch (e) {
+          console.warn('[LEAVE-ROOM] Could not emit room-members-changed:', e.message);
+        }
       console.log(`[JOIN-ROOM] Emitted update-members with ${sortedMembers.length} members`);
+      // Emit room-members-changed so admin pages update
+      try {
+        const roomObj = await Room.findById(roomId).select('statistics members').lean();
+        if (roomObj) {
+          const payload = {
+            roomId: String(roomId),
+            membersCount: roomObj.members?.length || 0,
+            totalJoins: roomObj.statistics?.totalJoins || 0,
+            peakMembers: roomObj.statistics?.peakMembers || 0,
+          };
+          io.emit('room-members-changed', payload);
+          console.log('[JOIN-ROOM] Emitted room-members-changed', payload);
+        }
+      } catch (e) {
+        console.warn('[JOIN-ROOM] Could not emit room-members-changed:', e.message);
+      }
+      // Emit global member stats for admin pages
+      try {
+        const roomObj = await Room.findById(roomId).select('statistics members').lean();
+        if (roomObj) {
+          const payload = {
+            roomId: String(roomId),
+            membersCount: sortedMembers.length,
+            totalJoins: roomObj.statistics?.totalJoins || 0,
+            peakMembers: roomObj.statistics?.peakMembers || sortedMembers.length,
+          };
+          io.emit('room-members-changed', payload);
+          console.log('[JOIN-ROOM] Emitted room-members-changed', payload);
+        }
+      } catch (e) {
+        console.warn('[JOIN-ROOM] Could not emit room-members-changed:', e.message);
+      }
       
     } catch (err) {
       console.error('[JOIN-ROOM] Error:', err);
@@ -217,6 +290,59 @@ io.on('connection', (socket) => {
         const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
 
         io.to(roomId).emit('update-members', sortedMembers);
+
+        // Update statistics (only if room not ended) and emit room-members-changed
+        try {
+          const roomDoc = await Room.findById(roomId);
+          if (roomDoc && roomDoc.status !== 'ended') {
+            roomDoc.statistics = roomDoc.statistics || {};
+            // Only count unique joiners once
+            const reqIdStr = toId(requesterId);
+            if (reqIdStr && !roomDoc.uniqueJoiners.some(u => String(u) === reqIdStr)) {
+              roomDoc.uniqueJoiners.push(reqIdStr);
+              roomDoc.statistics.totalJoins = (roomDoc.statistics.totalJoins || 0) + 1;
+            }
+            roomDoc.statistics.peakMembers = Math.max(roomDoc.statistics.peakMembers || 0, sortedMembers.length);
+            await roomDoc.save();
+
+            const payload = {
+              roomId: String(roomId),
+              membersCount: sortedMembers.length,
+              totalJoins: roomDoc.statistics.totalJoins,
+              peakMembers: roomDoc.statistics.peakMembers,
+            };
+            io.emit('room-members-changed', payload);
+            console.log('[RESPOND] Emitted room-members-changed', payload);
+          }
+        } catch (e) {
+          console.warn('[RESPOND] Could not update stats or emit room-members-changed:', e.message);
+        }
+
+        // Update statistics (only if room not ended) and emit a single room-members-changed
+        try {
+          const roomDoc = await Room.findById(roomId);
+          if (roomDoc && roomDoc.status !== 'ended') {
+            roomDoc.statistics = roomDoc.statistics || {};
+            const reqIdStr = toId(requester._id);
+            if (reqIdStr && !roomDoc.uniqueJoiners.some(u => String(u) === reqIdStr)) {
+              roomDoc.uniqueJoiners.push(reqIdStr);
+              roomDoc.statistics.totalJoins = (roomDoc.statistics.totalJoins || 0) + 1;
+            }
+            roomDoc.statistics.peakMembers = Math.max(roomDoc.statistics.peakMembers || 0, sortedMembers.length);
+            await roomDoc.save();
+
+            const payload = {
+              roomId: String(roomId),
+              membersCount: sortedMembers.length,
+              totalJoins: roomDoc.statistics.totalJoins,
+              peakMembers: roomDoc.statistics.peakMembers,
+            };
+            io.emit('room-members-changed', payload);
+            console.log('[REQUEST-JOIN] Emitted room-members-changed', payload);
+          }
+        } catch (e) {
+          console.warn('[REQUEST-JOIN] Could not update stats or emit room-members-changed:', e.message);
+        }
 
         // Notify everyone in the room
         try {
@@ -337,6 +463,22 @@ io.on('connection', (socket) => {
         const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
         
         io.to(roomId).emit('update-members', sortedMembers);
+        // Emit global room-members-changed for admin pages so they see leave events
+        try {
+          const roomObj = await Room.findById(roomId).select('statistics members').lean();
+          if (roomObj) {
+            const payload = {
+              roomId: String(roomId),
+              membersCount: sortedMembers.length,
+              totalJoins: roomObj.statistics?.totalJoins || 0,
+              peakMembers: roomObj.statistics?.peakMembers || sortedMembers.length,
+            };
+            io.emit('room-members-changed', payload);
+            console.log('[LEAVE-ROOM] Emitted room-members-changed', payload);
+          }
+        } catch (e) {
+          console.warn('[LEAVE-ROOM] Could not emit room-members-changed:', e.message);
+        }
       }
     } catch (err) {
       console.error('[LEAVE-ROOM] Error:', err);

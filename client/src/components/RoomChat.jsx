@@ -3,7 +3,7 @@ import './RoomChat.css';
 import { AuthContext } from '../contexts/AuthContext';
 import { Send, Flag, MoreVertical } from 'react-feather';
 
-export default function RoomChat({ roomId, initialMessages = [], onNewMessage }) {
+export default function RoomChat({ roomId, ownerId = null, initialMessages = [], onNewMessage }) {
   const { user, socket } = useContext(AuthContext);
   const [messages, setMessages] = useState(initialMessages || []);
   const [text, setText] = useState('');
@@ -44,8 +44,14 @@ export default function RoomChat({ roomId, initialMessages = [], onNewMessage })
   }, [text]);
 
   useEffect(() => {
-    setMessages(initialMessages || []);
-  }, [initialMessages]);
+    // Ensure initial messages from the room owner are marked with isHost
+    const normalized = (initialMessages || []).map((m) => ({
+      ...m,
+      id: m.id || m._id,
+      isHost: ownerId && (String(m.userId) === String(ownerId) || String(m._id) === String(ownerId) || String(m.userId) === String(ownerId)),
+    }));
+    setMessages(normalized);
+  }, [initialMessages, ownerId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -63,12 +69,16 @@ export default function RoomChat({ roomId, initialMessages = [], onNewMessage })
     const handleNew = (msg) => {
       setMessages((prev) => {
         const tempIndex = prev.findIndex((m) => m.id && String(m.id).startsWith('temp-') && m.text === msg.text && m.username === msg.username);
+        const normalizedMsg = { ...msg, id: msg.id || msg._id };
+        if (ownerId && (String(normalizedMsg.userId) === String(ownerId) || String(normalizedMsg.username) === String(ownerId))) {
+          normalizedMsg.isHost = true;
+        }
         if (tempIndex !== -1) {
           const next = [...prev];
-          next[tempIndex] = { ...msg, id: msg.id || msg._id };
+          next[tempIndex] = normalizedMsg;
           return next;
         }
-        return [...prev, { ...msg, id: msg.id || msg._id }];
+        return [...prev, normalizedMsg];
       });
 
       try {
@@ -109,6 +119,10 @@ export default function RoomChat({ roomId, initialMessages = [], onNewMessage })
       createdAt: new Date().toISOString(),
       meta: payload.meta,
     };
+    // mark temp message as host if current user is owner
+    if (ownerId && user && String(user._id) === String(ownerId)) {
+      tempMsg.isHost = true;
+    }
     setMessages((prev) => [...prev, tempMsg]);
     setText('');
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
