@@ -166,10 +166,11 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
   // ====================================================================
   useEffect(() => {
     if (!roomData) return;
-    const rdPlaylistIds = (roomData.playlist || []).map(t => t._id || t.sourceId).join(',');
-    const localPlaylistIds = (playlist || []).map(t => t._id || t.sourceId).join(',');
-
-    if (rdPlaylistIds !== localPlaylistIds) setPlaylist(roomData.playlist || []);
+    if (Array.isArray(roomData.playlist)) {
+      const rdPlaylistIds = (roomData.playlist || []).map(t => t._id || t.sourceId).join(',');
+      const localPlaylistIds = (playlist || []).map(t => t._id || t.sourceId).join(',');
+      if (rdPlaylistIds !== localPlaylistIds) setPlaylist(roomData.playlist || []);
+    }
     if ((roomData.currentTrackIndex ?? -1) !== currentTrackIndex)
       setCurrentTrackIndex(roomData.currentTrackIndex ?? -1);
     if ((roomData.isPlaying ?? false) !== isPlaying)
@@ -238,9 +239,27 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
   // ====================================================================
   useEffect(() => {
     if (!socket) return;
-    const handlePlaylistUpdate = (newPlaylist) => setPlaylist(newPlaylist || []);
+    const handlePlaylistUpdate = (newPlaylist) => {
+      console.debug('[MusicPlayer] playlist-updated', newPlaylist);
+      if (Array.isArray(newPlaylist)) {
+        if (newPlaylist.length === 0 && (playlist && playlist.length > 0)) {
+          console.warn('[MusicPlayer] Ignoring empty playlist update because local playlist is not empty');
+          return;
+        }
+        setPlaylist(newPlaylist);
+      } else {
+        console.debug('[MusicPlayer] ignored playlist-updated (not array)', newPlaylist);
+      }
+    };
     const handlePlaybackChange = (newState) => {
-      if (newState?.playlist) setPlaylist(newState.playlist);
+       console.debug('[MusicPlayer] playback-state-changed', newState);
+      if (Array.isArray(newState?.playlist)) {
+        if (newState.playlist.length === 0 && (playlist && playlist.length > 0)) {
+          console.warn('[MusicPlayer] Ignoring empty playback-state.playlist because local playlist is not empty');
+        } else {
+          setPlaylist(newState.playlist);
+        }
+      }
       if (typeof newState?.currentTrackIndex !== 'undefined')
         setCurrentTrackIndex(newState.currentTrackIndex);
       if (typeof newState?.isPlaying !== 'undefined')
