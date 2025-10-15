@@ -238,7 +238,13 @@ function RoomPage() {
 
         if (cleanedUp) return;
         
-        setRoom(fetchedRoom);
+        // Merge fetchedRoom with existing room to avoid accidentally
+        // removing properties like playlist when the server returns
+        // a partial room object in some socket callbacks.
+        setRoom((prev) => {
+          if (!prev) return fetchedRoom;
+          return { ...prev, ...fetchedRoom };
+        });
         setChatMessages(fetchedRoom.chat || []);
 
         const owner = fetchedRoom.owner ? [fetchedRoom.owner] : [];
@@ -368,7 +374,10 @@ function RoomPage() {
       try {
         socket.emit("join-room", roomId);
         
-        setRoom(payload);
+        setRoom((prev) => {
+          if (!prev) return payload;
+          return { ...prev, ...payload, playlist: payload.playlist ?? prev.playlist };
+        });
         const owner = payload.owner ? [payload.owner] : [];
         const otherMembers = (payload.members || []).filter(
           (m) => String(m._id) !== String(payload.owner?._id)
@@ -386,7 +395,10 @@ function RoomPage() {
         );
         
         if (freshRoom.members.length >= payload.members.length) {
-          setRoom(freshRoom);
+          setRoom((prev) => {
+            if (!prev) return freshRoom;
+            return { ...prev, ...freshRoom };
+          });
           const freshOwner = freshRoom.owner ? [freshRoom.owner] : [];
           const freshOthers = (freshRoom.members || []).filter(
             (m) => String(m._id) !== String(freshRoom.owner?._id)
@@ -596,8 +608,9 @@ function RoomPage() {
           {/* Chat box (realtime) */}
           {activeTab === "chat" && (
             <div style={{ height: '570px', display: 'flex', flexDirection: 'column' }}>
-              <RoomChat 
-                roomId={roomId} 
+              <RoomChat
+                roomId={roomId}
+                ownerId={room?.owner?._id}
                 initialMessages={chatMessages} // <-- SỬA Ở ĐÂY
                 onNewMessage={appendChatMessage} 
               />

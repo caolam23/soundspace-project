@@ -134,7 +134,11 @@ exports.getRoomById = async (req, res) => {
       playlist: room.playlist,
       chat: room.chat
     };
-
+  // If totalJoins is not set but there are members, fallback to current members length
+    if ((!roomDetail.statistics || !roomDetail.statistics.totalJoins) && roomDetail.totalMembers) {
+      roomDetail.statistics = roomDetail.statistics || {};
+      roomDetail.statistics.totalJoins = roomDetail.statistics.totalJoins || roomDetail.totalMembers;
+    }
     res.status(200).json({
       success: true,
       data: roomDetail

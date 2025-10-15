@@ -1,13 +1,65 @@
-import React from 'react';
-import { X, User, Mail, Hash, Lock, Clock, Calendar, BarChart2, Users, MessageSquare, Star, Info, ShieldAlert } from 'lucide-react';
+import React, { useEffect, useState, useContext } from 'react';
+import { AuthContext } from '../contexts/AuthContext';
+import axios from 'axios';import { X, User, Mail, Hash, Lock, Clock, Calendar, BarChart2, Users, MessageSquare, Star, Info, ShieldAlert } from 'lucide-react';
 import './ModalPhong.css';
 
-const ModalPhong = ({ isOpen, onClose, room }) => {
+const ModalPhong = ({ isOpen, onClose, room: initialRoom }) => {
   // Nếu modal không mở hoặc không có dữ liệu phòng thì không render gì cả
-  if (!isOpen || !room) {
-    return null;
-  }
+   const { socket } = useContext(AuthContext);
+  const [room, setRoom] = useState(initialRoom);
 
+  useEffect(() => {
+    setRoom(initialRoom);
+  }, [initialRoom]);
+
+  useEffect(() => {
+    if (!isOpen || !initialRoom) return;
+
+    // When modal opens, fetch freshest room details from API
+    const fetchDetail = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`http://localhost:8800/api/admin/rooms/${initialRoom.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data && res.data.success) setRoom(res.data.data);
+      } catch (err) {
+        console.warn('[ModalPhong] Could not fetch room detail:', err?.message || err);
+      }
+    };
+    fetchDetail();
+
+    const handleMembersChanged = (payload) => {
+      if (String(payload.roomId) === String(initialRoom.id)) {
+        setRoom(r => {
+          // Do not update realtime stats if room already ended
+          if (r?.status === 'ended') return r;
+          return { ...r, members: payload.membersCount, statistics: { ...r?.statistics, totalJoins: payload.totalJoins, peakMembers: payload.peakMembers } };
+        });
+      }
+    };
+
+    const handleRoomEnded = (payload) => {
+      if (payload?.roomId === initialRoom.id) {
+        // Refetch final stats when room ended
+        fetchDetail();
+      }
+    };
+
+    if (socket) {
+      socket.on('room-members-changed', handleMembersChanged);
+      socket.on('room-ended', handleRoomEnded);
+    }
+
+    return () => {
+      if (socket) {
+        socket.off('room-members-changed', handleMembersChanged);
+        socket.off('room-ended', handleRoomEnded);
+      }
+    };
+  }, [isOpen, initialRoom, socket]);
+
+  if (!isOpen || !room) return null;
   // Helper function để lấy text và class cho trạng thái
   const getStatusInfo = (room) => {
     if (room.isBanned) return { text: 'Bị cấm', className: 'ModalPhong-status-banned' };
@@ -130,18 +182,24 @@ const ModalPhong = ({ isOpen, onClose, room }) => {
               <BarChart2 size={20} /> Thống Kê
             </h4>
             <div className="ModalPhong-statsGrid">
-              <div className="ModalPhong-statItem">
-                <Users />
-                <span>Tổng lượt tham gia: <strong>{room.statistics?.totalJoins || 0}</strong></span>
-              </div>
-              <div className="ModalPhong-statItem">
-                <Clock />
-                <span>Tổng thời gian live: <strong>{room.statistics?.totalLiveTime || '0 phút'}</strong></span>
-              </div>
-              <div className="ModalPhong-statItem">
-                <MessageSquare />
-                <span>Tổng tin nhắn: <strong>{room.statistics?.totalMessages || 0}</strong></span>
-              </div>
+               <div className="ModalPhong-statItem">
+                  <Users />
+                  <span>
+                    Tổng lượt tham gia: <strong>{(() => {
+                      const s = room.statistics?.totalJoins;
+                      if (typeof s === 'number' && s > 0) return s;
+                      return (room.members && room.members.length) || 0;
+                    })()}</strong>
+                  </span>
+                </div>
+                <div className="ModalPhong-statItem">
+                  <Clock />
+                  <span>Tổng thời gian live: <strong>{typeof room.statistics?.totalDuration === 'number' ? `${Math.floor(room.statistics.totalDuration/60)} phút` : (room.statistics?.totalDuration || '0 phút')}</strong></span>
+                </div>
+                <div className="ModalPhong-statItem">
+                  <MessageSquare />
+                  <span>Tổng tin nhắn: <strong>{room.statistics?.totalMessages || 0}</strong></span>
+                </div>
             </div>
           </div>
 

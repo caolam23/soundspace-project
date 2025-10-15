@@ -191,6 +191,19 @@ if (io) {
 
   // Gửi cho tất cả client ở homepage (ví dụ danh sách phòng)
   io.emit('room-ended-homepage', { roomId });
+  
+  // Emit members changed = 0 so admin UI reflects room closed immediately
+  try {
+    io.emit('room-members-changed', {
+      roomId: String(roomId),
+      membersCount: 0,
+      totalJoins: room.statistics?.totalJoins || 0,
+      peakMembers: room.statistics?.peakMembers || 0,
+    });
+    console.log('[END-SESSION] Emitted room-members-changed with membersCount=0 for', roomId);
+  } catch (e) {
+    console.warn('[END-SESSION] Could not emit room-members-changed:', e.message);
+  }
 }
 
     console.log(`📢 Phòng ${room.name} đã kết thúc lúc ${room.endedAt}`);
@@ -276,7 +289,32 @@ exports.joinRoom = async (req, res) => {
           avatar: joinedUser.avatar,
         });
       }
+      try {
+        const roomDoc = await Room.findById(room._id);
+        if (roomDoc) {
+          roomDoc.statistics = roomDoc.statistics || {};
+          // Only count unique joiners once
+          if (!roomDoc.uniqueJoiners.some(u => String(u) === String(userId))) {
+            roomDoc.uniqueJoiners.push(userId);
+            roomDoc.statistics.totalJoins = (roomDoc.statistics.totalJoins || 0) + 1;
+          }
+          const currentMembersCount = sortedMembers.length;
+          roomDoc.statistics.peakMembers = Math.max(roomDoc.statistics.peakMembers || 0, currentMembersCount);
+          await roomDoc.save();
 
+          // Emit global room-members-changed for admin pages
+          const ioPayload = {
+            roomId: room._id.toString(),
+            membersCount: currentMembersCount,
+            totalJoins: roomDoc.statistics.totalJoins,
+            peakMembers: roomDoc.statistics.peakMembers,
+          };
+          io.emit('room-members-changed', ioPayload);
+          console.log('[JOIN-ROOM FAST] Emitted room-members-changed', ioPayload);
+        }
+      } catch (e) {
+        console.warn('[JOIN-ROOM FAST] Could not update statistics or emit members-changed:', e.message);
+      }
       console.log(`📤 [JOIN-ROOM FAST] Emitted update-members + user-joined-notification`);
 
       // ✅ THÊM MỚI: Phát sự kiện cập nhật thông tin phòng ra ngoài trang chủ
