@@ -11,9 +11,9 @@ const roomRoutes = require('./routes/room');
 const userRoutes = require('./routes/userRoutes');
 const playlistRoutes = require('./routes/playlist.routes');
 const streamRoutes = require('./routes/stream.routes');
-const quanLyPhongRoutes = require('./routes/quanLyPhong.routes'); // 🆕 Route quản lý phòng
+const quanLyPhongRoutes = require('./routes/quanLyPhong.routes');
 
-console.log('✅ Loaded quanLyPhongRoutes:', typeof quanLyPhongRoutes); // Debug log
+console.log('✅ Loaded quanLyPhongRoutes:', typeof quanLyPhongRoutes);
 
 function createApp() {
   const app = express();
@@ -37,10 +37,20 @@ function createApp() {
 
   // ======================================================
   // 📡 ĐÍNH SOCKET.IO INSTANCE VÀO REQ
+  // ✅ SỬA LẠI: req.userSockets thay vì req.io.userSockets
   // ======================================================
   app.use((req, res, next) => {
     req.io = app.get('io');
-    req.io.userSockets = app.get('userSockets');
+    req.userSockets = app.get('userSockets'); // ✅ FIXED: Gán trực tiếp vào req.userSockets
+    
+    // 🔍 Debug log (có thể xóa sau khi test xong)
+    if (req.path.includes('/toggle-lock')) {
+      console.log('🔍 [MIDDLEWARE] Attaching socket to req:');
+      console.log('   req.io exists:', !!req.io);
+      console.log('   req.userSockets exists:', !!req.userSockets);
+      console.log('   req.userSockets type:', req.userSockets?.constructor?.name);
+    }
+    
     next();
   });
 
@@ -86,7 +96,7 @@ function createApp() {
   });
 
   // ======================================================
-  // 🔍 DEBUG: LIST ALL REGISTERED ROUTES (sau khi server.listen)
+  // 🔍 DEBUG: LIST ALL REGISTERED ROUTES
   // ======================================================
   app.set('listRoutes', () => {
     console.log('\n🔍 ========== ALL REGISTERED ROUTES ==========');
@@ -97,12 +107,10 @@ function createApp() {
     
     app._router.stack.forEach((middleware) => {
       if (middleware.route) {
-        // Route trực tiếp
         const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
         const path = middleware.route.path;
         console.log(`   ${methods.padEnd(10)} ${path}`);
       } else if (middleware.name === 'router' && middleware.handle.stack) {
-        // Router middleware
         const basePath = middleware.regexp
           .toString()
           .replace(/\\/g, '')
@@ -124,22 +132,22 @@ function createApp() {
   });
 
   // ======================================================
-  // 🚒 LỚP 2: ĐỘI CỨU HỎA TOÀN CỤC (Global Error Handling)
+  // 🚒 GLOBAL ERROR HANDLING
   // ======================================================
 
-  // 🧭 Middleware xử lý lỗi 404
+  // 🧭 404 Handler
   app.use((req, res, next) => {
     res.status(404).json({ msg: 'Không tìm thấy API endpoint.' });
   });
 
-  // 🔥 Middleware bắt lỗi toàn cục
+  // 🔥 Global Error Handler
   app.use((err, req, res, next) => {
-    console.error('============== LỖI TOÀN CỤC KHÔNG XỬ LÝ ==============');
+    console.error('============== LỖI TOÀN CỤC ==============');
     console.error(err.stack);
-    console.error('======================================================');
+    console.error('=========================================');
 
     res.status(500).json({
-      msg: 'Đã có lỗi nghiêm trọng xảy ra ở phía server. Vui lòng thử lại sau!',
+      msg: 'Đã có lỗi nghiêm trọng xảy ra ở phía server.',
     });
   });
 

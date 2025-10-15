@@ -101,39 +101,69 @@ exports.deleteUser = async (req, res) => {
 };
 
 // [PUT] /api/users/:id/toggle-lock - Khóa/mở khóa user
-exports.toggleLockUser = async (req, res) => {
+  exports.toggleLockUser = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id);
-    if (!user) return res.status(404).json({ message: 'User không tồn tại' });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User không tồn tại' });
+    }
 
     if (user.role === 'admin') {
       return res.status(403).json({ message: 'Không thể khóa tài khoản admin' });
     }
 
+    // Toggle trạng thái chặn
     user.isBlocked = !user.isBlocked;
     await user.save();
 
-    // Emit socket event nếu req.io tồn tại
-    if (req.io && req.io.userSockets) {
-      const socketId = req.io.userSockets.get(user._id.toString());
-      if (socketId) {
+    // ✅ Emit socket event (req.io và req.userSockets luôn có sẵn nhờ middleware)
+    const userId = user._id.toString();
+    const userSocketSet = req.userSockets.get(userId);
+    
+    console.log(`🔔 [TOGGLE_LOCK] User ${userId} blocked: ${user.isBlocked}`);
+    console.log(`🔍 [TOGGLE_LOCK] User sockets:`, userSocketSet ? Array.from(userSocketSet) : 'none');
+    
+    if (userSocketSet && userSocketSet.size > 0) {
+      // Emit đến TẤT CẢ socket của user này
+      userSocketSet.forEach(socketId => {
         req.io.to(socketId).emit('user-blocked', {
           blocked: user.isBlocked,
           message: user.isBlocked
             ? 'Tài khoản của bạn đã bị chặn. Nếu có thắc mắc vui lòng liên hệ quản trị viên.'
             : 'Tài khoản của bạn đã được mở khóa.'
         });
+        console.log(`✅ [TOGGLE_LOCK] Emitted to socket ${socketId}`);
+      });
+
+      // ✅ Force disconnect nếu bị chặn
+      if (user.isBlocked) {
+        setTimeout(() => {
+          userSocketSet.forEach(socketId => {
+            const socket = req.io.sockets.sockets.get(socketId);
+            if (socket) {
+              socket.disconnect(true);
+              console.log(`🚪 [TOGGLE_LOCK] Disconnected socket ${socketId}`);
+            }
+          });
+          req.userSockets.delete(userId);
+        }, 2000); // Delay 2s để user kịp nhận modal
       }
+    } else {
+      console.warn(`⚠️ [TOGGLE_LOCK] No active sockets for user ${userId}`);
     }
 
-    res.json({ message: `User đã được ${user.isBlocked ? 'khóa' : 'mở khóa'} thành công` });
+    res.json({ 
+      message: `User đã được ${user.isBlocked ? 'khóa' : 'mở khóa'} thành công`,
+      isBlocked: user.isBlocked
+    });
 
   } catch (err) {
-    console.error('Error toggling lock:', err);
+    console.error('[TOGGLE_LOCK] Error:', err);
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
-};
+};  
 
 // 🔥 [PUT] /api/users/change-password - Đổi password (cho user bắt buộc đổi)
 exports.changePassword = async (req, res) => {

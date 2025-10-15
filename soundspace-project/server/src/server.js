@@ -10,6 +10,7 @@ const createApp = require('./app');
 const Room = require('./models/room');
 const User = require('./models/User');
 const registerChatHandlers = require('./controllers/chatHandler');
+const { attachSocketIO } = require('./middleware/auth'); // 🆕 Import middleware
 
 // 1. Connect to Database
 connectDB();
@@ -34,7 +35,6 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
-  // ✅ Tăng thời gian để kết nối ổn định hơn trên mạng yếu
   pingInterval: 25000,
   pingTimeout: 20000,
 });
@@ -47,7 +47,14 @@ const APPROVAL_TTL = 2 * 60 * 1000; // 2 minutes
 // Helper to normalize IDs to strings
 const toId = (v) => (v === undefined || v === null) ? null : String(v);
 
+// ============================================
+// 🆕 ATTACH SOCKET MIDDLEWARE - TRƯỚC KHI LOAD ROUTES
+// ============================================
+app.use(attachSocketIO(io, userSockets));
+
+// ============================================
 // Socket middleware to verify token from handshake
+// ============================================
 io.use((socket, next) => {
   try {
     const token = socket.handshake.auth && socket.handshake.auth.token;
@@ -218,7 +225,6 @@ io.on('connection', (socket) => {
 
         io.to(roomId).emit('update-members', sortedMembers);
 
-        // Notify everyone in the room
         try {
           const joinedMember = sortedMembers.find(m => String(m._id) === toId(requester._id));
           if (joinedMember) {
@@ -280,7 +286,6 @@ io.on('connection', (socket) => {
 
         io.to(roomId).emit('update-members', sortedMembers);
 
-        // Notify everyone in the room
         try {
           const joinedMember = sortedMembers.find(m => String(m._id) === reqIdStr);
           if (joinedMember) {
@@ -308,153 +313,136 @@ io.on('connection', (socket) => {
 
   // --- Leave room ---
   socket.on('leave-room', async ({ roomId, userId }) => {
-    socket.leave(roomId);
-    try {
-      // 🆕 1. Lấy thông tin người dùng trước khi họ bị xoá khỏi room
-      const leavingUser = await User.findById(userId).select('username avatar');
-
-      // 2. Xóa thành viên khỏi phòng
-      await Room.findByIdAndUpdate(roomId, { $pull: { members: userId } });
-
-      // 🆕 3. Gửi thông báo người dùng rời phòng
-      if (leavingUser) {
-        io.to(roomId).emit('user-left-notification', {
-          userId: userId,
-          username: leavingUser.username,
-          avatar: leavingUser.avatar
-        });
-        console.log(`[LEAVE-ROOM] Emitted user-left-notification for ${leavingUser.username}`);
-      }
-
-      // 4. Populate lại room và gửi update members
-      const populatedRoom = await Room.findById(roomId)
-        .populate('owner', 'username avatar')
-        .populate('members', 'username avatar');
-      if (populatedRoom) {
-        const ownerId = String(populatedRoom.owner._id);
-        const ownerMember = populatedRoom.members.find(m => String(m._id) === ownerId);
-        const otherMembers = populatedRoom.members.filter(m => String(m._id) !== ownerId);
-        const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
-        
-        io.to(roomId).emit('update-members', sortedMembers);
-      }
-    } catch (err) {
-      console.error('[LEAVE-ROOM] Error:', err);
-    }
-  });
-
-// server/src/server.js
-
-// --- Music Control Events ---
-socket.on('music-control', async ({ roomId, action }) => {
+    socket.leave(roomId);
     try {
-        // 1️⃣ Lấy thông tin phòng và trạng thái CŨ
-        const room = await Room.findById(roomId);
-        if (!room) {
-            console.warn(`[MUSIC_CONTROL] Room not found: ${roomId}`);
-            return;
-        }
+      const leavingUser = await User.findById(userId).select('username avatar');
+      await Room.findByIdAndUpdate(roomId, { $pull: { members: userId } });
 
-        // Chỉ cho phép chủ phòng điều khiển
-        if (socket.userId !== room.owner.toString()) {
-            console.warn(`[MUSIC_CONTROL] Unauthorized user tried to control music in room ${roomId}`);
-            return;
-        }
+      if (leavingUser) {
+        io.to(roomId).emit('user-left-notification', {
+          userId: userId,
+          username: leavingUser.username,
+          avatar: leavingUser.avatar
+        });
+        console.log(`[LEAVE-ROOM] Emitted user-left-notification for ${leavingUser.username}`);
+      }
 
-        // ✅ LƯU LẠI TRẠNG THÁI CŨ
-        const oldStatus = room.status; 
-        let updatedState = {};
-
-        // 2️⃣ Xử lý các hành động điều khiển
-        switch (action.type) {
-            case 'PLAY':
-            case 'SKIP_NEXT':
-            case 'SKIP_PREVIOUS': {
-                const isPlayAction = action.type === 'PLAY';
-                let trackIndexToPlay = room.currentTrackIndex;
-
-                if (isPlayAction) {
-                    trackIndexToPlay = action.payload?.trackIndex ?? (room.currentTrackIndex === -1 ? 0 : room.currentTrackIndex);
-                } else if (action.type === 'SKIP_NEXT') {
-                    if (!room.playlist.length) return;
-                    trackIndexToPlay = (room.currentTrackIndex + 1) % room.playlist.length;
-                } else { // SKIP_PREVIOUS
-                    if (!room.playlist.length) return;
-                    trackIndexToPlay = (room.currentTrackIndex - 1 + room.playlist.length) % room.playlist.length;
-                }
-
-                if (trackIndexToPlay < 0 || trackIndexToPlay >= room.playlist.length) {
-                    console.warn(`[MUSIC_CONTROL] Invalid track index: ${trackIndexToPlay}`);
-                    return;
-                }
-
-                updatedState = {
-                    isPlaying: true,
-                    currentTrackIndex: trackIndexToPlay,
-                    playbackStartTime: new Date()
-                };
-
-                // ✅ Luôn kiểm tra và chuyển sang "live" nếu đang ở "waiting"
-                if (oldStatus === "waiting") {
-                    updatedState.status = "live";
-                    updatedState.startedAt = new Date();
-                    console.log(`🎵 [MUSIC_CONTROL] Room ${roomId} status changing: waiting → live`);
-                }
-                break;
-            }
-
-            case 'PAUSE': {
-                updatedState = { isPlaying: false };
-                break;
-            }
-            
-            case 'SEEK_TO': {
-                if (typeof action.payload?.time === 'number') {
-                    const seekTimeInSeconds = action.payload.time;
-                    updatedState = {
-                        playbackStartTime: new Date(Date.now() - seekTimeInSeconds * 1000)
-                    };
-                } else {
-                    return;
-                }
-                break;
-            }
-
-            default:
-                return;
-        }
-
-        // 3️⃣ Cập nhật trạng thái phòng và lưu vào DB
-        Object.assign(room, updatedState);
-        await room.save();
+      const populatedRoom = await Room.findById(roomId)
+        .populate('owner', 'username avatar')
+        .populate('members', 'username avatar');
+      if (populatedRoom) {
+        const ownerId = String(populatedRoom.owner._id);
+        const ownerMember = populatedRoom.members.find(m => String(m._id) === ownerId);
+        const otherMembers = populatedRoom.members.filter(m => String(m._id) !== ownerId);
+        const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : populatedRoom.members;
         
-        // ✅ 4️⃣ SO SÁNH TRỰC TIẾP và GỬI SỰ KIỆN NẾU CÓ THAY ĐỔI
-        const newStatus = room.status; // Lấy trạng thái MỚI nhất sau khi save
-        if (oldStatus !== newStatus) {
-            const payload = {
-                roomId: room._id.toString(),
-                status: newStatus,
-                startedAt: room.startedAt
-            };
-            // ⚡ Phát sự kiện đi toàn cục
-            io.emit('room-status-changed', payload);
-            console.log(`📢 [MUSIC_CONTROL] ✅ Broadcasted room-status-changed globally:`, JSON.stringify(payload));
+        io.to(roomId).emit('update-members', sortedMembers);
+      }
+    } catch (err) {
+      console.error('[LEAVE-ROOM] Error:', err);
+    }
+  });
+
+  // --- Music Control Events ---
+  socket.on('music-control', async ({ roomId, action }) => {
+    try {
+      const room = await Room.findById(roomId);
+      if (!room) {
+        console.warn(`[MUSIC_CONTROL] Room not found: ${roomId}`);
+        return;
+      }
+
+      if (socket.userId !== room.owner.toString()) {
+        console.warn(`[MUSIC_CONTROL] Unauthorized user tried to control music in room ${roomId}`);
+        return;
+      }
+
+      const oldStatus = room.status;
+      let updatedState = {};
+
+      switch (action.type) {
+        case 'PLAY':
+        case 'SKIP_NEXT':
+        case 'SKIP_PREVIOUS': {
+          const isPlayAction = action.type === 'PLAY';
+          let trackIndexToPlay = room.currentTrackIndex;
+
+          if (isPlayAction) {
+            trackIndexToPlay = action.payload?.trackIndex ?? (room.currentTrackIndex === -1 ? 0 : room.currentTrackIndex);
+          } else if (action.type === 'SKIP_NEXT') {
+            if (!room.playlist.length) return;
+            trackIndexToPlay = (room.currentTrackIndex + 1) % room.playlist.length;
+          } else {
+            if (!room.playlist.length) return;
+            trackIndexToPlay = (room.currentTrackIndex - 1 + room.playlist.length) % room.playlist.length;
+          }
+
+          if (trackIndexToPlay < 0 || trackIndexToPlay >= room.playlist.length) {
+            console.warn(`[MUSIC_CONTROL] Invalid track index: ${trackIndexToPlay}`);
+            return;
+          }
+
+          updatedState = {
+            isPlaying: true,
+            currentTrackIndex: trackIndexToPlay,
+            playbackStartTime: new Date()
+          };
+
+          if (oldStatus === "waiting") {
+            updatedState.status = "live";
+            updatedState.startedAt = new Date();
+            console.log(`🎵 [MUSIC_CONTROL] Room ${roomId} status changing: waiting → live`);
+          }
+          break;
         }
 
-        // 5️⃣ Gửi trạng thái playback cho client trong phòng
-        const playbackState = {
-            playlist: room.playlist,
-            currentTrackIndex: room.currentTrackIndex,
-            isPlaying: room.isPlaying,
-            playbackStartTime: room.playbackStartTime,
+        case 'PAUSE': {
+          updatedState = { isPlaying: false };
+          break;
+        }
+        
+        case 'SEEK_TO': {
+          if (typeof action.payload?.time === 'number') {
+            const seekTimeInSeconds = action.payload.time;
+            updatedState = {
+              playbackStartTime: new Date(Date.now() - seekTimeInSeconds * 1000)
+            };
+          } else {
+            return;
+          }
+          break;
+        }
+
+        default:
+          return;
+      }
+
+      Object.assign(room, updatedState);
+      await room.save();
+      
+      const newStatus = room.status;
+      if (oldStatus !== newStatus) {
+        const payload = {
+          roomId: room._id.toString(),
+          status: newStatus,
+          startedAt: room.startedAt
         };
-        io.to(roomId).emit('playback-state-changed', playbackState);
+        io.emit('room-status-changed', payload);
+        console.log(`📢 [MUSIC_CONTROL] ✅ Broadcasted room-status-changed globally:`, JSON.stringify(payload));
+      }
+
+      const playbackState = {
+        playlist: room.playlist,
+        currentTrackIndex: room.currentTrackIndex,
+        isPlaying: room.isPlaying,
+        playbackStartTime: room.playbackStartTime,
+      };
+      io.to(roomId).emit('playback-state-changed', playbackState);
 
     } catch (error) {
-        console.error(`[MUSIC_CONTROL] Error:`, error);
+      console.error(`[MUSIC_CONTROL] Error:`, error);
     }
-});
-
+  });
 
   // --- Sync time from host ---
   socket.on('sync-time', ({ roomId, currentTime }) => {
@@ -486,9 +474,11 @@ socket.on('music-control', async ({ roomId, action }) => {
 
 }); // END of io.on('connection')
 
-// Attach io and userSockets to the app for use in other controllers
+// Attach io and userSockets to the app for use in other controllers (legacy support)
 app.set('io', io);
 app.set('userSockets', userSockets);
+
+// Stream routes
 app.use('/api/stream', require('./routes/stream.routes'));
 
 // Start the server
