@@ -101,7 +101,7 @@ exports.deleteUser = async (req, res) => {
 };
 
 // [PUT] /api/users/:id/toggle-lock - Khóa/mở khóa user
-  exports.toggleLockUser = async (req, res) => {
+exports.toggleLockUser = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id);
@@ -118,15 +118,51 @@ exports.deleteUser = async (req, res) => {
     user.isBlocked = !user.isBlocked;
     await user.save();
 
-    // ✅ Emit socket event (req.io và req.userSockets luôn có sẵn nhờ middleware)
     const userId = user._id.toString();
     const userSocketSet = req.userSockets.get(userId);
     
     console.log(`🔔 [TOGGLE_LOCK] User ${userId} blocked: ${user.isBlocked}`);
     console.log(`🔍 [TOGGLE_LOCK] User sockets:`, userSocketSet ? Array.from(userSocketSet) : 'none');
     
+    // ✅ 1. Kiểm tra xem user có phải là host của phòng nào đang live không
+    if (user.isBlocked) {
+      const Room = require('../models/room');
+      const activeRooms = await Room.find({
+        owner: userId,
+        status: { $in: ['waiting', 'live'] }
+      });
+
+      console.log(`🔍 [TOGGLE_LOCK] Found ${activeRooms.length} active rooms owned by user ${userId}`);
+
+      // ✅ 2. Kết thúc tất cả phòng của host này
+      for (const room of activeRooms) {
+        const roomId = room._id.toString();
+        console.log(`🚫 [TOGGLE_LOCK] Ending room ${roomId} owned by blocked host`);
+
+        // Cập nhật trạng thái phòng
+        room.status = 'ended';
+        room.endedAt = new Date();
+        await room.save();
+
+        // ✅ 3. Emit room-ended cho tất cả thành viên trong phòng
+        req.io.to(roomId).emit('room-ended', {
+          message: 'Phòng đã bị kết thúc vì chủ phòng bị chặn.',
+          reason: 'host-blocked'
+        });
+
+        // ✅ 4. Emit room-status-changed cho admin dashboard
+        req.io.emit('room-status-changed', {
+          roomId: roomId,
+          status: 'ended',
+          endedAt: room.endedAt
+        });
+
+        console.log(`✅ [TOGGLE_LOCK] Room ${roomId} ended and notifications sent`);
+      }
+    }
+
+    // ✅ 5. Emit user-blocked cho tất cả socket của user
     if (userSocketSet && userSocketSet.size > 0) {
-      // Emit đến TẤT CẢ socket của user này
       userSocketSet.forEach(socketId => {
         req.io.to(socketId).emit('user-blocked', {
           blocked: user.isBlocked,
@@ -134,10 +170,10 @@ exports.deleteUser = async (req, res) => {
             ? 'Tài khoản của bạn đã bị chặn. Nếu có thắc mắc vui lòng liên hệ quản trị viên.'
             : 'Tài khoản của bạn đã được mở khóa.'
         });
-        console.log(`✅ [TOGGLE_LOCK] Emitted to socket ${socketId}`);
+        console.log(`✅ [TOGGLE_LOCK] Emitted user-blocked to socket ${socketId}`);
       });
 
-      // ✅ Force disconnect nếu bị chặn
+      // ✅ 6. Force disconnect sau khi gửi thông báo
       if (user.isBlocked) {
         setTimeout(() => {
           userSocketSet.forEach(socketId => {
@@ -163,7 +199,7 @@ exports.deleteUser = async (req, res) => {
     console.error('[TOGGLE_LOCK] Error:', err);
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
-};  
+};
 
 // 🔥 [PUT] /api/users/change-password - Đổi password (cho user bắt buộc đổi)
 exports.changePassword = async (req, res) => {
