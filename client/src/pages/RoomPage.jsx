@@ -449,6 +449,81 @@ function RoomPage() {
     };
   }, [isHost]);
 
+  // ============================================
+// XỬ LÝ KHI HOST BỊ CHẶN
+// ============================================
+useEffect(() => {
+  if (!isHost || !socket) return;
+
+  const handleHostBlocked = ({ blocked, message }) => {
+    if (blocked) {
+      console.log('🚫 [HOST-BLOCKED] Host bị chặn, kết thúc phòng...');
+      
+      // Hiển thị thông báo cho host
+      toast.error(message || 'Tài khoản của bạn đã bị chặn.', {
+        ...toastConfig,
+        autoClose: 3000,
+        icon: "🚫",
+        style: {
+          ...toastConfig.style,
+          background: "linear-gradient(135deg, #ff0000, #8B0000)",
+          color: "#ffffff",
+          border: "1px solid rgba(255, 255, 255, 0.2)",
+          boxShadow: "0 4px 20px rgba(255, 0, 0, 0.5)",
+        },
+      });
+
+      // Xóa localStorage và chuyển về home sau 2 giây
+      setTimeout(() => {
+        localStorage.removeItem(`room_visited_${roomId}`);
+        navigate('/home', { replace: true });
+      }, 2000);
+    }
+  };
+
+  socket.on('user-blocked', handleHostBlocked);
+
+  return () => {
+    socket.off('user-blocked', handleHostBlocked);
+  };
+}, [isHost, socket, roomId, navigate]);
+
+// ============================================
+// XỬ LÝ KHI PHÒNG BỊ KẾT THÚC (CHO MEMBER)
+// ============================================
+useEffect(() => {
+  if (!socket) return;
+
+  const handleRoomEndedByHostBlock = (data) => {
+    if (data.reason === 'host-blocked') {
+      console.log('🚫 [ROOM-ENDED] Phòng bị kết thúc do host bị chặn');
+      
+      toast.warning('Phòng đã kết thúc vì chủ phòng bị chặn.', {
+        ...toastConfig,
+        autoClose: 3000,
+        icon: "⚠️",
+        style: {
+          ...toastConfig.style,
+          background: "linear-gradient(135deg, #ff9800, #f57c00)",
+          color: "#ffffff",
+        },
+      });
+
+      // Xóa localStorage và chuyển về home
+      setTimeout(() => {
+        localStorage.removeItem(`room_visited_${roomId}`);
+        navigate('/home', { replace: true });
+      }, 2000);
+    }
+  };
+
+  socket.on('room-ended', handleRoomEndedByHostBlock);
+
+  return () => {
+    socket.off('room-ended', handleRoomEndedByHostBlock);
+  };
+}, [socket, roomId, navigate]);
+
   // Host end room handler
   const handleEndRoom = async () => {
     const result = await Swal.fire({
