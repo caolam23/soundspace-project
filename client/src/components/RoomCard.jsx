@@ -11,20 +11,29 @@ import socket from "../services/socket";
 function RoomCard({ room }) {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+
+  // ===============================
+  // STATE
+  // ===============================
   const [waiting, setWaiting] = useState(false);
   const [pendingRoomId, setPendingRoomId] = useState(null);
   const [resultMessage, setResultMessage] = useState("");
   const [acceptedBox, setAcceptedBox] = useState(false);
   const [acceptedRoomIdNav, setAcceptedRoomIdNav] = useState(null);
 
-  // State cho modal nhập mã phòng
+  // Modal nhập mã phòng
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
   const [roomCode, setRoomCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
 
-  // =========================================
-  // JOIN ROOM LOGIC
-  // =========================================
+  // ✅ THÊM MỚI: quản lý số lượng thành viên realtime
+  const [currentMemberCount, setCurrentMemberCount] = useState(
+    room.memberCount ?? room.members.length
+  );
+
+  // ===============================
+  // XỬ LÝ JOIN ROOM
+  // ===============================
   const handleJoinRoom = async () => {
     const token = localStorage.getItem("token");
     if (!user || !token) {
@@ -66,6 +75,9 @@ function RoomCard({ room }) {
     }
   };
 
+  // ===============================
+  // XỬ LÝ NHẬP MÃ PHÒNG
+  // ===============================
   const handleCloseCodeModal = () => {
     setIsCodeModalOpen(false);
     setRoomCode("");
@@ -111,9 +123,9 @@ function RoomCard({ room }) {
     }
   };
 
-  // =========================================
-  // SOCKET XỬ LÝ KHI ĐƯỢC DUYỆT / TỪ CHỐI
-  // =========================================
+  // ===============================
+  // SOCKET: KHI ĐƯỢC DUYỆT / TỪ CHỐI
+  // ===============================
   useEffect(() => {
     const handleAccepted = ({ roomId: acceptedRoomId }) => {
       if (!pendingRoomId) return;
@@ -143,9 +155,26 @@ function RoomCard({ room }) {
     };
   }, [pendingRoomId]);
 
-  // =========================================
-  // HIỂN THỊ ICON VÀ TEXT THEO QUYỀN RIÊNG TƯ
-  // =========================================
+  // ===============================
+  // ✅ SOCKET: LẮNG NGHE SỐ LƯỢNG THÀNH VIÊN THAY ĐỔI
+  // ===============================
+  useEffect(() => {
+    const handleMembersChanged = (data) => {
+      if (data.roomId === room._id) {
+        console.log(`[RoomCard ${room._id}] Cập nhật số người:`, data.membersCount);
+        setCurrentMemberCount(data.membersCount);
+      }
+    };
+
+    socket.on("room-members-changed", handleMembersChanged);
+    return () => {
+      socket.off("room-members-changed", handleMembersChanged);
+    };
+  }, [room._id]);
+
+  // ===============================
+  // ICON & TEXT THEO PRIVACY
+  // ===============================
   const getPrivacyInfo = (privacy) => {
     switch (privacy) {
       case "private":
@@ -160,9 +189,9 @@ function RoomCard({ room }) {
 
   const privacyInfo = getPrivacyInfo(room.privacy);
 
-  // =========================================
+  // ===============================
   // JSX TRẢ VỀ
-  // =========================================
+  // ===============================
   return (
     <>
       {/* Overlay chờ duyệt */}
@@ -306,7 +335,8 @@ function RoomCard({ room }) {
           <div className="room-info-bar">
             <span className="info-item">
               <Users size={14} />
-              <span>{room.memberCount ?? room.members.length} người</span>
+              {/* ✅ Dùng state realtime thay vì props */}
+              <span>{currentMemberCount} người</span>
             </span>
             <span className="info-item">
               {privacyInfo.icon}

@@ -1,6 +1,7 @@
 const Room = require('../models/room.js');
 const { customAlphabet } = require('nanoid');
-const cleanupPlayerScripts = require('../utils/cleanupPlayerScripts'); // 🧹 Dọn file rác khi kết thúc phòng
+const cleanupPlayerScripts = require('../utils/cleanupPlayerScripts'); 
+const { scheduleRoomCleanup } = require('../services/cleanupService');
 // Helper: Populate owner + members
 const populateRoom = async (roomId) => {
   return Room.findById(roomId)
@@ -152,17 +153,19 @@ exports.endSession = async (req, res) => {
   try {
     const roomId = req.params.roomId;
     const room = await Room.findById(roomId);
-    if (!room) return res.status(404).json({ msg: 'Không tìm thấy phòng.' });
+    if (!room) return res.status(404).json({ msg: "Không tìm thấy phòng." });
 
     if (room.owner.toString() !== req.user.id) {
-      return res.status(403).json({ msg: 'Bạn không có quyền kết thúc phiên.' });
+      return res
+        .status(403)
+        .json({ msg: "Bạn không có quyền kết thúc phiên." });
     }
 
     // 🧹 Dọn toàn bộ file rác player-script khi kết thúc phòng
     cleanupPlayerScripts();
 
-    // ✅ Cập nhật trạng thái phòng và timestamp kết thúc
-    room.status = 'ended';
+    // ✅ Cập nhật trạng thái phòng và thời gian kết thúc
+    room.status = "ended";
     room.endedAt = new Date();
 
     // 🔥 Tính tổng thời gian phiên (nếu có startedAt)
@@ -173,46 +176,60 @@ exports.endSession = async (req, res) => {
 
     await room.save();
 
+    // ⏰ BƯỚC 2: LẬP LỊCH DỌN DẸP FILE TRÊN CLOUD HOẶC LOCAL SAU 1 GIỜ
+    scheduleRoomCleanup(roomId);
+
     // ✅ Gửi socket thông báo tới tất cả thành viên TRỪ chủ phòng
-const io = req.app.get('io');
+    const io = req.app.get("io");
 
-if (io) {
-  // Lấy danh sách socket của room
-  const roomSockets = await io.in(roomId).fetchSockets();
+    if (io) {
+      // Lấy danh sách socket của room
+      const roomSockets = await io.in(roomId).fetchSockets();
 
-  // Lọc socket của chủ phòng ra
-  roomSockets.forEach(socket => {
-    if (socket.user?.id !== req.user.id) {
-      socket.emit('room-ended', {
-        message: 'Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.'
+      // Gửi thông báo "phòng đã kết thúc" đến các thành viên (trừ chủ phòng)
+      roomSockets.forEach((socket) => {
+        if (socket.user?.id !== req.user.id) {
+          socket.emit("room-ended", {
+            message:
+              "Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.",
+          });
+        }
       });
-    }
-  });
 
-  // Gửi cho tất cả client ở homepage (ví dụ danh sách phòng)
-  io.emit('room-ended-homepage', { roomId });
-  
-  // Emit members changed = 0 so admin UI reflects room closed immediately
-  try {
-    io.emit('room-members-changed', {
-      roomId: String(roomId),
-      membersCount: 0,
-      totalJoins: room.statistics?.totalJoins || 0,
-      peakMembers: room.statistics?.peakMembers || 0,
-    });
-    console.log('[END-SESSION] Emitted room-members-changed with membersCount=0 for', roomId);
-  } catch (e) {
-    console.warn('[END-SESSION] Could not emit room-members-changed:', e.message);
-  }
-}
+      // 🔔 Gửi tới toàn bộ client đang ở homepage để cập nhật danh sách phòng
+      io.emit("room-ended-homepage", { roomId });
+
+      // 🔄 Emit sự kiện membersCount = 0 để UI cập nhật ngay lập tức
+      try {
+        io.emit("room-members-changed", {
+          roomId: String(roomId),
+          membersCount: 0,
+          totalJoins: room.statistics?.totalJoins || 0,
+          peakMembers: room.statistics?.peakMembers || 0,
+        });
+        console.log(
+          "[END-SESSION] Emitted room-members-changed with membersCount=0 for",
+          roomId
+        );
+      } catch (e) {
+        console.warn(
+          "[END-SESSION] Could not emit room-members-changed:",
+          e.message
+        );
+      }
+    }
 
     console.log(`📢 Phòng ${room.name} đã kết thúc lúc ${room.endedAt}`);
     console.log(`📢 Emitted 'room-ended-homepage' for room ID: ${roomId}`);
 
-    res.status(200).json({ msg: 'Phiên đã kết thúc, file tạm đã được dọn sạch, và thời lượng được tính toán.', room });
+    // ✅ Phản hồi về client
+    res.status(200).json({
+      msg: "Phiên đã kết thúc. File tạm đã được dọn và tài nguyên trên Cloudinary sẽ được xóa sau 1 giờ.",
+      room,
+    });
   } catch (err) {
     console.error("❌ Lỗi endSession:", err);
-    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+    res.status(500).json({ msg: "Lỗi server", error: err.message });
   }
 };
 

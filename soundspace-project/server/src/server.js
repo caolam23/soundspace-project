@@ -10,7 +10,7 @@ const createApp = require('./app');
 const Room = require('./models/room');
 const User = require('./models/User');
 const registerChatHandlers = require('./controllers/chatHandler');
-
+const { restoreScheduledCleanups } = require('./services/cleanupService');
 // 1. Connect to Database
 connectDB();
 
@@ -635,8 +635,24 @@ app.use('/api/stream', require('./routes/stream.routes'));
 
 // Start the server
 const PORT = process.env.PORT || 8800;
-server.listen(PORT, () => {
-  console.log(`Backend server running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    // 1. Chờ kết nối database thành công
+    await connectDB();
+    
+    // ✅ SỬA LỖI 2: SỬA TÊN HÀM GỌI CHO ĐÚNG
+    await restoreScheduledCleanups(); 
+    
+    // 3. Mọi thứ sẵn sàng, khởi động server
+    server.listen(PORT, () => {
+      console.log(`🚀 Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to start the server:", error);
+    process.exit(1); // Thoát tiến trình nếu không thể khởi động
+  }
+};
 
+// Bắt đầu toàn bộ quá trình
+startServer();
 module.exports = { io, userSockets };
