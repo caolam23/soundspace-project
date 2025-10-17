@@ -12,6 +12,7 @@ const userRoutes = require('./routes/userRoutes');
 const playlistRoutes = require('./routes/playlist.routes');
 const streamRoutes = require('./routes/stream.routes');
 const quanLyPhongRoutes = require('./routes/quanLyPhong.routes');
+const statsRoutes = require('./routes/stats');
 
 console.log('✅ Loaded quanLyPhongRoutes:', typeof quanLyPhongRoutes);
 
@@ -70,6 +71,9 @@ function createApp() {
   
   console.log('🟡 Mounting: /api/admin -> adminRoutes');
   app.use('/api/admin', adminRoutes);
+  
+  console.log('🟡 Mounting: /api/admin/stats -> statsRoutes');
+  app.use('/api/admin/stats', statsRoutes);
   
   console.log('🟡 Mounting: /api/auth -> authRoutes');
   app.use('/api/auth', authRoutes);

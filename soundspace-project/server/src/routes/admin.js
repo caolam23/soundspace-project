@@ -7,3 +7,4 @@ const adminController = require('../controllers/adminController');
 router.get('/dashboard', auth, isAdmin, adminController.getDashboard);
 
 module.exports = router;
+    

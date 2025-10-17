@@ -1,5 +1,7 @@
 import axios from 'axios';
-const api = axios.create({ baseURL: 'http://localhost:8800/api' });
+
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:8800';
+const api = axios.create({ baseURL: `${SERVER_URL}/api` });
 
 // Add token
 api.interceptors.request.use(config => {

@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const User = require('../models/User');
+const { emitStatsUpdate } = require('./statsController');
 
 // =======================
 // Đăng ký
@@ -19,12 +20,25 @@ exports.register = async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({ username, email, password: hashed });
 
-    // ...
-  return res.json({
-    msg: 'Đăng ký thành công',
-    user: { _id: user._id, email: user.email, username: user.username, role: user.role }
-  });
-// ...
+    // 📊 Emit real-time stats update for user growth
+    const io = req.app?.get('io');
+    console.log('🔍 DEBUG: io object exists?', !!io);
+    console.log('🔍 DEBUG: io.sockets.sockets.size:', io?.sockets?.sockets?.size);
+    
+    if (io) {
+      console.log('📊 About to emit user growth stats...');
+      emitStatsUpdate(io, 'user-growth').catch(err => 
+        console.error('❌ Error emitting user growth stats:', err)
+      );
+      console.log('📊 User growth stats updated after new registration');
+    } else {
+      console.error('❌ IO object not found! Cannot emit stats update');
+    }
+
+    return res.json({
+      msg: 'Đăng ký thành công',
+      user: { _id: user._id, email: user.email, username: user.username, role: user.role }
+    });
   } catch (err) {
     return res.status(500).json({ msg: 'Lỗi server', error: err.message });
   }
@@ -33,6 +47,9 @@ exports.register = async (req, res) => {
 // =======================
 // Đăng nhập
 // =======================
+const Stats = require('../models/Stats');
+const Visit = require('../models/Visit');
+const { getTotalVisitsStats } = require('../services/statsService');
 exports.login = async (req, res) => {
   try {
     const { identifier, password } = req.body;
@@ -44,6 +61,22 @@ exports.login = async (req, res) => {
     
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(400).json({ msg: 'Sai mật khẩu' });
+
+    // Lưu Visit mới và emit socket event cho từng range
+    const io = req.app?.get('io');
+    try {
+      await Visit.create({ userId: user._id });
+      const ranges = ['1d', '7d', '1m', 'all'];
+      for (const range of ranges) {
+        const count = await getTotalVisitsStats(range);
+        if (io) {
+          io.emit('stats:total-visits-update', { totalVisits: count, range });
+          console.log(`📈 [SOCKET] stats:total-visits-update emitted: range=${range}, count=${count}`);
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error updating totalVisits:', err);
+    }
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
@@ -80,6 +113,31 @@ exports.googleCallback = [
     if (user && user.isBlocked) {
       return res.redirect(`${process.env.CLIENT_URL}/login?blocked=1`);
     }
+
+    // 📊 Emit real-time stats update for user growth (for OAuth login/register)
+    const io = req.app?.get('io');
+    if (io) {
+      console.log('📊 Emitting user growth stats after OAuth login/register...');
+      emitStatsUpdate(io, 'user-growth').catch(err => 
+        console.error('❌ Error emitting user growth stats:', err)
+      );
+    }
+
+    // Lưu Visit mới và emit socket event cho từng range
+    try {
+      await Visit.create({ userId: user._id });
+      const ranges = ['1d', '7d', '1m', 'all'];
+      for (const range of ranges) {
+        const count = await getTotalVisitsStats(range);
+        if (io) {
+          io.emit('stats:total-visits-update', { totalVisits: count, range });
+          console.log(`📈 [SOCKET] stats:total-visits-update emitted (OAuth): range=${range}, count=${count}`);
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error updating totalVisits (OAuth):', err);
+    }
+
     const token = jwt.sign(
       { id: req.user._id, role: req.user.role },
       process.env.JWT_SECRET,
@@ -87,7 +145,7 @@ exports.googleCallback = [
     );
 
     // redirect về frontend kèm token + avatar
-    res.redirect(`${process.env.CLIENT_URL}/auth-success?token=${token}&avatar=${encodeURIComponent(req.user.avatar || '/default-avatar.png')}`);
+    res.redirect(`${process.env.CLIENT_URL}/auth-success?token=${encodeURIComponent(token)}&avatar=${encodeURIComponent(req.user.avatar || '/default-avatar.png')}`);
   }
 ];
 

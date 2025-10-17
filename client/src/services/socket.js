@@ -1,16 +1,23 @@
 import { io } from "socket.io-client";
 
-// ✅ Vite dùng import.meta.env, không phải process.env
-const SOCKET_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:8800";
+// ✅ Lấy từ .env, fallback về backend thật sự
+const SOCKET_URL =
+  import.meta.env.VITE_SERVER_URL?.replace(/\/$/, "") || "http://localhost:8800";
 
 const socket = io(SOCKET_URL, {
   autoConnect: false,
   transports: ["websocket", "polling"],
+  withCredentials: true,
 });
 
-// Debug tất cả event để kiểm tra realtime (có thể tắt nếu không cần)
 socket.onAny((event, ...args) => {
   console.log(`[Socket Event] -> ${event}`, args);
 });
+
+// 🔧 DEBUG: Expose socket to window for debugging
+if (typeof window !== 'undefined') {
+  window._debugSocket = socket;
+  console.log('🔌 Socket exposed to window._debugSocket for debugging');
+}
 
 export default socket;

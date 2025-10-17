@@ -3,6 +3,7 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const { sendWelcomeEmail } = require('../services/emailService'); // 🔥 Import email service
+const { emitStatsUpdate } = require('./statsController');
 
 // [POST] /api/users/create - Tạo user mới (chỉ admin hoặc user)
 exports.createUser = async (req, res) => {
@@ -46,6 +47,15 @@ exports.createUser = async (req, res) => {
     });
 
     await newUser.save();
+
+    // 📊 Emit real-time stats update for user growth
+    const io = req.app?.get('io');
+    if (io) {
+      emitStatsUpdate(io, 'user-growth').catch(err => 
+        console.error('❌ Error emitting user growth stats:', err)
+      );
+      console.log('📊 User growth stats updated after new user creation');
+    }
 
     // Gửi email chào mừng nếu được yêu cầu
     if (shouldSendEmail) {
@@ -93,7 +103,18 @@ exports.deleteUser = async (req, res) => {
     const user = await User.findByIdAndDelete(id);
     if (!user) return res.status(404).json({ message: 'User không tồn tại' });
 
-    res.json({ message: 'Xóa user thành công' });
+    // Xóa tất cả Visit của user
+    const Visit = require('../models/Visit');
+    await Visit.deleteMany({ userId: id });
+
+    // Xóa tất cả các track do user upload trong các phòng
+    const Room = require('../models/room');
+    await Room.updateMany(
+      { 'playlist.addedBy': id },
+      { $pull: { playlist: { addedBy: id } } }
+    );
+
+    res.json({ message: 'Xóa user và toàn bộ dữ liệu liên quan thành công' });
   } catch (err) {
     console.error('Error deleting user:', err);
     res.status(500).json({ message: 'Lỗi server', error: err.message });

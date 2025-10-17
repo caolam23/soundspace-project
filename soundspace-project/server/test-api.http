@@ -1,0 +1,30 @@
+# Test Admin Stats API
+
+## Tạo test token admin
+POST http://localhost:8800/api/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "admin@example.com",
+  "password": "your_admin_password"
+}
+
+## Test Music Sources Stats
+GET http://localhost:8800/api/admin/stats/music-sources
+Authorization: Bearer {{admin_token}}
+
+## Test Top Contributors
+GET http://localhost:8800/api/admin/stats/top-contributors  
+Authorization: Bearer {{admin_token}}
+
+## Test Songs Added
+GET http://localhost:8800/api/admin/stats/songs-added
+Authorization: Bearer {{admin_token}}
+
+## Test User Growth
+GET http://localhost:8800/api/admin/stats/user-growth
+Authorization: Bearer {{admin_token}}
+
+## Test All Stats Overview
+GET http://localhost:8800/api/admin/stats/overview
+Authorization: Bearer {{admin_token}}

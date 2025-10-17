@@ -7,6 +7,8 @@ import { Toaster } from "react-hot-toast";
 // ✅ BƯỚC 1: Thêm import của react-toastify
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+// Import Ant Design CSS
+import "antd/dist/reset.css";
 import AppRouter from "./routes/AppRouter";
 import { SocketProvider } from "./contexts/SocketContext";
 import { AuthProvider } from "./contexts/AuthContext";

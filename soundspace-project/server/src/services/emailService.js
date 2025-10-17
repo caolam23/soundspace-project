@@ -1,5 +1,5 @@
 // server/src/services/emailService.js
-require('dotenv').config();
+/*require('dotenv').config();
 const nodemailer = require('nodemailer');
 
 // Tạo transporter
@@ -376,4 +376,4 @@ const sendPasswordResetEmail = async (email, username, resetToken) => {
 };
 
 // Export hàm
-module.exports = { sendWelcomeEmail, sendPasswordResetEmail };
+module.exports = { sendWelcomeEmail, sendPasswordResetEmail }; 

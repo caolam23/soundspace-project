@@ -42,8 +42,8 @@ export default function Sidebar() {
       {/* Menu */}
       <ul className="Sidebar__menu">
         <li>
-          <NavLink to="/admin/dashboard" className={({ isActive }) => isActive ? 'Sidebar__link active' : 'Sidebar__link'}>
-            <BarChart3 size={18} /> <span>Dashboard</span>
+          <NavLink to="/admin/statistics" className={({ isActive }) => isActive ? 'Sidebar__link active' : 'Sidebar__link'}>
+            <BarChart3 size={18} /> <span>Thống kê</span>
           </NavLink>
         </li>
         <li>
@@ -68,7 +68,7 @@ export default function Sidebar() {
         </li>
         <li>
           <NavLink to="/admin/analytics" className={({ isActive }) => isActive ? 'Sidebar__link active' : 'Sidebar__link'}>
-            <TrendingUp size={18} /> <span>Thống kê</span>
+            <TrendingUp size={18} /> <span>Phân tích nâng cao</span>
           </NavLink>
         </li>
         <li>

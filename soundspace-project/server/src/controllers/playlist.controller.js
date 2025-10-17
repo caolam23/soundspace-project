@@ -2,6 +2,7 @@ const Room = require("../models/room");
 const ytdl = require("@distube/ytdl-core");
 const { cloudinary } = require("../config/uploadConfig");
 const { getAudioDurationInSeconds } = require("get-audio-duration");
+const { emitMultipleStatsUpdates } = require("./statsController");
 
 // ======================================================
 // ⚙️ HÀM HỖ TRỢ: LẤY THÔNG TIN VIDEO CÓ TIMEOUT AN TOÀN
@@ -159,6 +160,12 @@ exports.addTrack = async (req, res) => {
                 
                 console.log(`📢 [ADD_TRACK_YT] Broadcasted room status change:`, statusPayload);
             }
+
+            // 3️⃣ 📊 Emit real-time stats updates
+            await emitMultipleStatsUpdates(io, ['music-sources', 'songs-added', 'top-contributors'])
+                .catch(err => console.error('❌ Error emitting stats updates:', err));
+            
+            console.log(`📊 [ADD_TRACK_YT] Stats updates emitted for new track`);
         }
 
         return res.status(201).json({ msg: "🎶 Đã thêm bài hát thành công!", playlist: room.playlist });
@@ -318,6 +325,12 @@ exports.addTrackByUpload = async (req, res) => {
             });
 
             console.log(`[UPLOAD] Đã emit playback-state-changed cho room ${roomId}`);
+
+            // 2️⃣ 📊 Emit real-time stats updates for upload track
+            await emitMultipleStatsUpdates(io, ['music-sources', 'songs-added', 'top-contributors'])
+                .catch(err => console.error('❌ Error emitting stats updates (upload):', err));
+            
+            console.log(`📊 [UPLOAD] Stats updates emitted for new uploaded track`);
 
             // 2️⃣ Gửi sự kiện thay đổi trạng thái nếu có (PHIÊN BẢN KẾT HỢP ĐẦY ĐỦ)
             if (oldStatus !== newStatus) {

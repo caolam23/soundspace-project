@@ -14,7 +14,7 @@ import RoomPage from "../pages/RoomPage";
 
 // Admin
 import AdminLayout from "../pages/AdminLayout"; 
-import Dashboard from "../pages/admin/Dashboard";
+import StatisticsPage from "../pages/admin/StatisticsPage";
 import Users from "../pages/admin/Users";
 import Settings from "../pages/admin/Settings";
 import QuanLyPhong from "../pages/admin/QuanLyPhong";
@@ -79,8 +79,8 @@ export default function AppRouter() {
           </AdminRoute>
         }
       >
-        <Route index element={<Dashboard />} />
-        <Route path="dashboard" element={<Dashboard />} />
+        <Route index element={<StatisticsPage />} />
+        <Route path="statistics" element={<StatisticsPage />} />
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
         <Route path="quanlyphong" element={<QuanLyPhong />} />
