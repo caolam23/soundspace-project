@@ -10,6 +10,7 @@ const createApp = require('./app');
 const Room = require('./models/room');
 const User = require('./models/User');
 const registerChatHandlers = require('./controllers/chatHandler');
+const registerReportHandlers = require('./controllers/reportHandler');
 const { restoreScheduledCleanups } = require('./services/cleanupService');
 // 1. Connect to Database
 connectDB();
@@ -88,6 +89,8 @@ io.on('connection', (socket) => {
     const wasOffline = set.size === 0;
     set.add(socket.id);
     socket.userId = uid;
+    socket.join(uid);
+    console.log(`[JOIN-PRIVATE] Socket ${socket.id} joined private room for user ${uid}`);
 
     if (wasOffline) {
       User.findByIdAndUpdate(uid, { status: 'online', lastActiveAt: Date.now() })
@@ -254,6 +257,7 @@ io.on('connection', (socket) => {
 
   // --- Chat: receive message from client, persist, and broadcast ---
   registerChatHandlers(io, socket);
+  registerReportHandlers(io, socket);
 
   // --- Request to join ---
   socket.on('request-to-join', async ({ roomId, requester }) => {
@@ -636,21 +640,21 @@ app.use('/api/stream', require('./routes/stream.routes'));
 // Start the server
 const PORT = process.env.PORT || 8800;
 const startServer = async () => {
-  try {
-    // 1. Chờ kết nối database thành công
-    await connectDB();
-    
-    // ✅ SỬA LỖI 2: SỬA TÊN HÀM GỌI CHO ĐÚNG
-    await restoreScheduledCleanups(); 
-    
-    // 3. Mọi thứ sẵn sàng, khởi động server
-    server.listen(PORT, () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
-    });
-  } catch (error) {
-    console.error("❌ Failed to start the server:", error);
-    process.exit(1); // Thoát tiến trình nếu không thể khởi động
-  }
+  try {
+    // 1. Chờ kết nối database thành công
+    await connectDB();
+    
+    // ✅ SỬA LỖI 2: SỬA TÊN HÀM GỌI CHO ĐÚNG
+    await restoreScheduledCleanups(); 
+    
+    // 3. Mọi thứ sẵn sàng, khởi động server
+    server.listen(PORT, () => {
+      console.log(`🚀 Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to start the server:", error);
+    process.exit(1); // Thoát tiến trình nếu không thể khởi động
+  }
 };
 
 // Bắt đầu toàn bộ quá trình

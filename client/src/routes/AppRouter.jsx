@@ -1,7 +1,6 @@
-// src/routes/AppRouter.jsx
 import React, { useContext } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { AuthContext } from "../contexts/AuthContext"; // 
+import { AuthContext } from "../contexts/AuthContext"; 
 
 // Pages
 import App from "../App";
@@ -18,6 +17,7 @@ import Dashboard from "../pages/admin/Dashboard";
 import Users from "../pages/admin/Users";
 import Settings from "../pages/admin/Settings";
 import QuanLyPhong from "../pages/admin/QuanLyPhong";
+import QuanLyBinhLuan from "../pages/admin/QuanLyBinhLuan"; // <<< 1. IMPORT COMPONENT MỚI
 
 // Component bảo vệ route User
 const UserRoute = ({ children }) => {
@@ -84,6 +84,8 @@ export default function AppRouter() {
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
         <Route path="quanlyphong" element={<QuanLyPhong />} />
+        {/* ▼▼▼ 2. THÊM ROUTE MỚI TẠI ĐÂY ▼▼▼ */}
+        <Route path="comments" element={<QuanLyBinhLuan />} />
       </Route>
 
       {/* Redirect mặc định */}

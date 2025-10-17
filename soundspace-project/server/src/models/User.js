@@ -15,10 +15,16 @@ const userSchema = new mongoose.Schema({
   isBlocked: { type: Boolean, default: false },
   lastActiveAt: { type: Date, default: Date.now },
   avatar: { type: String, default: '/images/default-avatar.png' },
+
   
-  // 🔥 Thêm trường mới
-  requirePasswordChange: { type: Boolean, default: false }, // Bắt buộc đổi password lần đầu
-  passwordChangedAt: { type: Date } // Thời gian đổi password gần nhất
+  requirePasswordChange: { type: Boolean, default: false }, 
+  passwordChangedAt: { type: Date }, 
+
+  
+  muteExpiresAt: {
+    type: Date,
+    default: null, 
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
