@@ -244,7 +244,6 @@
   border-radius: 5px;
 }
 
-
 .roomchat-host-badge {
   background-color: #9147ff; /* Màu tím đặc trưng như Twitch */
   color: #ffffff;
@@ -256,4 +255,40 @@
   text-transform: uppercase;
   vertical-align: middle; /* Căn huy hiệu với dòng chữ */
   line-height: 1; /* Đảm bảo chiều cao vừa vặn */
+}
+
+.roomchat-username-ghost {
+  color: #9d4edd;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(157, 78, 221, 0.3);
+}
+
+.roomchat-ghost-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: linear-gradient(135deg, #6a0dad, #9d4edd);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  margin-left: 6px;
+  box-shadow: 0 2px 6px rgba(106, 13, 173, 0.3);
+}
+.roomchat-ghost-badge {
+  display: inline-flex; /* Giúp căn chỉnh icon và chữ */
+  align-items: center;  /* Căn giữa theo chiều dọc */
+  gap: 5px;             /* Tạo khoảng cách giữa icon và chữ */
+  padding: 2px 8px;
+  background: linear-gradient(135deg, #6a0dad, #9d4edd);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  margin-left: 6px;
+  box-shadow: 0 2px 6px rgba(106, 13, 173, 0.3);
+}
+/* Thêm style cho SVG bên trong để đảm bảo màu sắc */
+.roomchat-ghost-badge svg {
+  stroke: white; /* Đảm bảo icon có màu trắng */
 }

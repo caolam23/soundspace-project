@@ -1,32 +1,40 @@
 // server/src/controllers/chatHandler.js
-
 const chatService = require('../services/chatService');
-const Room = require('../models/room'); // <<< THÊM DÒNG NÀY ĐỂ TRUY VẤN PHÒNG
+const Room = require('../models/room');
 
 const registerChatHandlers = (io, socket) => {
   
   const handleSendMessage = async (payload) => {
     try {
-      const { roomId, text } = payload;
+      const { roomId, text, isGhostMode } = payload;
       const userId = socket.userId;
 
-      // 1. Gọi Service để lưu tin nhắn vào DB
-      const savedMsg = await chatService.createMessage(roomId, userId, text);
+      let savedMsg;
+      
+      if (isGhostMode) {
+        // ✅ Ghost mode: Tạo tin nhắn tạm thời, KHÔNG lưu vào DB
+        savedMsg = {
+          _id: `ghost-${Date.now()}-${Math.random()}`,
+          userId: userId,
+          username: '👻 Admin',
+          avatar: '/admin-ghost-avatar.png',
+          text: text,
+          meta: {},
+          createdAt: new Date(),
+          isGhost: true
+        };
+        console.log(`👻 [CHAT-GHOST] Admin sent ghost message to room ${roomId}`);
+      } else {
+        // ✅ Normal mode: Lưu tin nhắn vào DB
+        savedMsg = await chatService.createMessage(roomId, userId, text);
+      }
 
       if (savedMsg) {
         const roomIdStr = String(roomId);
         
-        // =============================================================
-        // ▼▼▼ THAY ĐỔI: KIỂM TRA CHỦ PHÒNG TẠI ĐÂY ▼▼▼
-        // =============================================================
-        
-        // 2. Lấy thông tin phòng để biết ai là chủ phòng (chỉ lấy trường owner để tối ưu)
         const room = await Room.findById(roomIdStr).select('owner').lean();
-        
-        // 3. Kiểm tra xem userId của người gửi có trùng với owner của phòng không
         const isHost = room && room.owner.equals(savedMsg.userId);
 
-        // 4. Bổ sung trường `isHost` vào object tin nhắn gửi cho client
         const clientMessage = {
           id: savedMsg._id,
           userId: savedMsg.userId,
@@ -35,12 +43,12 @@ const registerChatHandlers = (io, socket) => {
           text: savedMsg.text,
           meta: savedMsg.meta,
           createdAt: savedMsg.createdAt,
-          isHost: isHost, // <<< TRƯỜNG MỚI QUAN TRỌNG
+          isHost: isHost,
+          isGhost: savedMsg.isGhost || false
         };
         
-        console.log(`[CHAT] Broadcasting message ${clientMessage.id} to room ${roomIdStr} (isHost: ${isHost})`);
+        console.log(`[CHAT] Broadcasting message ${clientMessage.id} to room ${roomIdStr} (isHost: ${isHost}, isGhost: ${clientMessage.isGhost})`);
 
-        // 5. Phát sự kiện đi với dữ liệu đã được bổ sung
         io.to(roomIdStr).emit('new-chat-message', clientMessage);
       }
     } catch (err) {

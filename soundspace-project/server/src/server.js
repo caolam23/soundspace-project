@@ -142,18 +142,24 @@ io.on('connection', (socket) => {
 
   // --- Join room ---
   socket.on('join-room', async (roomId) => {
-    try {
-      socket.join(roomId);
-      console.log(`[JOIN-ROOM] Socket ${socket.id} joined room ${roomId}`);
+  try {
+    // ✅ THÊM: Kiểm tra nếu socket này đang ở ghost mode thì BỎ QUA
+    if (socket.isGhostMode) {
+      console.log(`⚠️ [JOIN-ROOM] Socket ${socket.id} is in ghost mode, ignoring join-room event`);
+      return;
+    }
 
-      const room = await Room.findById(roomId)
-        .populate('owner', 'username avatar')
-        .populate('members', 'username avatar');
+    socket.join(roomId);
+    console.log(`[JOIN-ROOM] Socket ${socket.id} (userId: ${socket.userId}) joined room ${roomId}`);
 
-      if (!room) {
-        console.log(`[JOIN-ROOM] Room not found: ${roomId}`);
-        return;
-      }
+    const room = await Room.findById(roomId)
+      .populate('owner', 'username avatar')
+      .populate('members', 'username avatar');
+
+    if (!room) {
+      console.log(`[JOIN-ROOM] Room not found: ${roomId}`);
+      return;
+    }
 
       // If this socket is authenticated and user is not yet recorded as member in DB,
       // add them and increment statistics.totalJoins (counts unique joins)
@@ -432,6 +438,104 @@ io.on('connection', (socket) => {
     }
   });
 
+socket.on('join-room-ghost', async ({ roomId, isAdmin }) => {
+  try {
+    if (!isAdmin) {
+      console.warn(`[JOIN-ROOM-GHOST] Non-admin tried to join as ghost`);
+      return;
+    }
+
+    // ✅ Đánh dấu socket này đang ở ghost mode
+    socket.isGhostMode = true;
+    console.log(`✅ [JOIN-ROOM-GHOST] Marked socket ${socket.id} as ghost mode`);
+
+    socket.join(roomId);
+    console.log(`👻 [JOIN-ROOM-GHOST] Admin socket ${socket.id} joined room ${roomId} as ghost`);
+
+    const room = await Room.findById(roomId)
+      .populate('owner', 'username avatar')
+      .populate('members', 'username avatar');
+
+    if (!room) {
+      console.log(`[JOIN-ROOM-GHOST] Room not found: ${roomId}`);
+      return;
+    }
+
+    // ✅ Gửi trạng thái playback cho admin
+    const currentPlaybackState = {
+      playlist: room.playlist,
+      currentTrackIndex: room.currentTrackIndex,
+      isPlaying: room.isPlaying,
+      playbackStartTime: room.playbackStartTime,
+    };
+    socket.emit('playback-state-changed', currentPlaybackState);
+    console.log(`👻 [JOIN-ROOM-GHOST] Sent playback state to admin`);
+
+    // ✅ FIX: Gửi danh sách members TRỰC TIẾP cho socket admin (KHÔNG broadcast)
+    const ownerId = String(room.owner._id);
+    const ownerMember = room.members.find(m => String(m._id) === ownerId);
+    const otherMembers = room.members.filter(m => String(m._id) !== ownerId);
+    const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : room.members;
+    
+    // ✅ CHỈ emit cho socket này, KHÔNG broadcast
+    socket.emit('update-members', sortedMembers);
+    console.log(`👻 [JOIN-ROOM-GHOST] Sent ${sortedMembers.length} members ONLY to admin socket (NOT broadcasted)`);
+
+    // ⚠️ KHÔNG emit room-members-changed vì admin không được tính vào thống kê
+
+  } catch (err) {
+    console.error('[JOIN-ROOM-GHOST] Error:', err);
+  }
+});
+
+socket.on('leave-room-ghost', async ({ roomId }) => {
+  try {
+    // ✅ Xóa ghost flag
+    socket.isGhostMode = false;
+    console.log(`✅ [LEAVE-ROOM-GHOST] Removed ghost mode flag from socket ${socket.id}`);
+
+    socket.leave(roomId);
+    console.log(`👻 [LEAVE-ROOM-GHOST] Admin socket ${socket.id} left room ${roomId}`);
+    
+    // ✅ FIX: Emit update-members cho các NON-GHOST clients
+    const room = await Room.findById(roomId)
+      .populate('owner', 'username avatar')
+      .populate('members', 'username avatar');
+    
+    if (room) {
+      const ownerId = String(room.owner._id);
+      const ownerMember = room.members.find(m => String(m._id) === ownerId);
+      const otherMembers = room.members.filter(m => String(m._id) !== ownerId);
+      const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : room.members;
+      
+      // ✅ Broadcast cho TẤT CẢ clients trong room (trừ ghost)
+      const socketsInRoom = await io.in(roomId).fetchSockets();
+      for (const s of socketsInRoom) {
+        if (!s.isGhostMode) {
+          s.emit('update-members', sortedMembers);
+        }
+      }
+      console.log(`👻 [LEAVE-ROOM-GHOST] Sent update-members to ${socketsInRoom.filter(s => !s.isGhostMode).length} non-ghost clients`);
+      
+      // ✅ Emit room-members-changed cho admin dashboard
+      try {
+        const payload = {
+          roomId: String(roomId),
+          membersCount: sortedMembers.length,
+          totalJoins: room.statistics?.totalJoins || 0,
+          peakMembers: room.statistics?.peakMembers || 0,
+        };
+        io.emit('room-members-changed', payload);
+        console.log('[LEAVE-ROOM-GHOST] Emitted room-members-changed', payload);
+      } catch (e) {
+        console.warn('[LEAVE-ROOM-GHOST] Could not emit room-members-changed:', e.message);
+      }
+    }
+  } catch (err) {
+    console.error('[LEAVE-ROOM-GHOST] Error:', err);
+  }
+});
+
   // --- Leave room ---
   socket.on('leave-room', async ({ roomId, userId }) => {
     socket.leave(roomId);
@@ -484,8 +588,6 @@ io.on('connection', (socket) => {
       console.error('[LEAVE-ROOM] Error:', err);
     }
   });
-
-// server/src/server.js
 
 // --- Music Control Events ---
 socket.on('music-control', async ({ roomId, action }) => {

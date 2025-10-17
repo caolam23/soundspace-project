@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useRef, useContext } from 'react';
 import './RoomChat.css';
 import { AuthContext } from '../contexts/AuthContext';
-import { Send, Flag, MoreVertical } from 'react-feather';
-
-export default function RoomChat({ roomId, ownerId = null, initialMessages = [], onNewMessage }) {
+import { Send, Flag, MoreVertical,Shield  } from 'react-feather';
+export default function RoomChat({ roomId, ownerId = null, initialMessages = [], onNewMessage, isGhostMode = false }) {
   const { user, socket } = useContext(AuthContext);
   const [messages, setMessages] = useState(initialMessages || []);
   const [text, setText] = useState('');
@@ -71,33 +70,44 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
     socket.on('connect', tryJoin);
 
     const handleNew = (msg) => {
-      setMessages((prev) => {
-        const tempIndex = prev.findIndex((m) => m.id && String(m.id).startsWith('temp-') && m.text === msg.text && m.username === msg.username);
-        const normalizedMsg = { ...msg, id: msg.id || msg._id };
-        if (ownerId && (
-          String(normalizedMsg.userId) === String(ownerId) ||
-          String(normalizedMsg._id) === String(ownerId) ||
-          String(normalizedMsg.username) === String(ownerId)
-        )) {
-          normalizedMsg.isHost = true;
-        }
-        if (tempIndex !== -1) {
-          const next = [...prev];
-          next[tempIndex] = normalizedMsg;
-          return next;
-        }
-        return [...prev, normalizedMsg];
-      });
+      // ▼▼▼ THÊM DÒNG NÀY ĐỂ DEBUG ▼▼▼
+  console.log('[SOCKET MSG RECEIVED]', msg);
 
-      try {
-        if (typeof onNewMessage === 'function') onNewMessage(msg);
-      } catch (e) {
-        // ignore
-      }
-      setTimeout(() => {
-        if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-      }, 50);
-    };
+  // ▼▼▼ BƯỚC 1: Sửa đổi đối tượng msg gốc NGAY LẬP TỨC ▼▼▼
+  if (msg.isGhost) {
+    msg.avatar = '/images/admin-ghost-avatar.png';
+    msg.username = 'Admin';
+  }
+
+  setMessages((prev) => {
+    // ▼▼▼ BƯỚC 2: Bây giờ mới thực hiện tìm kiếm và cập nhật ▼▼▼
+    const tempIndex = prev.findIndex((m) => m.id && String(m.id).startsWith('temp-') && m.text === msg.text && m.username === msg.username);
+    
+    // normalizedMsg bây giờ sẽ được tạo từ msg đã được sửa ở trên
+    const normalizedMsg = { ...msg, id: msg.id || msg._id }; 
+
+    if (ownerId && (String(normalizedMsg.userId) === String(ownerId))) {
+      normalizedMsg.isHost = true;
+    }
+    
+    if (tempIndex !== -1) {
+      const next = [...prev];
+      next[tempIndex] = normalizedMsg;
+      return next;
+    }
+
+    return [...prev, normalizedMsg];
+  });
+
+  try {
+    if (typeof onNewMessage === 'function') onNewMessage(msg);
+  } catch (e) {
+    // ignore
+  }
+  setTimeout(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, 50);
+};
 
     socket.on('new-chat-message', handleNew);
     return () => {
@@ -107,37 +117,40 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
   }, [socket]);
 
   const sendMessage = (e) => {
-    e && e.preventDefault();
-    if (!text || !text.trim()) return;
-    if (!socket) return;
+  e && e.preventDefault();
+  if (!text || !text.trim()) return;
+  if (!socket) return;
 
-    const payload = { 
-      roomId, 
-      text: text.trim(),
-      // Gửi thông tin replyTo nếu có
-      meta: replyTo ? { replyTo: { id: replyTo.id, username: replyTo.username } } : {}
-    };
-
-    const tempMsg = {
-      id: `temp-${Date.now()}`,
-      userId: user?._id || null,
-      username: user?.username || 'You',
-      avatar: user?.avatar || '/default-avatar.png',
-      text: text.trim(),
-      createdAt: new Date().toISOString(),
-      meta: payload.meta,
-    };
-    // mark temp message as host if current user is owner
-    if (ownerId && user && String(user._id) === String(ownerId)) {
-      tempMsg.isHost = true;
-    }
-    setMessages((prev) => [...prev, tempMsg]);
-    setText('');
-    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-
-    socket.emit('send-chat-message', payload);
-    setReplyTo(null);
+  const payload = { 
+    roomId, 
+    text: text.trim(),
+    isGhostMode: isGhostMode, // ✅ Thêm flag
+    meta: replyTo ? { replyTo: { id: replyTo.id, username: replyTo.username } } : {}
   };
+
+  const tempMsg = {
+    id: `temp-${Date.now()}`,
+    userId: user?._id || null,
+    username: isGhostMode ? 'Admin' : (user?.username || 'You'), // ✅ Đổi tên nếu ghost
+    avatar: isGhostMode ? '/images/admin-ghost-avatar.png' : (user?.avatar || '/images/default-avatar.png'),
+    text: text.trim(),
+    createdAt: new Date().toISOString(),
+    meta: payload.meta,
+    isGhost: isGhostMode // ✅ Đánh dấu ghost
+  };
+  
+  // mark temp message as host if current user is owner
+  if (ownerId && user && String(user._id) === String(ownerId)) {
+    tempMsg.isHost = true;
+  }
+  
+  setMessages((prev) => [...prev, tempMsg]);
+  setText('');
+  if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+
+  socket.emit('send-chat-message', payload);
+  setReplyTo(null);
+};
 
   const handleReplyClick = (m) => {
     const at = `@${m.username} `;
@@ -187,17 +200,21 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
           {messages.map((m) => {
             const msgId = String(m.id || m._id);
             return (
-              <div id={`msg-${msgId}`} key={msgId} ref={(el) => { if (el) msgRefs.current[msgId] = el; }} className={`roomchat-msg`}>
+              <div id={`msg-${msgId}`} key={msgId} ref={(el) => { if (el) msgRefs.current[msgId] = el; }} className={`roomchat-msg ${m.isGhost ? 'roomchat-msg-ghost' : ''}`}>
                 <img className="roomchat-avatar" src={m.avatar || '/default-avatar.png'} alt={m.username} />
                 <div className="roomchat-body">
                   <div className="roomchat-meta">
-                      <span className="roomchat-username" title={m.username}>{m.username}</span>
-                      {m.isHost && (
-                        <span className="roomchat-host-badge">HOST</span>
-                      )}
-                      
-                      <span className="roomchat-time">{new Date(m.createdAt).toLocaleTimeString()}</span>
-                    </div>
+  <span className={`roomchat-username ${m.isGhost ? 'roomchat-username-ghost' : ''}`} title={m.username}>
+    {m.username}
+  </span>
+  {m.isHost && (
+    <span className="roomchat-host-badge">HOST</span>
+  )}
+  {m.isGhost && ( // ✅ Thêm badge ghost
+    <span className="roomchat-ghost-badge" title="Admin (Ghost Mode)"><Shield size={12} /></span>
+  )}
+  <span className="roomchat-time">{new Date(m.createdAt).toLocaleTimeString()}</span>
+</div>
                   {m.meta && m.meta.replyTo && (
                     <div className="roomchat-reply-snippet compact" onClick={() => {
                       const targetId = String(m.meta.replyTo.id);
