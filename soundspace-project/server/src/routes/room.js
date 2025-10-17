@@ -2,9 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const roomController = require('../controllers/roomController.js');
-const { verifyToken } = require('../middleware/auth.js'); // Middleware xác thực
-const upload = require('../config/cloudinary.js');        // Middleware upload file Cloudinary
+const upload = require('../config/cloudinary.js');
 
+// ✅ Import đúng & gọn
+const { verifyToken, auth, isAdmin } = require('../middleware/auth.js');
 // ==============================
 // TẠO PHÒNG MỚI
 // ==============================
@@ -62,4 +63,9 @@ router.get('/search-by-code/:roomCode', verifyToken, roomController.searchRoomBy
 // ==============================
 // POST /api/rooms/:roomId/report
 router.post('/:roomId/report', verifyToken, roomController.reportRoom);
+// 👻 Route mới cho admin ghost join
+router.post('/:roomId/ghost-join', auth, isAdmin, roomController.joinRoomAsGhost);
+// ✅ THÊM ROUTE MỚI (đặt sau route ghost-join)
+router.post('/:roomId/send-ghost-message', auth, isAdmin, roomController.sendGhostMessage);
+
 module.exports = router;

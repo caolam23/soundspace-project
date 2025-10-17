@@ -219,42 +219,38 @@ exports.endSession = async (req, res) => {
     const io = req.app.get("io");
 
     if (io) {
-      // Lấy danh sách socket của room
-      const roomSockets = await io.in(roomId).fetchSockets();
+     const roomSockets = await io.in(roomId).fetchSockets();
 
-      // Gửi thông báo "phòng đã kết thúc" đến các thành viên (trừ chủ phòng)
-      roomSockets.forEach((socket) => {
-        if (socket.user?.id !== req.user.id) {
-          socket.emit("room-ended", {
-            message:
-              "Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.",
-          });
-        }
+  // Gửi thông báo "phòng đã kết thúc" đến TẤT CẢ sockets trong room
+  roomSockets.forEach((socket) => {
+    // ✅ FIX: Kiểm tra cả socket.userId để bao gồm admin ghost
+    const socketUserId = socket.userId || socket.user?.id;
+
+    // Chỉ KHÔNG gửi cho chính host (dựa vào userId)
+    if (socketUserId !== req.user.id) {
+      socket.emit("room-ended", {
+        message: "Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.",
       });
+       console.log(`📤 [END-SESSION] Sent room-ended to socket ${socket.id} (userId: ${socketUserId}, isGhost: ${socket.isGhostMode})`);
+    }
+  });
 
       // 🔔 Gửi tới toàn bộ client đang ở homepage để cập nhật danh sách phòng
       io.emit("room-ended-homepage", { roomId });
 
       // 🔄 Emit sự kiện membersCount = 0 để UI cập nhật ngay lập tức
-      try {
-        io.emit("room-members-changed", {
-          roomId: String(roomId),
-          membersCount: 0,
-          totalJoins: room.statistics?.totalJoins || 0,
-          peakMembers: room.statistics?.peakMembers || 0,
-        });
-        console.log(
-          "[END-SESSION] Emitted room-members-changed with membersCount=0 for",
-          roomId
-        );
-      } catch (e) {
-        console.warn(
-          "[END-SESSION] Could not emit room-members-changed:",
-          e.message
-        );
-      }
-    }
-
+  try {
+    io.emit("room-members-changed", {
+      roomId: String(roomId),
+      membersCount: 0,
+      totalJoins: room.statistics?.totalJoins || 0,
+      peakMembers: room.statistics?.peakMembers || 0,
+    });
+    console.log("[END-SESSION] Emitted room-members-changed with membersCount=0");
+  } catch (e) {
+    console.warn("[END-SESSION] Could not emit room-members-changed:", e.message);
+  }
+}
     console.log(`📢 Phòng ${room.name} đã kết thúc lúc ${room.endedAt}`);
     console.log(`📢 Emitted 'room-ended-homepage' for room ID: ${roomId}`);
 
@@ -513,3 +509,109 @@ exports.searchRoomByCode = async (req, res) => {
     res.status(500).json({ msg: 'Lỗi server', error: err.message });
   }
 };
+// ==========================
+// ADMIN JOIN PHÒNG Ở CHẾ ĐỘ MA (GHOST MODE)
+// ==========================
+exports.joinRoomAsGhost = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const userId = req.user.id;
+
+    // ✅ 1. Kiểm tra phòng có tồn tại không
+    const room = await Room.findById(roomId)
+      .populate('owner', 'username avatar')
+      .populate('members', 'username avatar');
+
+    if (!room) {
+      return res.status(404).json({ msg: 'Phòng không tồn tại.' });
+    }
+
+    if (room.status === 'ended') {
+      return res.status(400).json({ msg: 'Phòng đã kết thúc.' });
+    }
+
+    // ✅ 2. Kiểm tra user có phải admin không (double-check)
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ msg: 'Chỉ admin mới có thể sử dụng chế độ ghost.' });
+    }
+
+    // ✅ 3. KHÔNG thêm admin vào members array (đây là điểm quan trọng)
+    // Chỉ trả về thông tin phòng để admin có thể vào
+
+    console.log(`👻 [GHOST-JOIN] Admin ${req.user.username} joining room ${roomId} as ghost`);
+
+    // ✅ 4. Trả về thông tin phòng đầy đủ
+    res.status(200).json({
+      msg: 'Tham gia phòng ở chế độ ghost thành công!',
+      room: room,
+      isGhostMode: true
+    });
+
+  } catch (err) {
+    console.error('❌ Lỗi joinRoomAsGhost:', err);
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+  }
+};
+// ==========================
+// GỬI TIN NHẮN GHOST TỪ ADMIN (KHÔNG CẦN VÀO PHÒNG)
+// ==========================
+exports.sendGhostMessage = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { message } = req.body;
+    const userId = req.user.id;
+
+    // ✅ 1. Kiểm tra quyền admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ msg: 'Chỉ admin mới có thể gửi tin nhắn ghost.' });
+    }
+
+    // ✅ 2. Validate input
+    if (!message || !message.trim()) {
+      return res.status(400).json({ msg: 'Nội dung tin nhắn không được để trống.' });
+    }
+
+    // ✅ 3. Kiểm tra phòng có tồn tại không
+    const room = await Room.findById(roomId);
+    if (!room) {
+      return res.status(404).json({ msg: 'Phòng không tồn tại.' });
+    }
+
+    if (room.status === 'ended') {
+      return res.status(400).json({ msg: 'Phòng đã kết thúc, không thể gửi tin nhắn.' });
+    }
+
+    // ✅ 4. Tạo tin nhắn ghost (tạm thời, không lưu vào DB)
+    const ghostMessage = {
+      id: `ghost-${Date.now()}-${Math.random()}`,
+      userId: userId,
+      username: '👻 Admin',
+      avatar: '/images/admin-ghost-avatar.png',
+      text: message.trim(),
+      meta: {},
+      createdAt: new Date(),
+      isGhost: true
+    };
+
+    // ✅ 5. Lấy Socket.IO instance và gửi tin nhắn vào phòng
+    const io = req.app.get('io');
+    if (!io) {
+      return res.status(500).json({ msg: 'Socket.IO không khả dụng.' });
+    }
+
+    // Gửi tin nhắn đến TẤT CẢ clients trong phòng
+    io.to(roomId.toString()).emit('new-chat-message', ghostMessage);
+
+    console.log(`👻 [GHOST-MESSAGE] Admin sent ghost message to room ${roomId}: "${message.substring(0, 50)}..."`);
+
+    // ✅ 6. Trả về thành công
+    res.status(200).json({
+      msg: 'Tin nhắn ghost đã được gửi thành công!',
+      message: ghostMessage
+    });
+
+  } catch (err) {
+    console.error('❌ Lỗi sendGhostMessage:', err);
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+  }
+}
