@@ -220,6 +220,23 @@
   font-size: 0.875rem;
 }
 
+.ModalPhong-duration {
+  display: flex;
+  flex-direction: column;
+}
+
+.ModalPhong-duration-label {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-bottom: 0.125rem;
+}
+
+.ModalPhong-duration-value {
+  font-family: 'Courier New', Courier, monospace;
+  color: #111827;
+  font-weight: 700;
+}
+
 .ModalPhong-statItem strong {
   font-weight: 700;
   color: #1f2937;

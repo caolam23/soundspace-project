@@ -20,7 +20,9 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import MusicPlayer from "../components/MusicPlayer";
 import RoomChat from "../components/RoomChat";
+import ReportRoomModal from "../components/ReportRoomModal";
 import { toastConfig } from "../services/toastConfig"; // hoặc đường dẫn bạn lưu file config
+import { reportRoom } from "../services/api";
 
 function RoomPage() {
   const isReloading = useRef(false);
@@ -42,6 +44,7 @@ function RoomPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("chat");
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     roomRef.current = room;
@@ -268,6 +271,37 @@ function RoomPage() {
           currentUserIsHost = true;
           socket.on("new-join-request", handleNewJoinRequest);
         }
+        // Keep room state in sync with server-side playback/playlist/status events
+        // so participant UI (e.g., report button) updates in real-time.
+        const handlePlaylistUpdated = (newPlaylist) => {
+          try {
+            setRoom((prev) => ({ ...prev, playlist: Array.isArray(newPlaylist) ? newPlaylist : prev?.playlist || [] }));
+          } catch (e) { console.warn('handlePlaylistUpdated', e); }
+        };
+
+        const handlePlaybackStateChanged = (newState) => {
+          try {
+            setRoom((prev) => ({
+              ...prev,
+              playlist: Array.isArray(newState?.playlist) ? newState.playlist : prev?.playlist,
+              currentTrackIndex: typeof newState?.currentTrackIndex !== 'undefined' ? newState.currentTrackIndex : prev?.currentTrackIndex,
+              isPlaying: typeof newState?.isPlaying !== 'undefined' ? newState.isPlaying : prev?.isPlaying,
+            }));
+          } catch (e) { console.warn('handlePlaybackStateChanged', e); }
+        };
+
+        const handleRoomStatusChanged = (payload) => {
+          try {
+            if (!payload) return;
+            // payload may be { roomId, status, ... }
+            if (String(payload.roomId || payload._id || payload.id) !== String(roomId)) return;
+            setRoom((prev) => ({ ...prev, status: payload.status ?? prev?.status }));
+          } catch (e) { console.warn('handleRoomStatusChanged', e); }
+        };
+
+        socket.on('playlist-updated', handlePlaylistUpdated);
+        socket.on('playback-state-changed', handlePlaybackStateChanged);
+        socket.on('room-status-changed', handleRoomStatusChanged);
       } catch (err) {
         console.error("❌ Lỗi khi lấy thông tin phòng:", err);
         setError(err.response?.data?.msg || "Không thể tải phòng.");
@@ -341,6 +375,9 @@ function RoomPage() {
       socket.off("user-joined-notification", handleUserJoined);
       socket.off("room-ended", handleRoomEnded);
       socket.off("new-join-request", handleNewJoinRequest);
+  socket.off('playlist-updated');
+  socket.off('playback-state-changed');
+  socket.off('room-status-changed');
     };
   }, [roomId, user, socket, navigate, handleNewJoinRequest, endRoomAPI, location.state]);
 
@@ -361,8 +398,19 @@ function RoomPage() {
 
         socket.on("user-left-notification", handleUserLeft);
 
+        // If admin banned the room while user is in it
+        const handleRoomBanned = (data) => {
+          if (data && String(data.roomId) === String(roomId)) {
+            toast.error('Phòng đã bị cấm bởi quản trị viên. Bạn sẽ được chuyển về trang chủ.', { ...toastConfig });
+            localStorage.removeItem(`room_visited_${roomId}`);
+            setTimeout(() => navigate('/home'), 1200);
+          }
+        };
+        socket.on('room-banned', handleRoomBanned);
+
         return () => {
             socket.off("user-left-notification", handleUserLeft);
+      socket.off('room-banned', handleRoomBanned);
         };
     }, [socket, user])
 
@@ -554,9 +602,26 @@ useEffect(() => {
     navigate("/home");
   };
 
+  // Report room handler
+  const handleSubmitReport = async ({ category, details }) => {
+    try {
+      await reportRoom(roomId, { category, details });
+      toast.success('Cảm ơn — báo cáo của bạn đã được gửi.', { ...toastConfig });
+      setReportOpen(false);
+    } catch (err) {
+      console.error('Report failed', err);
+      toast.error(err?.response?.data?.msg || 'Không thể gửi báo cáo. Vui lòng thử lại.');
+    }
+  };
+
   if (isLoading) return <div>Đang tải phòng...</div>;
   if (error) return <div>Lỗi: {error}</div>;
   if (!room) return <div>Không tìm thấy phòng.</div>;
+
+  // compute whether participants are allowed to report: only when room is live and has music
+  const hasPlaylist = Array.isArray(room?.playlist) && room.playlist.length > 0;
+  const isPlayingFlag = !!room?.isPlaying;
+  const canReport = room?.status === 'live' && (hasPlaylist || isPlayingFlag);
   
   return (
     <div className="roompage-container">
@@ -585,10 +650,30 @@ useEffect(() => {
               </button>
             </>
           ) : (
-            <button className="btn btn-leave-room" onClick={handleLeaveRoom}>
-              <LogOut size={16} />
-              <span>Rời phòng</span>
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {(() => {
+                // Only allow reporting when the room is "live" and there is music (playlist or playing)
+                const hasPlaylist = Array.isArray(room?.playlist) && room.playlist.length > 0;
+                const isPlaying = !!room?.isPlaying; // defensively check
+                const canReport = room?.status === 'live' && (hasPlaylist || isPlaying);
+                return (
+                  <button
+                    className={`btn btn-report-room ${!canReport ? 'disabled' : ''}`}
+                    onClick={() => canReport && setReportOpen(true)}
+                    title={canReport ? 'Báo cáo phòng' : 'Chỉ có thể báo cáo khi phòng đang phát nhạc'}
+                    aria-disabled={!canReport}
+                    disabled={!canReport}
+                  >
+                    <Flag size={16} />
+                    <span>Báo cáo</span>
+                  </button>
+                );
+              })()}
+              <button className="btn btn-leave-room" onClick={handleLeaveRoom}>
+                <LogOut size={16} />
+                <span>Rời phòng</span>
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -687,7 +772,9 @@ useEffect(() => {
                 roomId={roomId}
                 ownerId={room?.owner?._id}
                 initialMessages={chatMessages} // <-- SỬA Ở ĐÂY
-                onNewMessage={appendChatMessage} 
+                onNewMessage={appendChatMessage}
+                canReport={canReport}
+                onOpenReport={() => setReportOpen(true)}
               />
             </div>
           )}
@@ -753,6 +840,14 @@ useEffect(() => {
           </div>
         </div>
       )}
+
+      {/* Report modal */}
+      <ReportRoomModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        onSubmit={handleSubmitReport}
+        roomName={room?.name}
+      />
 
     </div>
   );

@@ -10,6 +10,42 @@ const populateRoom = async (roomId) => {
 };
 
 // ==========================
+// BÁO CÁO PHÒNG
+// POST /api/rooms/:roomId/report
+// ==========================
+const Report = require('../models/Report');
+exports.reportRoom = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { category, details } = req.body;
+    if (!category) return res.status(400).json({ msg: 'Vui lòng chọn lý do báo cáo.' });
+
+    const room = await Room.findById(roomId);
+    if (!room) return res.status(404).json({ msg: 'Không tìm thấy phòng.' });
+
+    const reporterId = req.user?.id || null;
+
+    const report = new Report({ room: room._id, reporter: reporterId, category, details });
+    await report.save();
+
+    // Tăng số lượng báo cáo trên phòng (dùng cho admin dashboard)
+    room.reportCount = (room.reportCount || 0) + 1;
+    await room.save();
+
+    // Optionally emit socket event for admins
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('room-reported', { roomId: room._id.toString(), reportId: report._id.toString(), category });
+    }
+
+    return res.status(201).json({ msg: 'Báo cáo đã được gửi. Cảm ơn bạn.' });
+  } catch (err) {
+    console.error('❌ Lỗi reportRoom:', err);
+    return res.status(500).json({ msg: 'Lỗi server khi gửi báo cáo.', error: err.message });
+  }
+};
+
+// ==========================
 // TẠO PHÒNG MỚI - FIXED ✅
 // ==========================
 exports.createRoom = async (req, res) => {
@@ -227,6 +263,13 @@ exports.endSession = async (req, res) => {
       msg: "Phiên đã kết thúc. File tạm đã được dọn và tài nguyên trên Cloudinary sẽ được xóa sau 1 giờ.",
       room,
     });
+    // Xóa các báo cáo liên quan ngay khi phiên kết thúc để tránh giữ báo cáo cũ
+    try {
+      await Report.deleteMany({ room: roomId });
+      console.log(`[CLEANUP] Deleted reports for room ${roomId} on endSession`);
+    } catch (e) {
+      console.warn(`[CLEANUP] Failed to delete reports for room ${roomId} on endSession:`, e.message);
+    }
   } catch (err) {
     console.error("❌ Lỗi endSession:", err);
     res.status(500).json({ msg: "Lỗi server", error: err.message });

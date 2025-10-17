@@ -2,15 +2,17 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import axios from "axios";
 import socket from "../services/socket";
+import { toast } from 'react-toastify';
 
 export const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [socketReady, setSocketReady] = useState(false); // 🆕 Track socket ready state
   const [blockModal, setBlockModal] = useState({ show: false, message: "" });
   const [passwordResetModal, setPasswordResetModal] = useState({ show: false, message: "" });
+  const [ownerWarnings, setOwnerWarnings] = useState([]); // list of warnings sent to this user by admin
 
   // Hàm xử lý login thành công
   const loginSuccess = (token, userData) => {
@@ -78,6 +80,24 @@ useEffect(() => {
     }
   };
 
+  const onUserWarned = (data) => {
+    try {
+      console.log('⚠️ [AuthContext] user-warned event:', data);
+      const warning = {
+        id: data.reportId || Date.now().toString(),
+        message: data.msg || 'Tài khoản của bạn đã bị cảnh báo. Vui lòng không tái phạm quá nhiều lần.' ,
+        createdAt: new Date()
+      };
+      setOwnerWarnings((s) => {
+        // avoid duplicates by id
+        if (s.some(x => x.id === warning.id)) return s;
+        return [warning, ...s];
+      });
+    } catch (e) {
+      console.warn('[AuthContext] onUserWarned handler error:', e.message);
+    }
+  };
+
   const onPasswordReset = (data) => {
     console.log("🔐 [AuthContext] Password reset event received:", data);
     setPasswordResetModal({ 
@@ -95,6 +115,7 @@ useEffect(() => {
   socket.on("disconnect", onDisconnect);
   socket.on("connect_error", onConnectError);
   socket.on("user-blocked", onUserBlocked);
+  socket.on('user-warned', onUserWarned);
   socket.on("password-reset", onPasswordReset);
   socket.on("room-status-changed", onRoomStatusChanged); // 🆕 Test listener
 
@@ -114,6 +135,7 @@ useEffect(() => {
     socket.off("disconnect", onDisconnect);
     socket.off("connect_error", onConnectError);
     socket.off("user-blocked", onUserBlocked);
+  socket.off('user-warned', onUserWarned);
     socket.off("password-reset", onPasswordReset);
     socket.off("room-status-changed", onRoomStatusChanged); // 🆕 Cleanup
     
@@ -306,10 +328,47 @@ useEffect(() => {
            </div>
          </div>
        )}
+
+      {/* Bảng cảnh cáo cho chủ phòng / owner warnings (nếu có) */}
+      {ownerWarnings.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          right: 20,
+          top: 80,
+          zIndex: 2000,
+          width: 320,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
+        }}>
+          {ownerWarnings.map((w) => (
+            <div key={w.id} style={{
+              background: 'linear-gradient(90deg, #fff7ed, #fff1f2)',
+              borderLeft: '4px solid #f59e0b',
+              padding: '12px 14px',
+              marginBottom: 10,
+              borderRadius: 8,
+              color: '#92400e',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Cảnh cáo từ quản trị</div>
+                <div style={{ fontSize: 12, color: '#92400e' }}>{new Date(w.createdAt).toLocaleString('vi-VN')}</div>
+              </div>
+              <div style={{ color: '#92400e', marginBottom: 8 }}>{w.message}</div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => {
+                    // dismiss this one warning
+                    setOwnerWarnings((s) => s.filter(x => x.id !== w.id));
+                  }}
+                  style={{ padding: '6px 10px', borderRadius: 6, border: 'none', background: '#f97316', color: 'white', cursor: 'pointer', fontWeight: 700 }}
+                >Đã hiểu</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
+export function useAuth() {
   return useContext(AuthContext);
-};
+}

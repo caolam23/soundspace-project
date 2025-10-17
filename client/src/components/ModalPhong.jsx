@@ -194,7 +194,17 @@ const ModalPhong = ({ isOpen, onClose, room: initialRoom }) => {
                 </div>
                 <div className="ModalPhong-statItem">
                   <Clock />
-                  <span>Tổng thời gian live: <strong>{typeof room.statistics?.totalDuration === 'number' ? `${Math.floor(room.statistics.totalDuration/60)} phút` : (room.statistics?.totalDuration || '0 phút')}</strong></span>
+                  <span>
+                    Tổng thời gian live: <strong>{(() => {
+                      const dur = room.statistics?.totalDuration;
+                      if (typeof dur !== 'number' || isNaN(dur)) return (room.statistics?.totalDuration || '0 phút');
+                      const totalSeconds = Math.max(0, Math.floor(dur));
+                      const minutes = Math.floor(totalSeconds / 60);
+                      const seconds = totalSeconds % 60;
+                      const secStr = String(seconds).padStart(2, '0');
+                      return `${minutes} phút ${secStr} giây`;
+                    })()}</strong>
+                  </span>
                 </div>
                 <div className="ModalPhong-statItem">
                   <MessageSquare />

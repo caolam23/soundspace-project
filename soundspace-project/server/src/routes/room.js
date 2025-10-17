@@ -56,4 +56,10 @@ router.post('/:roomId/request-join', verifyToken, roomController.requestJoinRoom
 // ==============================
 // GET /api/rooms/search-by-code/:roomCode
 router.get('/search-by-code/:roomCode', verifyToken, roomController.searchRoomByCode);
+
+// ==============================
+// BÁO CÁO PHÒNG
+// ==============================
+// POST /api/rooms/:roomId/report
+router.post('/:roomId/report', verifyToken, roomController.reportRoom);
 module.exports = router;

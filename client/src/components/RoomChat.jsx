@@ -3,7 +3,7 @@ import './RoomChat.css';
 import { AuthContext } from '../contexts/AuthContext';
 import { Send, Flag, MoreVertical } from 'react-feather';
 
-export default function RoomChat({ roomId, ownerId = null, initialMessages = [], onNewMessage }) {
+export default function RoomChat({ roomId, ownerId = null, initialMessages = [], onNewMessage, canReport = false, onOpenReport = null }) {
   const { user, socket } = useContext(AuthContext);
   const [messages, setMessages] = useState(initialMessages || []);
   const [text, setText] = useState('');
@@ -246,9 +246,18 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
                       >
                         Reply
                       </button>
-                      <button className="roomchat-action-btn">
-                        <Flag size={14} /> Báo cáo
-                      </button>
+                      {canReport ? (
+                        <button className="roomchat-action-btn" onClick={() => {
+                          setActiveMenuId(null);
+                          try { if (typeof onOpenReport === 'function') onOpenReport(); } catch (e) {}
+                        }}>
+                          <Flag size={14} /> Báo cáo
+                        </button>
+                      ) : (
+                        <button className="roomchat-action-btn disabled" title="Chỉ có thể báo cáo khi phòng đang phát nhạc" disabled>
+                          <Flag size={14} /> Báo cáo
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
