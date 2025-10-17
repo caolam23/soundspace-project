@@ -53,5 +53,7 @@ router.get('/search-by-code/:roomCode', verifyToken, roomController.searchRoomBy
 
 // 👻 Route mới cho admin ghost join
 router.post('/:roomId/ghost-join', auth, isAdmin, roomController.joinRoomAsGhost);
+// ✅ THÊM ROUTE MỚI (đặt sau route ghost-join)
+router.post('/:roomId/send-ghost-message', auth, isAdmin, roomController.sendGhostMessage);
 
 module.exports = router;

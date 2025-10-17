@@ -510,3 +510,66 @@ exports.joinRoomAsGhost = async (req, res) => {
     res.status(500).json({ msg: 'Lỗi server', error: err.message });
   }
 };
+// ==========================
+// GỬI TIN NHẮN GHOST TỪ ADMIN (KHÔNG CẦN VÀO PHÒNG)
+// ==========================
+exports.sendGhostMessage = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { message } = req.body;
+    const userId = req.user.id;
+
+    // ✅ 1. Kiểm tra quyền admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ msg: 'Chỉ admin mới có thể gửi tin nhắn ghost.' });
+    }
+
+    // ✅ 2. Validate input
+    if (!message || !message.trim()) {
+      return res.status(400).json({ msg: 'Nội dung tin nhắn không được để trống.' });
+    }
+
+    // ✅ 3. Kiểm tra phòng có tồn tại không
+    const room = await Room.findById(roomId);
+    if (!room) {
+      return res.status(404).json({ msg: 'Phòng không tồn tại.' });
+    }
+
+    if (room.status === 'ended') {
+      return res.status(400).json({ msg: 'Phòng đã kết thúc, không thể gửi tin nhắn.' });
+    }
+
+    // ✅ 4. Tạo tin nhắn ghost (tạm thời, không lưu vào DB)
+    const ghostMessage = {
+      id: `ghost-${Date.now()}-${Math.random()}`,
+      userId: userId,
+      username: '👻 Admin',
+      avatar: '/images/admin-ghost-avatar.png',
+      text: message.trim(),
+      meta: {},
+      createdAt: new Date(),
+      isGhost: true
+    };
+
+    // ✅ 5. Lấy Socket.IO instance và gửi tin nhắn vào phòng
+    const io = req.app.get('io');
+    if (!io) {
+      return res.status(500).json({ msg: 'Socket.IO không khả dụng.' });
+    }
+
+    // Gửi tin nhắn đến TẤT CẢ clients trong phòng
+    io.to(roomId.toString()).emit('new-chat-message', ghostMessage);
+    
+    console.log(`👻 [GHOST-MESSAGE] Admin sent ghost message to room ${roomId}: "${message.substring(0, 50)}..."`);
+
+    // ✅ 6. Trả về thành công
+    res.status(200).json({
+      msg: 'Tin nhắn ghost đã được gửi thành công!',
+      message: ghostMessage
+    });
+
+  } catch (err) {
+    console.error('❌ Lỗi sendGhostMessage:', err);
+    res.status(500).json({ msg: 'Lỗi server', error: err.message });
+  }
+}

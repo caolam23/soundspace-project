@@ -300,3 +300,69 @@
   background-color: #fee2e2;
   color: #991b1b;
 }
+/* Thêm vào cuối file ModalPhong.css */
+
+.ModalPhong-actionSection {
+  margin-top: 24px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ModalPhong-joinButton,
+.ModalPhong-quickMessageButton {
+  flex: 1;
+  min-width: 200px;
+  padding: 14px 24px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.ModalPhong-joinButton {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.ModalPhong-joinButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  transform: translateY(-2px);
+}
+
+.ModalPhong-quickMessageButton {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: #fff;
+}
+
+.ModalPhong-quickMessageButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+  box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
+  transform: translateY(-2px);
+}
+
+.ModalPhong-joinButton:disabled,
+.ModalPhong-quickMessageButton:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .ModalPhong-actionSection {
+    flex-direction: column;
+  }
+
+  .ModalPhong-joinButton,
+  .ModalPhong-quickMessageButton {
+    min-width: 100%;
+  }
+}
