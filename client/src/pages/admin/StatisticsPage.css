@@ -1,0 +1,200 @@
+/* src/pages/admin/StatisticsPage.css */
+
+.statistics-container {
+  padding: 32px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: calc(100vh - 64px);
+}
+
+.statistics-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 32px 40px;
+  border-radius: 16px;
+  margin-bottom: 32px;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.statistics-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  opacity: 0.1;
+}
+
+.statistics-title {
+  margin: 0 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 32px !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
+}
+
+.stat-card {
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.stat-card:hover {
+  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.25);
+  transform: translateY(-4px) scale(1.01);
+}
+
+.stat-card .ant-card-head {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 16px 16px 0 0;
+  padding: 20px 24px;
+  border: none;
+}
+
+.stat-card .ant-card-head-title {
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-card .ant-card-body {
+  padding: 24px;
+  height: calc(420px - 73px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%);
+}
+
+/* Loading container */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.loading-text {
+  margin-top: 24px;
+  font-size: 18px;
+  font-weight: 500;
+  color: #667eea;
+  letter-spacing: 0.5px;
+}
+
+/* Time range selector */
+.ant-select-selector {
+  border-radius: 6px !important;
+}
+
+.ant-select-selection-item {
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .statistics-container {
+    padding: 16px;
+  }
+  
+  .statistics-header {
+    padding: 24px 20px;
+    border-radius: 12px;
+  }
+  
+  .statistics-header .ant-row {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .statistics-title {
+    font-size: 24px !important;
+  }
+  
+  .stat-card {
+    margin-bottom: 16px;
+  }
+  
+  .stat-card .ant-card-body {
+    padding: 16px;
+    height: auto;
+    min-height: 320px;
+  }
+}
+
+@media (max-width: 576px) {
+  .statistics-header {
+    padding: 20px 16px;
+  }
+  
+  .statistics-title {
+    font-size: 20px !important;
+  }
+  
+  .ant-select {
+    width: 140px !important;
+  }
+  
+  .stat-card .ant-card-head {
+    padding: 16px 20px;
+  }
+  
+  .stat-card .ant-card-head-title {
+    font-size: 14px;
+  }
+}
+
+/* Animation for real-time updates */
+@keyframes statsUpdate {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(24, 144, 255, 0.2);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.stat-card.updating {
+  animation: statsUpdate 0.6s ease-in-out;
+}
+
+/* Custom scrollbar */
+.statistics-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.statistics-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.statistics-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.statistics-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
