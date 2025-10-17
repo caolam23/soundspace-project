@@ -1,0 +1,368 @@
+/* =================================================================
+   1. CÀI ĐẶT TỔNG THỂ & FONT CHỮ
+   Sử dụng font Inter cho giao diện hiện đại, dễ đọc.
+   ================================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap');
+
+/* ✨ THAY ĐỔI CHÍNH: Các biến CSS được chuyển vào class cha để không ảnh hưởng toàn cục */
+.quanly-binhluan-container {
+    --primary-color: #3498db;
+    --danger-color: #e74c3c;
+    --success-color: #2ecc71;
+    --warning-color: #f39c12;
+    --dark-color: #2c3e50;
+    --light-color: #ecf0f1;
+    --text-color: #34495e;
+    --border-color: #dfe4ea;
+    --background-color: #f5f7fa;
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+    padding: 2rem;
+    background-color: #ffffff;;
+    font-family: 'Inter', sans-serif;
+    color: var(--text-color);
+}
+
+
+/* =================================================================
+   2. BỐ CỤC KHU VỰC CHÍNH (SECTION)
+   Tạo các khối card trắng, bo tròn, có đổ bóng nhẹ.
+   ================================================================= */
+.section-container {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border-color);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    color: var(--dark-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.section-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+
+/* =================================================================
+   3. BẢNG DANH SÁCH NGƯỜI DÙNG BỊ GIỚI HẠN
+   Thiết kế bảng sạch sẽ, dễ theo dõi.
+   ================================================================= */
+.filter-container {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.filter-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    font-size: 1rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.filter-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #a0aec0;
+}
+
+.table-wrapper {
+    max-height: 400px; /* ✨ THÊM VÀO: Giới hạn chiều cao để chứa khoảng 5-6 dòng */
+    overflow-y: auto;  /* ✨ THÊM VÀO: Tự động thêm thanh cuộn dọc khi cần */
+    overflow-x: auto;  /* Giữ lại: Giúp bảng không bị vỡ layout trên màn hình nhỏ */
+    border: 1px solid var(--border-color); /* Thêm viền để khu vực cuộn trông rõ ràng hơn */
+    border-radius: 8px; /* Bo góc cho đẹp */
+    padding-right: 5px; /* Thêm khoảng trống nhỏ cho thanh cuộn */
+}
+.muted-users-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.muted-users-table th {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.muted-users-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.muted-users-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.muted-users-table tbody tr:hover {
+    background-color: #fafbfd;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #fff;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+}
+
+/* Đồng hồ đếm ngược */
+.countdown-timer {
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 500;
+    color: var(--warning-color);
+    background-color: #fff9e6;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+/* Các trạng thái */
+.status-active {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+.status-muted {
+    font-weight: 500;
+    color: var(--danger-color);
+}
+
+
+/* =================================================================
+   4. KHU VỰC BÁO CÁO CẦN XỬ LÝ
+   Sử dụng layout flexbox để các card báo cáo tự động sắp xếp.
+   ================================================================= */
+.reports-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.report-card {
+    background-color: #fff;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s ease-in-out;
+}
+
+.report-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--card-shadow);
+}
+
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.reason-badge {
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 0.3rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.reason-badge.small {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.6rem;
+}
+
+.report-time {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.report-comment {
+    font-style: italic;
+    color: var(--dark-color);
+    background-color: #f8f9fa;
+    padding: 1rem 1.25rem;
+    margin: 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.report-details {
+    padding: 1rem 1.25rem;
+    font-size: 0.9rem;
+    flex-grow: 1; /* Đảm bảo nội dung đẩy action xuống dưới */
+}
+
+.report-details p {
+    margin: 0 0 0.5rem 0;
+}
+
+
+/* =================================================================
+   5. KHU VỰC HÀNH ĐỘNG (ACTION)
+   Thiết kế các nút bấm rõ ràng, dễ phân biệt.
+   ================================================================= */
+.report-actions-container {
+    padding: 1.25rem;
+    background-color: #fcfcfc;
+    border-top: 1px solid var(--border-color);
+    border-radius: 0 0 10px 10px;
+}
+
+.mute-section {
+    margin-bottom: 1rem;
+}
+
+.mute-section-title {
+    margin: 0 0 0.75rem 0;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #343a40;
+}
+
+.mute-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.duration-btn {
+    background-color: #fff;
+    border: 1px solid #ced4da;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease-in-out;
+    font-weight: 500;
+}
+
+.duration-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.duration-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Các nút bấm chính */
+.action-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.action-btn:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+}
+
+.mute-btn-confirm {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.other-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.delete-btn {
+    background-color: var(--warning-color);
+    color: var(--dark-color);
+}
+
+.ignore-btn {
+    background-color: var(--success-color);
+    color: white;
+}
+
+
+/* =================================================================
+   6. TRẠNG THÁI RỖNG HOẶC ĐANG TẢI
+   ================================================================= */
+.no-reports, .no-data {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+    font-size: 1rem;
+}
+
+.no-data {
+    width: 100%;
+}
+
+
+/* =================================================================
+   7. RESPONSIVE DESIGN
+   Đảm bảo bố cục hiển thị tốt trên màn hình nhỏ hơn.
+   ================================================================= */
+@media (max-width: 768px) {
+    .quanly-binhluan-container {
+        padding: 1rem;
+    }
+
+    .section-container {
+        padding: 1rem 1.25rem;
+    }
+
+    .section-header h2 {
+        font-size: 1.25rem;
+    }
+
+    .reports-list {
+        grid-template-columns: 1fr; /* Mỗi hàng chỉ có 1 card */
+    }
+}

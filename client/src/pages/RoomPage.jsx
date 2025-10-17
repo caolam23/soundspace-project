@@ -124,6 +124,58 @@ function RoomPage() {
     }, 5000);
   }, [roomId, socket]);
 
+  // ============================================
+  // 🔽 THÊM useEffect NÀY VÀO 🔽
+  // Lắng nghe sự kiện xóa bình luận
+  // ============================================
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleCommentDeleted = ({ commentId }) => {
+      console.log(`[RoomPage] Received delete event for comment: ${commentId}`);
+      setChatMessages((prevMessages) =>
+        prevMessages.filter((m) => String(m._id || m.id) !== String(commentId))
+      );
+    };
+
+    socket.on('comment-deleted', handleCommentDeleted);
+
+    return () => {
+      socket.off('comment-deleted', handleCommentDeleted);
+    };
+  }, [socket]);
+
+  // ============================================
+    // 🔽 THÊM useEffect MỚI NÀY VÀO 🔽
+    // LẮNG NGHE THÔNG BÁO HÀNH ĐỘNG TỪ ADMIN
+    // ============================================
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleActionNotification = ({ type, message }) => {
+            // Dựa vào "type" mà server gửi về, chúng ta có thể hiển thị các loại thông báo khác nhau
+            switch (type) {
+                case 'warning':
+                    toast.warn(message, { icon: "⚠️" });
+                    break;
+                case 'error':
+                    toast.error(message, { icon: "🚫" });
+                    break;
+                default:
+                    toast.info(message);
+                    break;
+            }
+        };
+
+        // Lắng nghe sự kiện từ server
+        socket.on('action-notification', handleActionNotification);
+
+        // Cleanup: gỡ bỏ listener khi component bị unmount
+        return () => {
+            socket.off('action-notification', handleActionNotification);
+        };
+    }, [socket]); // Hook này chỉ phụ thuộc vào socket
+
   // Detect reload/close
   useEffect(() => {
     const handleBeforeUnload = () => {

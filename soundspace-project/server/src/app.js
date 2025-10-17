@@ -1,17 +1,20 @@
-// src/app.js
+// ======================================================
+// 🏁 SOUNDSPACE SERVER APP
+// ======================================================
+
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const passport = require('passport');
 
 // === Route imports ===
-const adminRoutes = require('./routes/admin');
+const adminRoutes = require('./routes/admin.routes');
 const authRoutes = require('./routes/auth');
 const roomRoutes = require('./routes/room');
 const userRoutes = require('./routes/userRoutes');
 const playlistRoutes = require('./routes/playlist.routes');
 const streamRoutes = require('./routes/stream.routes');
-const quanLyPhongRoutes = require('./routes/quanLyPhong.routes');
+const quanLyPhongRoutes = require('./routes/quanLyPhong.routes')
 
 console.log('✅ Loaded quanLyPhongRoutes:', typeof quanLyPhongRoutes);
 
@@ -37,20 +40,18 @@ function createApp() {
 
   // ======================================================
   // 📡 ĐÍNH SOCKET.IO INSTANCE VÀO REQ
-  // ✅ SỬA LẠI: req.userSockets thay vì req.io.userSockets
   // ======================================================
   app.use((req, res, next) => {
     req.io = app.get('io');
-    req.userSockets = app.get('userSockets'); // ✅ FIXED: Gán trực tiếp vào req.userSockets
+    req.userSockets = app.get('userSockets');
     
-    // 🔍 Debug log (có thể xóa sau khi test xong)
+    // 🔍 Debug log (có thể xóa sau khi test)
     if (req.path.includes('/toggle-lock')) {
       console.log('🔍 [MIDDLEWARE] Attaching socket to req:');
       console.log('   req.io exists:', !!req.io);
       console.log('   req.userSockets exists:', !!req.userSockets);
       console.log('   req.userSockets type:', req.userSockets?.constructor?.name);
     }
-    
     next();
   });
 
@@ -58,34 +59,35 @@ function createApp() {
   // 🚏 CÁC ROUTE CHÍNH
   // ======================================================
   console.log('\n🟡 ========== MOUNTING ROUTES ==========');
-  
-  app.use('/api/admin', (req, res, next) => {
-    console.log('🔶 Request to /api/admin/*');
-    console.log('   Full path:', req.originalUrl);
-    next();
-  });
-  
-  console.log('🟡 Mounting: /api/admin -> quanLyPhongRoutes');
-  app.use('/api/admin', quanLyPhongRoutes);
-  
+
+  // Admin (dashboard + reports)
   console.log('🟡 Mounting: /api/admin -> adminRoutes');
   app.use('/api/admin', adminRoutes);
-  
+
+  // Quản lý phòng
+  console.log('🟡 Mounting: /api/admin -> quanLyPhongRoutes');
+  app.use('/api/admin', quanLyPhongRoutes);
+
+  // Auth
   console.log('🟡 Mounting: /api/auth -> authRoutes');
   app.use('/api/auth', authRoutes);
-  
+
+  // Room
   console.log('🟡 Mounting: /api/rooms -> roomRoutes');
   app.use('/api/rooms', roomRoutes);
-  
+
+  // Playlist
   console.log('🟡 Mounting: /api/rooms -> playlistRoutes');
   app.use('/api/rooms', playlistRoutes);
-  
+
+  // Stream
   console.log('🟡 Mounting: /api/stream -> streamRoutes');
   app.use('/api/stream', streamRoutes);
-  
+
+  // Users
   console.log('🟡 Mounting: /api/users -> userRoutes');
   app.use('/api/users', userRoutes);
-  
+
   console.log('🟡 ========== ROUTES MOUNTED ==========\n');
 
   // ======================================================

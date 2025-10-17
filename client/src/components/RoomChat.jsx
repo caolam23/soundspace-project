@@ -1,7 +1,11 @@
+// src/components/RoomChat.jsx
 import React, { useEffect, useState, useRef, useContext } from 'react';
 import './RoomChat.css';
 import { AuthContext } from '../contexts/AuthContext';
 import { Send, Flag, MoreVertical } from 'react-feather';
+import ReportModal from './ReportModal'; // 🆕 Import Modal báo cáo
+import { toast } from 'react-toastify';   // 🆕 Import toastify để hiển thị thông báo
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function RoomChat({ roomId, ownerId = null, initialMessages = [], onNewMessage }) {
   const { user, socket } = useContext(AuthContext);
@@ -9,11 +13,16 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [activeMenuId, setActiveMenuId] = useState(null);
+  const [reportingMessage, setReportingMessage] = useState(null); // 🆕 modal báo cáo
+
   const listRef = useRef(null);
   const msgRefs = useRef({});
   const inputRef = useRef(null);
   const menuRef = useRef(null);
 
+  // ==========================
+  // Ẩn menu khi click ra ngoài
+  // ==========================
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -21,11 +30,12 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // ==========================
+  // Tự co giãn chiều cao textarea
+  // ==========================
   useEffect(() => {
     const textarea = inputRef.current;
     if (textarea) {
@@ -43,42 +53,53 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
     }
   }, [text]);
 
+  // ==========================
+  // Normalize tin nhắn ban đầu
+  // ==========================
   useEffect(() => {
-    // Ensure initial messages from the room owner are marked with isHost
     const normalized = (initialMessages || []).map((m) => ({
       ...m,
       id: m.id || m._id,
-      isHost: Boolean(ownerId) && (
-        String(m.userId) === String(ownerId) ||
-        String(m._id) === String(ownerId) ||
-        String(m.username) === String(ownerId)
-      ),
+      isHost:
+        Boolean(ownerId) &&
+        (String(m.userId) === String(ownerId) ||
+          String(m._id) === String(ownerId) ||
+          String(m.username) === String(ownerId)),
     }));
     setMessages(normalized);
   }, [initialMessages, ownerId]);
 
+  // ==========================
+  // Lắng nghe socket events
+  // ==========================
   useEffect(() => {
     if (!socket) return;
     const tryJoin = () => {
       try {
         socket.emit('join-room', roomId);
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     };
 
     tryJoin();
     socket.on('connect', tryJoin);
 
+    // Khi có tin nhắn mới
     const handleNew = (msg) => {
       setMessages((prev) => {
-        const tempIndex = prev.findIndex((m) => m.id && String(m.id).startsWith('temp-') && m.text === msg.text && m.username === msg.username);
+        const tempIndex = prev.findIndex(
+          (m) =>
+            m.id &&
+            String(m.id).startsWith('temp-') &&
+            m.text === msg.text &&
+            m.username === msg.username
+        );
         const normalizedMsg = { ...msg, id: msg.id || msg._id };
-        if (ownerId && (
-          String(normalizedMsg.userId) === String(ownerId) ||
-          String(normalizedMsg._id) === String(ownerId) ||
-          String(normalizedMsg.username) === String(ownerId)
-        )) {
+        if (
+          ownerId &&
+          (String(normalizedMsg.userId) === String(ownerId) ||
+            String(normalizedMsg._id) === String(ownerId) ||
+            String(normalizedMsg.username) === String(ownerId))
+        ) {
           normalizedMsg.isHost = true;
         }
         if (tempIndex !== -1) {
@@ -89,33 +110,48 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
         return [...prev, normalizedMsg];
       });
 
-      try {
-        if (typeof onNewMessage === 'function') onNewMessage(msg);
-      } catch (e) {
-        // ignore
-      }
+      if (typeof onNewMessage === 'function') onNewMessage(msg);
       setTimeout(() => {
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
       }, 50);
     };
 
+    
+
+    // 🆕 Khi người dùng bị mute
+    const handleUserMuted = ({ message }) => {
+      toast.warn(message, { position: 'bottom-center', autoClose: 5000 });
+    };
+
+    // 🆕 Khi server gửi lỗi
+    const handleChatError = ({ message }) => {
+      toast.error(message);
+    };
+
     socket.on('new-chat-message', handleNew);
+    socket.on('user-muted', handleUserMuted);
+    socket.on('chat-error', handleChatError);
+
     return () => {
       socket.off('new-chat-message', handleNew);
+      socket.off('user-muted', handleUserMuted);
+      socket.off('chat-error', handleChatError);
       socket.off('connect', tryJoin);
     };
   }, [socket]);
 
+  // ==========================
+  // Gửi tin nhắn
+  // ==========================
   const sendMessage = (e) => {
     e && e.preventDefault();
     if (!text || !text.trim()) return;
     if (!socket) return;
 
-    const payload = { 
-      roomId, 
+    const payload = {
+      roomId,
       text: text.trim(),
-      // Gửi thông tin replyTo nếu có
-      meta: replyTo ? { replyTo: { id: replyTo.id, username: replyTo.username } } : {}
+      meta: replyTo ? { replyTo: { id: replyTo.id, username: replyTo.username } } : {},
     };
 
     const tempMsg = {
@@ -127,18 +163,22 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
       createdAt: new Date().toISOString(),
       meta: payload.meta,
     };
-    // mark temp message as host if current user is owner
+
     if (ownerId && user && String(user._id) === String(ownerId)) {
       tempMsg.isHost = true;
     }
+
     setMessages((prev) => [...prev, tempMsg]);
     setText('');
+    setReplyTo(null);
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
 
     socket.emit('send-chat-message', payload);
-    setReplyTo(null);
   };
 
+  // ==========================
+  // Xử lý trả lời tin nhắn
+  // ==========================
   const handleReplyClick = (m) => {
     const at = `@${m.username} `;
     setText(at);
@@ -155,77 +195,82 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
       }
     }, 40);
   };
-  
-  // =============================================================
-  // ▼▼▼ HÀM MỚI ĐỂ HIỂN THỊ MÀU CHO TÊN NGƯỜI DÙNG ▼▼▼
-  // =============================================================
+
+  // ==========================
+  // 🆕 Xử lý gửi báo cáo
+  // ==========================
+  const handleReportSubmit = (reason) => {
+    if (!socket || !reportingMessage) return;
+    socket.emit('report-comment', {
+      roomId,
+      commentId: reportingMessage._id || reportingMessage.id,
+      reason,
+    });
+    toast.success('Báo cáo của bạn đã được gửi đi. Cảm ơn bạn!');
+    setReportingMessage(null);
+  };
+
+  // ==========================
+  // Hiển thị text có mention màu
+  // ==========================
   const renderMessageText = (text) => {
     if (text && text.startsWith('@')) {
       const firstSpaceIndex = text.indexOf(' ');
-      // Chỉ xử lý nếu có khoảng trắng sau @username và username có ít nhất 1 ký tự
-      if (firstSpaceIndex > 1) { 
+      if (firstSpaceIndex > 1) {
         const mention = text.substring(0, firstSpaceIndex);
-        const restOfText = text.substring(firstSpaceIndex);
+        const rest = text.substring(firstSpaceIndex);
         return (
           <>
-            <span className="roomchat-mention">{mention}</span>
-            {/* Thêm một khoảng trắng để đảm bảo phần còn lại của văn bản không dính liền */}
-            {' '} 
-            {restOfText.trim()}
+            <span className="roomchat-mention">{mention}</span> {rest.trim()}
           </>
         );
       }
     }
-    return text; // Trả về văn bản gốc nếu không phải là mention
+    return text;
   };
 
-
+  // ==========================
+  // JSX chính
+  // ==========================
   return (
     <div className="roomchat-container">
       <div className="roomchat-panel">
-        <div className="roomchat-list" ref={listRef} aria-live="polite">
+        <div className="roomchat-list" ref={listRef}>
           {messages.map((m) => {
             const msgId = String(m.id || m._id);
+            const isMyMessage = user && String(user._id) === String(m.userId);
             return (
-              <div id={`msg-${msgId}`} key={msgId} ref={(el) => { if (el) msgRefs.current[msgId] = el; }} className={`roomchat-msg`}>
+              <div id={`msg-${msgId}`} key={msgId} className="roomchat-msg" ref={(el) => (msgRefs.current[msgId] = el)}>
                 <img className="roomchat-avatar" src={m.avatar || '/default-avatar.png'} alt={m.username} />
                 <div className="roomchat-body">
                   <div className="roomchat-meta">
-                      <span className="roomchat-username" title={m.username}>{m.username}</span>
-                      {m.isHost && (
-                        <span className="roomchat-host-badge">HOST</span>
-                      )}
-                      
-                      <span className="roomchat-time">{new Date(m.createdAt).toLocaleTimeString()}</span>
-                    </div>
-                  {m.meta && m.meta.replyTo && (
-                    <div className="roomchat-reply-snippet compact" onClick={() => {
-                      const targetId = String(m.meta.replyTo.id);
-                      const node = msgRefs.current[targetId];
-                      if (node && node.scrollIntoView) {
-                        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        node.classList.add('roomchat-highlight');
-                        setTimeout(() => node.classList.remove('roomchat-highlight'), 2200);
-                      } else {
-                        const fallback = document.getElementById(`msg-${targetId}`);
-                        if (fallback) {
-                          fallback.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          fallback.classList.add('roomchat-highlight');
-                          setTimeout(() => fallback.classList.remove('roomchat-highlight'), 2200);
+                    <span className="roomchat-username" title={m.username}>
+                      {m.username}
+                    </span>
+                    {m.isHost && <span className="roomchat-host-badge">HOST</span>}
+                    <span className="roomchat-time">{new Date(m.createdAt).toLocaleTimeString()}</span>
+                  </div>
+
+                  {m.meta?.replyTo && (
+                    <div
+                      className="roomchat-reply-snippet compact"
+                      onClick={() => {
+                        const targetId = String(m.meta.replyTo.id);
+                        const node = msgRefs.current[targetId];
+                        if (node && node.scrollIntoView) {
+                          node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          node.classList.add('roomchat-highlight');
+                          setTimeout(() => node.classList.remove('roomchat-highlight'), 2200);
                         }
-                      }
-                    }}>
-                      <span className="roomchat-reply-compact" title={`Replying to @${m.meta.replyTo.username}`}>Replying to @{m.meta.replyTo.username}</span>
+                      }}
+                    >
+                      <span className="roomchat-reply-compact">Replying to @{m.meta.replyTo.username}</span>
                     </div>
                   )}
 
-                  {/* ============================================================= */}
-                  {/* ▼▼▼ ÁP DỤNG HÀM MỚI VÀO ĐÂY ▼▼▼ */}
-                  {/* ============================================================= */}
                   <div className="roomchat-text">{renderMessageText(m.text)}</div>
-
                 </div>
-                
+
                 <div className="roomchat-actions">
                   <button
                     aria-label="Tùy chọn"
@@ -239,24 +284,33 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
                   </button>
 
                   {activeMenuId === msgId && (
-                    <div className="roomchat-action-menu" ref={menuRef}>
-                      <button 
-                        className="roomchat-action-btn" 
-                        onClick={() => handleReplyClick(m)}
-                      >
-                        Reply
-                      </button>
-                      <button className="roomchat-action-btn">
-                        <Flag size={14} /> Báo cáo
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                    <div className="roomchat-action-menu" ref={menuRef}>
+                      <button className="roomchat-action-btn" onClick={() => handleReplyClick(m)}>
+                        Reply
+                      </button>
+                        
+                        {/* 👇 THAY ĐỔI Ở ĐÂY 👇 */}
+                      {/* Chỉ hiển thị nút báo cáo nếu đó không phải là tin nhắn của mình */}
+                      {!isMyMessage && (
+                        <button
+                          className="roomchat-action-btn"
+                          onClick={() => {
+                            setReportingMessage(m);
+                            setActiveMenuId(null);
+                          }}
+                        >
+                          <Flag size={14} /> Báo cáo
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
+        {/* Form nhập tin nhắn */}
         <form className="roomchat-input" onSubmit={sendMessage}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
             <textarea
@@ -280,6 +334,15 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
           </button>
         </form>
       </div>
+
+      {/* 🆕 Modal báo cáo */}
+      {reportingMessage && (
+        <ReportModal
+          message={reportingMessage}
+          onClose={() => setReportingMessage(null)}
+          onSubmit={handleReportSubmit}
+        />
+      )}
     </div>
   );
 }
