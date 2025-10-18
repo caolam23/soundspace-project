@@ -118,28 +118,22 @@
   border-radius: 9999px;
 }
 
-/* ⏳ Đang chờ - Màu vàng/cam nhạt */
+/* Đang chờ - Màu vàng/cam nhạt */
 .QuanLyPhong-waiting {
   background-color: #fef3c7;
   color: #92400e;
 }
 
-/* ✅ Hoạt động (Live) - Màu xanh lá */
+/* Hoạt động (Live) - Màu xanh lá */
 .QuanLyPhong-live {
   background-color: #d1fae5;
   color: #065f46;
 }
 
-/* 🔴 Đã kết thúc - Màu xám */
+/* Đã kết thúc - Màu xám */
 .QuanLyPhong-ended {
   background-color: #e5e7eb;
   color: #4b5563;
-}
-
-/* ⛔ Bị cấm - Màu đỏ */
-.QuanLyPhong-banned {
-  background-color: #fee2e2;
-  color: #991b1b;
 }
 
 .QuanLyPhong-actions {
@@ -148,9 +142,7 @@
 }
 
 .QuanLyPhong-eyeBtn,
-.QuanLyPhong-trashBtn,
-.QuanLyPhong-banBtn,
-.QuanLyPhong-unbanBtn {
+.QuanLyPhong-trashBtn {
   padding: 0.5rem;
   border-radius: 0.5rem;
   display: flex;
@@ -176,24 +168,6 @@
 
 .QuanLyPhong-trashBtn:hover {
   background-color: #fef2f2;
-}
-
-/* 🆕 Nút cấm phòng */
-.QuanLyPhong-banBtn {
-  color: #f59e0b;
-}
-
-.QuanLyPhong-banBtn:hover {
-  background-color: #fef3c7;
-}
-
-/* 🆕 Nút bỏ cấm phòng */
-.QuanLyPhong-unbanBtn {
-  color: #10b981;
-}
-
-.QuanLyPhong-unbanBtn:hover {
-  background-color: #d1fae5;
 }
 
 /* Pagination wrapper */
@@ -238,27 +212,6 @@
   padding-bottom: 1rem;
 }
 
-.QuanLyPhong-activeFilters {
-  padding: 0 1.5rem 1.25rem; /* Căn chỉnh với padding của các phần tử khác */
-  border-bottom: 1px solid #e5e7eb; /* Thêm đường kẻ để phân tách với bảng */
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  font-size: 0.875rem;
-  color: #4b5563; /* Gray-600 */
-}
-
-.QuanLyPhong-filterTag {
-  background-color: #ede9fe; /* Violet-100 */
-  color: #5b21b6;      /* Violet-700 */
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px; /* Pill shape */
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
 .QuanLyPhong-activeFilters {
   padding: 0 1.5rem 1.25rem; /* Căn chỉnh với padding của các phần tử khác */
   border-bottom: 1px solid #e5e7eb; /* Thêm đường kẻ để phân tách với bảng */

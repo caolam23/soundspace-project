@@ -1,0 +1,65 @@
+.report-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 3, 15, 0.78); /* darker, slightly purple-tinted */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1800;
+}
+.report-modal {
+  width: 420px;
+  background: linear-gradient(180deg, #0b0710 0%, #0f0920 100%);
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(14,8,30,0.7);
+  overflow: hidden;
+  color: #e6e6f0;
+  border: 1px solid rgba(124, 58, 237, 0.08);
+}
+.report-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.report-modal-header h3 { margin: 0; font-size: 16px; color: #f3ecff; }
+.report-modal-close { background: transparent; border: none; cursor: pointer; color: #ddd; }
+.report-modal-close svg { color: #ddd; }
+.report-modal-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+.report-label { font-size: 13px; color: #ccc; }
+.report-modal-body select,
+.report-modal-body textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(18,12,30,0.6);
+  color: #eee;
+  outline: none;
+}
+.report-modal-body select option { background: #0f0920; color: #fff; }
+.report-modal-body textarea { min-height: 110px; resize: vertical; }
+.report-modal-body select:focus,
+.report-modal-body textarea:focus {
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
+  border-color: rgba(124,58,237,0.5);
+}
+.report-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.report-modal .btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(30,20,40,0.6);
+  color: #e6e6f0;
+}
+.report-modal .btn[disabled], .report-modal .btn[disabled]:hover { opacity: 0.6; cursor: not-allowed; }
+.report-modal .btn.btn-primary {
+  background: linear-gradient(90deg, #7c3aed 0%, #6b21a8 100%);
+  color: #fff;
+  border-color: rgba(124,58,237,0.6);
+  box-shadow: 0 6px 18px rgba(108, 33, 166, 0.24);
+}
+.report-modal .btn.btn-primary:hover { filter: brightness(1.05); }
+.report-modal .btn:hover { transform: translateY(-1px); }

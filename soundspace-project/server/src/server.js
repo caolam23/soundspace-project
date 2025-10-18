@@ -148,41 +148,52 @@ io.on('connection', (socket) => {
     });
 
     // --- Join room ---
-    socket.on('join-room', async (roomId) => {
+        socket.on('join-room', async (roomId) => {
         try {
-            socket.join(roomId);
-            console.log(`[JOIN-ROOM] Socket ${socket.id} joined room ${roomId}`);
-
-            const room = await Room.findById(roomId)
-                .populate('owner', 'username avatar')
-                .populate('members', 'username avatar');
-
-            if (!room) {
-                console.log(`[JOIN-ROOM] Room not found: ${roomId}`);
-                return;
+            // ✅ THÊM: Kiểm tra nếu socket này đang ở ghost mode thì BỎ QUA
+            if (socket.isGhostMode) {
+            console.log(`⚠️ [JOIN-ROOM] Socket ${socket.id} is in ghost mode, ignoring join-room event`);
+            return;
             }
 
+            socket.join(roomId);
+            console.log(`[JOIN-ROOM] Socket ${socket.id} (userId: ${socket.userId}) joined room ${roomId}`);
+
+            const room = await Room.findById(roomId)
+            .populate('owner', 'username avatar')
+            .populate('members', 'username avatar');
+
+            if (!room) {
+            console.log(`[JOIN-ROOM] Room not found: ${roomId}`);
+            return;
+            }
+
+            // If this socket is authenticated and user is not yet recorded as member in DB,
+            // add them and increment statistics.totalJoins (counts unique joins)
             try {
                 const uid = socket.userId || null;
                 if (uid && !room.members.some(m => String(m._id || m) === String(uid)) && room.status !== 'ended') {
-                    await Room.findByIdAndUpdate(roomId, {
-                        $push: { members: uid },
-                        $inc: { 'statistics.totalJoins': 1 }
-                    });
-                    try {
-                        const fresh = await Room.findById(roomId).select('statistics members').lean();
-                        if (fresh) {
-                            const peak = Math.max(fresh.statistics?.peakMembers || 0, (fresh.members || []).length);
-                            await Room.findByIdAndUpdate(roomId, { 'statistics.peakMembers': peak });
-                        }
-                    } catch (e) {
-                        console.warn('[JOIN-ROOM] Could not update peakMembers:', e.message);
+                // add to members array and update stats
+                await Room.findByIdAndUpdate(roomId, {
+                    $push: { members: uid },
+                    $inc: { 'statistics.totalJoins': 1 }
+                });
+                // update peakMembers if needed
+                try {
+                    const fresh = await Room.findById(roomId).select('statistics members').lean();
+                    if (fresh) {
+                    const peak = Math.max(fresh.statistics?.peakMembers || 0, (fresh.members || []).length);
+                    await Room.findByIdAndUpdate(roomId, { 'statistics.peakMembers': peak });
                     }
+                } catch (e) {
+                    console.warn('[JOIN-ROOM] Could not update peakMembers:', e.message);
+                }
                 }
             } catch (e) {
                 console.warn('[JOIN-ROOM] Auto-join stats update failed:', e.message);
             }
 
+            // Send initial playback state to the new socket
             const currentPlaybackState = {
                 playlist: room.playlist,
                 currentTrackIndex: room.currentTrackIndex,
@@ -192,63 +203,67 @@ io.on('connection', (socket) => {
             socket.emit('playback-state-changed', currentPlaybackState);
             console.log(`[JOIN-ROOM] Sent initial playback state to socket ${socket.id}`);
 
+            // Update members list for the room
             const ownerId = String(room.owner._id);
             const ownerMember = room.members.find(m => String(m._id) === ownerId);
             const otherMembers = room.members.filter(m => String(m._id) !== ownerId);
             const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : room.members;
             
             io.to(roomId).emit('update-members', sortedMembers);
+                // Emit room-members-changed for admin pages so member count updates realtime
                 try {
-                    const roomObj = await Room.findById(roomId).select('statistics members').lean();
-                    if (roomObj) {
-                        const payload = {
-                            roomId: String(roomId),
-                            membersCount: roomObj.members?.length || 0,
-                            totalJoins: roomObj.statistics?.totalJoins || 0,
-                            peakMembers: roomObj.statistics?.peakMembers || 0,
-                        };
-                        io.emit('room-members-changed', payload);
-                        console.log('[LEAVE-ROOM] Emitted room-members-changed', payload);
-                    }
-                } catch (e) {
-                    console.warn('[LEAVE-ROOM] Could not emit room-members-changed:', e.message);
-                }
-            console.log(`[JOIN-ROOM] Emitted update-members with ${sortedMembers.length} members`);
-            try {
                 const roomObj = await Room.findById(roomId).select('statistics members').lean();
                 if (roomObj) {
                     const payload = {
-                        roomId: String(roomId),
-                        membersCount: roomObj.members?.length || 0,
-                        totalJoins: roomObj.statistics?.totalJoins || 0,
-                        peakMembers: roomObj.statistics?.peakMembers || 0,
+                    roomId: String(roomId),
+                    membersCount: roomObj.members?.length || 0,
+                    totalJoins: roomObj.statistics?.totalJoins || 0,
+                    peakMembers: roomObj.statistics?.peakMembers || 0,
                     };
                     io.emit('room-members-changed', payload);
-                    console.log('[JOIN-ROOM] Emitted room-members-changed', payload);
+                    console.log('[LEAVE-ROOM] Emitted room-members-changed', payload);
+                }
+                } catch (e) {
+                console.warn('[LEAVE-ROOM] Could not emit room-members-changed:', e.message);
+                }
+            console.log(`[JOIN-ROOM] Emitted update-members with ${sortedMembers.length} members`);
+            // Emit room-members-changed so admin pages update
+            try {
+                const roomObj = await Room.findById(roomId).select('statistics members').lean();
+                if (roomObj) {
+                const payload = {
+                    roomId: String(roomId),
+                    membersCount: roomObj.members?.length || 0,
+                    totalJoins: roomObj.statistics?.totalJoins || 0,
+                    peakMembers: roomObj.statistics?.peakMembers || 0,
+                };
+                io.emit('room-members-changed', payload);
+                console.log('[JOIN-ROOM] Emitted room-members-changed', payload);
                 }
             } catch (e) {
                 console.warn('[JOIN-ROOM] Could not emit room-members-changed:', e.message);
             }
+            // Emit global member stats for admin pages
             try {
                 const roomObj = await Room.findById(roomId).select('statistics members').lean();
                 if (roomObj) {
-                    const payload = {
-                        roomId: String(roomId),
-                        membersCount: sortedMembers.length,
-                        totalJoins: roomObj.statistics?.totalJoins || 0,
-                        peakMembers: roomObj.statistics?.peakMembers || sortedMembers.length,
-                    };
-                    io.emit('room-members-changed', payload);
-                    console.log('[JOIN-ROOM] Emitted room-members-changed', payload);
+                const payload = {
+                    roomId: String(roomId),
+                    membersCount: sortedMembers.length,
+                    totalJoins: roomObj.statistics?.totalJoins || 0,
+                    peakMembers: roomObj.statistics?.peakMembers || sortedMembers.length,
+                };
+                io.emit('room-members-changed', payload);
+                console.log('[JOIN-ROOM] Emitted room-members-changed', payload);
                 }
             } catch (e) {
                 console.warn('[JOIN-ROOM] Could not emit room-members-changed:', e.message);
             }
             
-        } catch (err) {
+            } catch (err) {
             console.error('[JOIN-ROOM] Error:', err);
-        }
-    });
+            }
+        });
 
     registerChatHandlers(io, socket);
     registerReportHandlers(io, socket);
@@ -422,7 +437,108 @@ io.on('connection', (socket) => {
             console.error('[RESPOND] Error:', err);
         }
     });
+ 
+    // tham gia của admin
+    socket.on('join-room-ghost', async ({ roomId, isAdmin }) => {
+    try {
+        if (!isAdmin) {
+        console.warn(`[JOIN-ROOM-GHOST] Non-admin tried to join as ghost`);
+        return;
+        }
 
+        // ✅ Đánh dấu socket này đang ở ghost mode
+        socket.isGhostMode = true;
+        console.log(`✅ [JOIN-ROOM-GHOST] Marked socket ${socket.id} as ghost mode`);
+
+        socket.join(roomId);
+        console.log(`👻 [JOIN-ROOM-GHOST] Admin socket ${socket.id} joined room ${roomId} as ghost`);
+
+        const room = await Room.findById(roomId)
+        .populate('owner', 'username avatar')
+        .populate('members', 'username avatar');
+
+        if (!room) {
+        console.log(`[JOIN-ROOM-GHOST] Room not found: ${roomId}`);
+        return;
+        }
+
+        // ✅ Gửi trạng thái playback cho admin
+        const currentPlaybackState = {
+        playlist: room.playlist,
+        currentTrackIndex: room.currentTrackIndex,
+        isPlaying: room.isPlaying,
+        playbackStartTime: room.playbackStartTime,
+        };
+        socket.emit('playback-state-changed', currentPlaybackState);
+        console.log(`👻 [JOIN-ROOM-GHOST] Sent playback state to admin`);
+
+        // ✅ FIX: Gửi danh sách members TRỰC TIẾP cho socket admin (KHÔNG broadcast)
+        const ownerId = String(room.owner._id);
+        const ownerMember = room.members.find(m => String(m._id) === ownerId);
+        const otherMembers = room.members.filter(m => String(m._id) !== ownerId);
+        const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : room.members;
+
+        // ✅ CHỈ emit cho socket này, KHÔNG broadcast
+        socket.emit('update-members', sortedMembers);
+        console.log(`👻 [JOIN-ROOM-GHOST] Sent ${sortedMembers.length} members ONLY to admin socket (NOT broadcasted)`);
+
+        // ⚠️ KHÔNG emit room-members-changed vì admin không được tính vào thống kê
+
+    } catch (err) {
+        console.error('[JOIN-ROOM-GHOST] Error:', err);
+    }
+    });
+    
+    // rời phòng của admin
+    socket.on('leave-room-ghost', async ({ roomId }) => {
+    try {
+        // ✅ Xóa ghost flag
+        socket.isGhostMode = false;
+        console.log(`✅ [LEAVE-ROOM-GHOST] Removed ghost mode flag from socket ${socket.id}`);
+
+        socket.leave(roomId);
+        console.log(`👻 [LEAVE-ROOM-GHOST] Admin socket ${socket.id} left room ${roomId}`);
+
+        // ✅ FIX: Emit update-members cho các NON-GHOST clients
+        const room = await Room.findById(roomId)
+        .populate('owner', 'username avatar')
+        .populate('members', 'username avatar');
+
+        if (room) {
+        const ownerId = String(room.owner._id);
+        const ownerMember = room.members.find(m => String(m._id) === ownerId);
+        const otherMembers = room.members.filter(m => String(m._id) !== ownerId);
+        const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : room.members;
+
+        // ✅ Broadcast cho TẤT CẢ clients trong room (trừ ghost)
+        const socketsInRoom = await io.in(roomId).fetchSockets();
+        for (const s of socketsInRoom) {
+            if (!s.isGhostMode) {
+            s.emit('update-members', sortedMembers);
+            }
+        }
+        console.log(`👻 [LEAVE-ROOM-GHOST] Sent update-members to ${socketsInRoom.filter(s => !s.isGhostMode).length} non-ghost clients`);
+
+        // ✅ Emit room-members-changed cho admin dashboard
+        try {
+            const payload = {
+            roomId: String(roomId),
+            membersCount: sortedMembers.length,
+            totalJoins: room.statistics?.totalJoins || 0,
+            peakMembers: room.statistics?.peakMembers || 0,
+            };
+            io.emit('room-members-changed', payload);
+            console.log('[LEAVE-ROOM-GHOST] Emitted room-members-changed', payload);
+        } catch (e) {
+            console.warn('[LEAVE-ROOM-GHOST] Could not emit room-members-changed:', e.message);
+        }
+        }
+    } catch (err) {
+        console.error('[LEAVE-ROOM-GHOST] Error:', err);
+    }
+    });
+
+    
     socket.on('leave-room', async ({ roomId, userId }) => {
         socket.leave(roomId);
         try {

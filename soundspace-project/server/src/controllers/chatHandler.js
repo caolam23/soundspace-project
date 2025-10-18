@@ -1,17 +1,17 @@
 // server/src/controllers/chatHandler.js
 const chatService = require('../services/chatService');
 const Room = require('../models/room');
-const User = require('../models/User'); // ✅ Thêm để kiểm tra người dùng bị mute
+const User = require('../models/User'); // ✅ Kiểm tra mute người dùng
 
 const registerChatHandlers = (io, socket) => {
   /**
    * ======================================================
-   * Xử lý sự kiện gửi tin nhắn từ client
+   * 📨 Xử lý sự kiện gửi tin nhắn từ client
    * ======================================================
    */
   const handleSendMessage = async (payload) => {
     try {
-      const { roomId, text, meta } = payload;
+      const { roomId, text, meta, isGhostMode } = payload;
       const userId = socket.userId;
 
       if (!userId) {
@@ -32,14 +32,32 @@ const registerChatHandlers = (io, socket) => {
         return; // Dừng lại, không gửi tin nhắn
       }
 
-      // =====================================================
-      // 💬 TẠO VÀ LƯU TIN NHẮN TRONG DATABASE
-      // =====================================================
-      const savedMsg = await chatService.createMessage(roomId, userId, text, meta);
+      let savedMsg;
 
-      if (!savedMsg) {
-        socket.emit('chat-error', { message: 'Không thể lưu tin nhắn.' });
-        return;
+      // =====================================================
+      // 👻 GHOST MODE: ADMIN GỬI TIN NHẮN KHÔNG LƯU VÀO DB
+      // =====================================================
+      if (isGhostMode) {
+        savedMsg = {
+          _id: `ghost-${Date.now()}-${Math.random()}`,
+          userId: userId,
+          username: '👻 Admin',
+          avatar: '/admin-ghost-avatar.png',
+          text,
+          meta: meta || {},
+          createdAt: new Date(),
+          isGhost: true,
+        };
+        console.log(`👻 [CHAT-GHOST] Admin sent ghost message to room ${roomId}`);
+      } else {
+        // =====================================================
+        // 💬 NORMAL MODE: LƯU TIN NHẮN VÀO DATABASE
+        // =====================================================
+        savedMsg = await chatService.createMessage(roomId, userId, text, meta);
+        if (!savedMsg) {
+          socket.emit('chat-error', { message: 'Không thể lưu tin nhắn.' });
+          return;
+        }
       }
 
       const roomIdStr = String(roomId);
@@ -51,7 +69,7 @@ const registerChatHandlers = (io, socket) => {
       const isHost = room && room.owner && room.owner.equals(savedMsg.userId);
 
       // =====================================================
-      // 📦 CHUẨN BỊ OBJECT TIN NHẮN GỬI RA CLIENT
+      // 📦 CHUẨN BỊ DỮ LIỆU TIN NHẮN GỬI RA CLIENT
       // =====================================================
       const clientMessage = {
         id: savedMsg._id,
@@ -61,10 +79,13 @@ const registerChatHandlers = (io, socket) => {
         text: savedMsg.text,
         meta: savedMsg.meta,
         createdAt: savedMsg.createdAt,
-        isHost, // ✅ Trường mới giúp client biết ai là chủ phòng
+        isHost,
+        isGhost: savedMsg.isGhost || false,
       };
 
-      console.log(`[CHAT] Message sent by ${clientMessage.username} (Host: ${isHost}) in room ${roomIdStr}`);
+      console.log(
+        `[CHAT] Message sent by ${clientMessage.username} (Host: ${isHost}, Ghost: ${clientMessage.isGhost}) in room ${roomIdStr}`
+      );
 
       // =====================================================
       // 🚀 PHÁT SỰ KIỆN TIN NHẮN MỚI CHO CẢ PHÒNG
@@ -76,7 +97,9 @@ const registerChatHandlers = (io, socket) => {
     }
   };
 
-  // Đăng ký event handler cho socket
+  // ======================================================
+  // Đăng ký sự kiện socket
+  // ======================================================
   socket.on('send-chat-message', handleSendMessage);
 };
 

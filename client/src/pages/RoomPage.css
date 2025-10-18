@@ -422,7 +422,7 @@
 .join-request-actions { display: flex; gap: 8px; }
 
 /* Nút Danger Outline Hiện Đại */
-.btn-danger-outline {
+.roompage-container .btn-danger-outline {
     display: inline-block;
     font-weight: 500;
     font-size: 16px;
@@ -439,7 +439,7 @@
 }
 
 /* Hover: nền đỏ, chữ trắng, bóng nổi */
-.btn-danger-outline:hover {
+.roompage-container .btn-danger-outline:hover {
     background-color: #e53935;
     color: #fff;
     transform: translateY(-2px);
@@ -447,19 +447,19 @@
 }
 
 /* Focus: viền nổi */
-.btn-danger-outline:focus {
+.roompage-container .btn-danger-outline:focus {
     outline: none;
     box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.4);
 }
 
 /* Disabled */
-.btn-danger-outline:disabled {
+.roompage-container .btn-danger-outline:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     box-shadow: none;
 }
 /* Nút Primary Hiện Đại */
-.btn-primary {
+.roompage-container .btn-primary {
     display: inline-block;
     font-weight: 600;
     font-size: 16px;
@@ -476,26 +476,26 @@
 }
 
 /* Hover: nổi, gradient sáng hơn, nâng nhẹ */
-.btn-primary:hover {
+.roompage-container .btn-primary:hover {
     background: linear-gradient(135deg, #5b4ff5, #7c6dfc);
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0,0,0,0.25);
 }
 
 /* Focus: viền nổi ring */
-.btn-primary:focus {
+.roompage-container .btn-primary:focus {
     outline: none;
     box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.4);
 }
 
 /* Active: nhấn xuống */
-.btn-primary:active {
+.roompage-container .btn-primary:active {
     transform: translateY(1px);
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
 /* Disabled */
-.btn-primary:disabled {
+.roompage-container .btn-primary:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     box-shadow: none;
@@ -507,7 +507,7 @@
     gap: 16px; /* khoảng cách nếu có nhiều nút hơn */
 }
 /* Nút Accept Nhỏ Gọn */
-.btn-accept {
+.roompage-container .btn-accept {
     display: inline-block;
     font-weight: 600;
     font-size: 12px; /* nhỏ hơn */
@@ -524,33 +524,33 @@
 }
 
 /* Hover: nổi, xanh sáng hơn */
-.btn-accept:hover {
+.roompage-container .btn-accept:hover {
     background-color: #16a34a;
     transform: translateY(-1px);
     box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
 /* Focus */
-.btn-accept:focus {
+.roompage-container .btn-accept:focus {
     outline: none;
     box-shadow: 0 0 0 2px rgba(34,197,94,0.4);
 }
 
 /* Active */
-.btn-accept:active {
+.roompage-container .btn-accept:active {
     transform: translateY(1px);
     box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 
 /* Disabled */
-.btn-accept:disabled {
+.roompage-container .btn-accept:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     box-shadow: none;
 }
 
 /* Nút Deny Nhỏ Gọn */
-.btn-deny {
+.roompage-container .btn-deny {
     display: inline-block;
     font-weight: 600;
     font-size: 12px; /* nhỏ gọn */
@@ -567,32 +567,32 @@
 }
 
 /* Hover: nổi, đỏ đậm hơn */
-.btn-deny:hover {
+.roompage-container .btn-deny:hover {
     background-color: #b91c1c;
     transform: translateY(-1px);
     box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
 /* Focus */
-.btn-deny:focus {
+.roompage-container .btn-deny:focus {
     outline: none;
     box-shadow: 0 0 0 2px rgba(239,68,68,0.4);
 }
 
 /* Active */
-.btn-deny:active {
+.roompage-container .btn-deny:active {
     transform: translateY(1px);
     box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 
 /* Disabled */
-.btn-deny:disabled {
+.roompage-container .btn-deny:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     box-shadow: none;
 }
 /* Nút Rời Phòng */
-.btn-leave-room {
+.roompage-container .btn-leave-room {
     display: inline-flex;
     align-items: center;
     gap: 6px; /* khoảng cách icon & chữ */
@@ -608,27 +608,55 @@
     box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 
-.btn-leave-room:hover {
+.roompage-container .btn-leave-room:hover {
     background-color: #b91c1c;
     transform: translateY(-1px);
     box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
-.btn-leave-room:focus {
+.roompage-container .btn-leave-room:focus {
     outline: none;
     box-shadow: 0 0 0 2px rgba(239,68,68,0.4);
 }
 
-.btn-leave-room:active {
+.roompage-container .btn-leave-room:active {
     transform: translateY(1px);
     box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 
-.btn-leave-room:disabled {
+.roompage-container .btn-leave-room:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     box-shadow: none;
 }
+
+/* Report room button placed next to leave */
+.roompage-container .btn-report-room {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 5px 12px;
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 6px;
+    background-color: #fff;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.roompage-container .btn-report-room:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+.roompage-container .btn-report-room.disabled,
+.roompage-container .btn-report-room:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    background-color: #f3f4f6;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+}
+
 
 /* Status badges shown inline next to request actions */
 .join-request-status {
@@ -727,4 +755,65 @@
 }
 .leave-toast .join-toast-username {
     color: #F44336; 
+}
+.roompage-ghost-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(138, 43, 226, 0.12);
+  border: 1px solid rgba(138, 43, 226, 0.3);
+  border-radius: 8px;
+  color: #c084fc;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.roompage-ghost-badge svg {
+  color: #c084fc;
+}
+
+.roompage-container.ghost-mode .roompage-header {
+  border-bottom: 1px solid rgba(138, 43, 226, 0.25);
+}
+
+.btn-leave-room.ghost-mode-btn {
+  background: linear-gradient(135deg, #7c3aed, #9333ea);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+}
+.roompage-container.ghost-mode .roompage-right {
+  border-left: 1px solid rgba(138, 43, 226, 0.15);
+}
+
+.roompage-container.ghost-mode .roompage-tab.active {
+  color: #c084fc;
+  border-bottom-color: #c084fc;
+}
+
+.ghost-mode-watermark {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(138, 43, 226, 0.25);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+}
+@media (max-width: 768px) {
+  .roompage-ghost-badge {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
+  .ghost-mode-watermark {
+    bottom: 12px;
+    left: 12px;
+    font-size: 10px;
+  }
 }

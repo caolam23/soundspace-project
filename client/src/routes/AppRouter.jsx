@@ -17,6 +17,8 @@ import Dashboard from "../pages/admin/Dashboard";
 import Users from "../pages/admin/Users";
 import Settings from "../pages/admin/Settings";
 import QuanLyPhong from "../pages/admin/QuanLyPhong";
+import Reports from "../pages/admin/Reports";
+import Content from "../pages/admin/Content";
 import QuanLyBinhLuan from "../pages/admin/QuanLyBinhLuan"; // <<< 1. IMPORT COMPONENT MỚI
 // Import thêm trang thống kê
 import StatisticsPage from "../pages/admin/StatisticsPage";
@@ -86,6 +88,8 @@ export default function AppRouter() {
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
         <Route path="quanlyphong" element={<QuanLyPhong />} />
+        <Route path="content" element={<Content />} />
+        <Route path="content/reports" element={<Reports />} />
         <Route path="comments" element={<QuanLyBinhLuan />} />
         <Route path="analytics" element={<StatisticsPage />} /> 
       </Route>

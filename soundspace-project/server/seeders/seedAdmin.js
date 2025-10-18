@@ -27,7 +27,7 @@ async function main() {
   const hashed = await bcrypt.hash(password, 10);
   const user = await User.create({
     email,
-    username: "admin",
+    username: "Hệ thống SoundSpace",
     password: hashed,
     role: "admin",
   });

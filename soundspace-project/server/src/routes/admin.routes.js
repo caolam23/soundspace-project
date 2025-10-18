@@ -1,19 +1,24 @@
+// server/src/routes/admin.routes.js
 const express = require('express');
 const router = express.Router();
 const { auth, isAdmin } = require('../middleware/auth');
 const Report = require('../models/Report');
 const adminController = require('../controllers/adminController');
 
-// =====================================================
-// 🧭 DASHBOARD (cho admin)
-// GET /api/admin/dashboard
-// =====================================================
+/**
+ * =====================================================
+ * 🧭 DASHBOARD (cho admin)
+ * GET /api/admin/dashboard
+ * =====================================================
+ */
 router.get('/dashboard', auth, isAdmin, adminController.getDashboard);
 
-// =====================================================
-// 📋 LẤY DANH SÁCH BÁO CÁO
-// GET /api/admin/reports?status=pending
-// =====================================================
+/**
+ * =====================================================
+ * 📋 LẤY DANH SÁCH BÁO CÁO
+ * GET /api/admin/reports?status=pending
+ * =====================================================
+ */
 router.get('/reports', auth, isAdmin, async (req, res) => {
   try {
     const { status } = req.query;
@@ -31,10 +36,12 @@ router.get('/reports', auth, isAdmin, async (req, res) => {
   }
 });
 
-// =====================================================
-// ✏️ CẬP NHẬT TRẠNG THÁI REPORT
-// PATCH /api/admin/reports/:reportId
-// =====================================================
+/**
+ * =====================================================
+ * ✏️ CẬP NHẬT TRẠNG THÁI REPORT
+ * PATCH /api/admin/reports/:reportId
+ * =====================================================
+ */
 router.patch('/reports/:reportId', auth, isAdmin, async (req, res) => {
   try {
     const { status } = req.body;
@@ -43,9 +50,11 @@ router.patch('/reports/:reportId', auth, isAdmin, async (req, res) => {
       { status },
       { new: true }
     );
+
     if (!report) {
       return res.status(404).json({ message: 'Không tìm thấy báo cáo' });
     }
+
     res.json(report);
   } catch (error) {
     console.error('❌ Lỗi khi cập nhật report:', error);
@@ -53,11 +62,31 @@ router.patch('/reports/:reportId', auth, isAdmin, async (req, res) => {
   }
 });
 
-// =====================================================
-// ✨ ROUTE MỚI ĐƯỢC THÊM VÀO ✨
-// 🔇 LẤY DANH SÁCH USER ĐANG BỊ GIỚI HẠN CHAT
-// GET /api/admin/muted-users
-// =====================================================
+/**
+ * =====================================================
+ * ✨ ROUTE MỚI ĐƯỢC THÊM VÀO ✨
+ * 🔇 LẤY DANH SÁCH USER ĐANG BỊ GIỚI HẠN CHAT
+ * GET /api/admin/muted-users
+ * =====================================================
+ */
 router.get('/muted-users', auth, isAdmin, adminController.getMutedUsers);
+
+/**
+ * =====================================================
+ * 🧱 ROUTE BỔ SUNG TỪ CODE 2 (QUẢN LÝ BÁO CÁO)
+ * =====================================================
+ */
+
+// Lấy danh sách báo cáo (gọi tới controller để xử lý logic nâng cao)
+router.get('/reports/all', auth, isAdmin, adminController.listReports);
+
+// Bỏ qua báo cáo (ignore)
+router.post('/reports/:id/ignore', auth, isAdmin, adminController.ignoreReport);
+
+// Cảnh báo chủ phòng hoặc người vi phạm (warn)
+router.post('/reports/:id/warn', auth, isAdmin, adminController.warnOwner);
+
+// Cấm phòng (ban room)
+router.get('/reports', auth, isAdmin, adminController.listReports);
 
 module.exports = router;

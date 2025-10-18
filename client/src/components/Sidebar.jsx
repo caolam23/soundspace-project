@@ -63,7 +63,7 @@ export default function Sidebar() {
         </li>
         <li>
           <NavLink to="/admin/content" className={({ isActive }) => isActive ? 'Sidebar__link active' : 'Sidebar__link'}>
-            <Shield size={18} /> <span>Nội dung & Bản quyền</span>
+            <Shield size={18} /> <span>Báo cáo phòng</span>
           </NavLink>
         </li>
         <li>

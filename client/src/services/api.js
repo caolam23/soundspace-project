@@ -8,4 +8,12 @@ api.interceptors.request.use(config => {
   return config;
 });
 
+/**
+ * Submit a report for a room.
+ * payload: { category: string, details?: string }
+ */
+export const reportRoom = async (roomId, payload) => {
+  return api.post(`/rooms/${roomId}/report`, payload);
+};
+
 export default api;

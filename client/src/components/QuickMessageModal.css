@@ -1,0 +1,290 @@
+/* client/src/components/QuickMessageModal.css */
+
+.QuickMessage-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.QuickMessage-container {
+  background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s ease-out;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.QuickMessage-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.QuickMessage-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+}
+
+.QuickMessage-header-content svg {
+  color: #8b5cf6;
+}
+
+.QuickMessage-header-content h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.QuickMessage-header-content p {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #a0a0b0;
+}
+
+.QuickMessage-closeBtn {
+  background: transparent;
+  border: none;
+  color: #a0a0b0;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.QuickMessage-closeBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.QuickMessage-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.QuickMessage-instruction {
+  margin: 0 0 20px 0;
+  color: #d0d0d0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.QuickMessage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.QuickMessage-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.QuickMessage-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(139, 92, 246, 0.3);
+  transform: translateY(-2px);
+}
+
+.QuickMessage-item.selected {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: #8b5cf6;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
+}
+
+.QuickMessage-item-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.QuickMessage-radio {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #a0a0b0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.QuickMessage-item.selected .QuickMessage-radio {
+  border-color: #8b5cf6;
+}
+
+.QuickMessage-radio-dot {
+  width: 10px;
+  height: 10px;
+  background: #8b5cf6;
+  border-radius: 50%;
+  animation: radioIn 0.2s ease-out;
+}
+
+@keyframes radioIn {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.QuickMessage-item-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.QuickMessage-item-content {
+  margin: 0;
+  font-size: 14px;
+  color: #d0d0d0;
+  line-height: 1.5;
+  padding-left: 32px;
+}
+
+.QuickMessage-footer {
+  padding: 20px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.QuickMessage-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.QuickMessage-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.QuickMessage-btn-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.QuickMessage-btn-cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.QuickMessage-btn-send {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.QuickMessage-btn-send:hover:not(:disabled) {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+.QuickMessage-btn-send:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Scrollbar styling */
+.QuickMessage-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.QuickMessage-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.QuickMessage-body::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.5);
+  border-radius: 4px;
+}
+
+.QuickMessage-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.7);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .QuickMessage-container {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .QuickMessage-header {
+    padding: 16px 20px;
+  }
+
+  .QuickMessage-body {
+    padding: 20px;
+  }
+
+  .QuickMessage-footer {
+    padding: 16px 20px;
+    flex-direction: column;
+  }
+
+  .QuickMessage-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
