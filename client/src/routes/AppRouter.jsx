@@ -18,6 +18,8 @@ import Users from "../pages/admin/Users";
 import Settings from "../pages/admin/Settings";
 import QuanLyPhong from "../pages/admin/QuanLyPhong";
 import QuanLyBinhLuan from "../pages/admin/QuanLyBinhLuan"; // <<< 1. IMPORT COMPONENT MỚI
+// Import thêm trang thống kê
+import StatisticsPage from "../pages/admin/StatisticsPage";
 
 // Component bảo vệ route User
 const UserRoute = ({ children }) => {
@@ -84,8 +86,8 @@ export default function AppRouter() {
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
         <Route path="quanlyphong" element={<QuanLyPhong />} />
-        {/* ▼▼▼ 2. THÊM ROUTE MỚI TẠI ĐÂY ▼▼▼ */}
         <Route path="comments" element={<QuanLyBinhLuan />} />
+        <Route path="analytics" element={<StatisticsPage />} /> 
       </Route>
 
       {/* Redirect mặc định */}

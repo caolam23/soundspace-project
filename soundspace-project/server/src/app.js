@@ -15,7 +15,9 @@ const userRoutes = require('./routes/userRoutes');
 const playlistRoutes = require('./routes/playlist.routes');
 const streamRoutes = require('./routes/stream.routes');
 const quanLyPhongRoutes = require('./routes/quanLyPhong.routes')
-
+const statsRoutes = require('./routes/stats');
+const session = require('express-session'); // <--- 1. IMPORT SESSION
+const trackVisit = require('./middleware/trackVisit'); // <--- 2. IMPORT TRACKVISIT
 console.log('✅ Loaded quanLyPhongRoutes:', typeof quanLyPhongRoutes);
 
 function createApp() {
@@ -31,6 +33,25 @@ function createApp() {
   app.use(express.json());
   app.use(cookieParser());
   app.use(express.static('public'));
+
+  // ======================================================
+    // ✨✨ THÊM SESSION VÀ TRACKVISIT VÀO ĐÂY ✨✨
+    // ======================================================
+    const thirtyMinutes = 30 * 60 * 1000;
+    app.use(session({
+        secret: process.env.SESSION_SECRET || 'soundspace-secret-key-for-session',
+        resave: false,
+        saveUninitialized: true,
+        cookie: {
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: thirtyMinutes,
+            httpOnly: true
+        },
+        rolling: true
+    }));
+    
+    // Đặt trackVisit ngay sau session
+    app.use(trackVisit);
 
   // ======================================================
   // 🔐 PASSPORT CONFIG
@@ -67,6 +88,9 @@ function createApp() {
   // Quản lý phòng
   console.log('🟡 Mounting: /api/admin -> quanLyPhongRoutes');
   app.use('/api/admin', quanLyPhongRoutes);
+
+  console.log('🟡 Mounting: /api/admin/stats -> statsRoutes');
+  app.use('/api/admin/stats', statsRoutes);
 
   // Auth
   console.log('🟡 Mounting: /api/auth -> authRoutes');
