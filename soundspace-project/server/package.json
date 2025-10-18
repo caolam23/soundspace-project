@@ -20,6 +20,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
+    "express-session": "^1.18.2",
     "get-audio-duration": "^4.0.1",
     "jsonwebtoken": "^9.0.2",
     "lru-cache": "^11.2.2",

@@ -218,15 +218,17 @@ const emitStatsUpdate = async (io, eventType = 'all', range = 'all') => {
 const emitMultipleStatsUpdates = async (io, eventTypes = []) => {
   try {
     if (eventTypes.length === 0) {
+      // Nếu không có loại sự kiện cụ thể, emit tất cả
       return await emitStatsUpdate(io, 'all');
     }
 
-    const ranges = ['1d', '7d', '1m', 'all'];
+    const ranges = ['1d', '7d', '1m', 'all']; // Các khoảng thời gian cần thống kê
     const allPromises = [];
 
     for (const eventType of eventTypes) {
       for (const range of ranges) {
         switch (eventType) {
+          // ================== THỐNG KÊ NGUỒN NHẠC ==================
           case 'music-sources':
             allPromises.push(
               getMusicSourcesStats(range).then(data => {
@@ -235,6 +237,8 @@ const emitMultipleStatsUpdates = async (io, eventTypes = []) => {
               })
             );
             break;
+
+          // ================== NGƯỜI ĐÓNG GÓP HÀNG ĐẦU ==================
           case 'top-contributors':
             allPromises.push(
               getTopContributors(range).then(data => {
@@ -243,6 +247,8 @@ const emitMultipleStatsUpdates = async (io, eventTypes = []) => {
               })
             );
             break;
+
+          // ================== BÀI HÁT ĐƯỢC THÊM THEO THỜI GIAN ==================
           case 'songs-added':
             allPromises.push(
               getSongsAddedOverTime(range).then(data => {
@@ -251,6 +257,8 @@ const emitMultipleStatsUpdates = async (io, eventTypes = []) => {
               })
             );
             break;
+
+          // ================== TĂNG TRƯỞNG NGƯỜI DÙNG ==================
           case 'user-growth':
             allPromises.push(
               getUserGrowth(range).then(data => {
@@ -259,12 +267,24 @@ const emitMultipleStatsUpdates = async (io, eventTypes = []) => {
               })
             );
             break;
+
+          // ================== TỔNG LƯỢT TRUY CẬP ==================
+          case 'total-visits':
+            allPromises.push(
+              getTotalVisitsStats(range).then(data => {
+                io.emit('stats:total-visits-update', { totalVisits: data, range });
+                return { type: eventType, range, data };
+              })
+            );
+            break;
+
           default:
             break;
         }
       }
     }
 
+    // Đợi tất cả các thống kê hoàn thành
     const results = await Promise.all(allPromises);
     console.log(`✅ Multiple stats emitted for ranges [${ranges.join(', ')}]:`, eventTypes);
     return results;
@@ -274,6 +294,9 @@ const emitMultipleStatsUpdates = async (io, eventTypes = []) => {
   }
 };
 
+// ===================================================================
+// 📦 Xuất các hàm cần thiết
+// ===================================================================
 module.exports = {
   getMusicSources,
   getTopContributorsController,

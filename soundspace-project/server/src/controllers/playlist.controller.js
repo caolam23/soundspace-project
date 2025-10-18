@@ -3,16 +3,21 @@ const ytdl = require("@distube/ytdl-core");
 const { cloudinary } = require("../config/uploadConfig");
 const { getAudioDurationInSeconds } = require("get-audio-duration");
 
+// ================== IMPORT CẦN THIẾT CHO REAL-TIME ==================
+const { emitMultipleStatsUpdates } = require('./statsController'); // Import hàm kích hoạt
+// =====================================================================
+
+
 // ======================================================
 // ⚙️ HÀM HỖ TRỢ: LẤY THÔNG TIN VIDEO CÓ TIMEOUT AN TOÀN
 // ======================================================
 const getVideoInfoWithTimeout = (url, timeoutMs = 8000) => {
-  return Promise.race([
-    ytdl.getInfo(url),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout khi lấy info từ YouTube")), timeoutMs)
-    ),
-  ]);
+    return Promise.race([
+        ytdl.getInfo(url),
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Timeout khi lấy info từ YouTube")), timeoutMs)
+        ),
+    ]);
 };
 
 // ======================================================
@@ -160,6 +165,19 @@ exports.addTrack = async (req, res) => {
                 console.log(`📢 [ADD_TRACK_YT] Broadcasted room status change:`, statusPayload);
             }
         }
+
+        // ================== KÍCH HOẠT CẬP NHẬT THỐNG KÊ ==================
+        try {
+            console.log('📊 Kích hoạt cập nhật thống kê sau khi thêm bài hát YouTube...');
+            await emitMultipleStatsUpdates(io, [
+                'music-sources',    // Cập nhật tỷ lệ nguồn nhạc
+                'top-contributors', // Cập nhật top người đóng góp
+                'songs-added'       // Cập nhật biểu đồ bài hát theo thời gian
+            ]);
+        } catch (error) {
+            console.error("Lỗi khi gửi cập nhật thống kê (YouTube):", error);
+        }
+        // ==================================================================
 
         return res.status(201).json({ msg: "🎶 Đã thêm bài hát thành công!", playlist: room.playlist });
     } catch (error) {
@@ -336,6 +354,19 @@ exports.addTrackByUpload = async (req, res) => {
             }
         }
 
+        // ================== KÍCH HOẠT CẬP NHẬT THỐNG KÊ ==================
+        try {
+            console.log('📊 Kích hoạt cập nhật thống kê sau khi tải lên bài hát...');
+            await emitMultipleStatsUpdates(io, [
+                'music-sources',    // Cập nhật tỷ lệ nguồn nhạc
+                'top-contributors', // Cập nhật top người đóng góp
+                'songs-added'       // Cập nhật biểu đồ bài hát theo thời gian
+            ]);
+        } catch (error) {
+            console.error("Lỗi khi gửi cập nhật thống kê (Upload):", error);
+        }
+        // ==================================================================
+
         return res.status(201).json({ msg: "Tải lên thành công!", playlist: room.playlist });
     } catch (err) {
         console.error("========================================");
@@ -355,62 +386,62 @@ exports.addTrackByUpload = async (req, res) => {
 // ❌ XOÁ BÀI HÁT KHỎI PLAYLIST
 // ======================================================
 exports.removeTrackFromPlaylist = async (req, res) => {
-  try {
-    const { roomId, trackId } = req.params;
-    const userId = req.user?.id || req.user?._id;
+    try {
+        const { roomId, trackId } = req.params;
+        const userId = req.user?.id || req.user?._id;
 
-    const room = await Room.findById(roomId);
-    if (!room) return res.status(404).json({ msg: "Không tìm thấy phòng." });
+        const room = await Room.findById(roomId);
+        if (!room) return res.status(404).json({ msg: "Không tìm thấy phòng." });
 
-    // Chỉ chủ phòng mới được xóa
-    if (room.owner.toString() !== userId.toString())
-      return res.status(403).json({ msg: "Bạn không có quyền xóa bài hát." });
+        // Chỉ chủ phòng mới được xóa
+        if (room.owner.toString() !== userId.toString())
+            return res.status(403).json({ msg: "Bạn không có quyền xóa bài hát." });
 
-    const trackIndex = room.playlist.findIndex(t => t._id.toString() === trackId);
-    if (trackIndex === -1)
-      return res.status(404).json({ msg: "Không tìm thấy bài hát trong playlist." });
+        const trackIndex = room.playlist.findIndex(t => t._id.toString() === trackId);
+        if (trackIndex === -1)
+            return res.status(404).json({ msg: "Không tìm thấy bài hát trong playlist." });
 
-    // Nếu là file upload, xoá khỏi Cloudinary
-    const deletedTrack = room.playlist[trackIndex];
-    if (deletedTrack.source === "upload" && deletedTrack.sourceId) {
-      try {
-        await cloudinary.uploader.destroy(deletedTrack.sourceId, { resource_type: "video" });
-      } catch (err) {
-        console.warn("⚠️ Không thể xóa file Cloudinary:", err.message);
-      }
+        // Nếu là file upload, xoá khỏi Cloudinary
+        const deletedTrack = room.playlist[trackIndex];
+        if (deletedTrack.source === "upload" && deletedTrack.sourceId) {
+            try {
+                await cloudinary.uploader.destroy(deletedTrack.sourceId, { resource_type: "video" });
+            } catch (err) {
+                console.warn("⚠️ Không thể xóa file Cloudinary:", err.message);
+            }
+        }
+
+        // Xóa bài hát khỏi danh sách
+        room.playlist.splice(trackIndex, 1);
+
+        // === Cập nhật trạng thái phát ===
+        if (room.currentTrackIndex === trackIndex) {
+            if (room.playlist.length > 0) {
+                room.currentTrackIndex = Math.min(trackIndex, room.playlist.length - 1);
+                room.playbackStartTime = room.isPlaying ? new Date() : null;
+            } else {
+                room.isPlaying = false;
+                room.currentTrackIndex = -1;
+                room.playbackStartTime = null;
+            }
+        } else if (room.currentTrackIndex > trackIndex) {
+            room.currentTrackIndex -= 1;
+        }
+
+        await room.save();
+
+        const io = req.app.get("io");
+        const roomState = {
+            playlist: room.playlist,
+            currentTrackIndex: room.currentTrackIndex,
+            isPlaying: room.isPlaying,
+            playbackStartTime: room.playbackStartTime,
+        };
+        if (io) io.to(roomId).emit("playback-state-changed", roomState);
+
+        return res.status(200).json({ msg: "Đã xóa bài hát thành công.", playlist: room.playlist });
+    } catch (error) {
+        console.error("🔥 Lỗi khi xóa bài hát:", error);
+        res.status(500).json({ msg: "Lỗi máy chủ." });
     }
-
-    // Xóa bài hát khỏi danh sách
-    room.playlist.splice(trackIndex, 1);
-
-    // === Cập nhật trạng thái phát ===
-    if (room.currentTrackIndex === trackIndex) {
-      if (room.playlist.length > 0) {
-        room.currentTrackIndex = Math.min(trackIndex, room.playlist.length - 1);
-        room.playbackStartTime = room.isPlaying ? new Date() : null;
-      } else {
-        room.isPlaying = false;
-        room.currentTrackIndex = -1;
-        room.playbackStartTime = null;
-      }
-    } else if (room.currentTrackIndex > trackIndex) {
-      room.currentTrackIndex -= 1;
-    }
-
-    await room.save();
-
-    const io = req.app.get("io");
-    const roomState = {
-      playlist: room.playlist,
-      currentTrackIndex: room.currentTrackIndex,
-      isPlaying: room.isPlaying,
-      playbackStartTime: room.playbackStartTime,
-    };
-    if (io) io.to(roomId).emit("playback-state-changed", roomState);
-
-    return res.status(200).json({ msg: "Đã xóa bài hát thành công.", playlist: room.playlist });
-  } catch (error) {
-    console.error("🔥 Lỗi khi xóa bài hát:", error);
-    res.status(500).json({ msg: "Lỗi máy chủ." });
-  }
 };
