@@ -1,13 +1,13 @@
-// server/src/routes/admin.routes.js
 const express = require('express');
 const router = express.Router();
 const { auth, isAdmin } = require('../middleware/auth');
 const Report = require('../models/Report');
+const RoomReport = require('../models/RoomReport');
 const adminController = require('../controllers/adminController');
 
 /**
  * =====================================================
- * 🧭 DASHBOARD (cho admin)
+ * 🧭 DASHBOARD
  * GET /api/admin/dashboard
  * =====================================================
  */
@@ -15,7 +15,7 @@ router.get('/dashboard', auth, isAdmin, adminController.getDashboard);
 
 /**
  * =====================================================
- * 📋 LẤY DANH SÁCH BÁO CÁO
+ * 💬 LẤY DANH SÁCH BÁO CÁO COMMENT (dùng cho QuanLyBinhLuan.jsx)
  * GET /api/admin/reports?status=pending
  * =====================================================
  */
@@ -31,10 +31,18 @@ router.get('/reports', auth, isAdmin, async (req, res) => {
 
     res.json(reports);
   } catch (error) {
-    console.error('❌ Lỗi khi lấy danh sách report:', error);
-    res.status(500).json({ message: 'Lỗi server khi lấy danh sách báo cáo' });
+    console.error('❌ Lỗi khi lấy danh sách comment report:', error);
+    res.status(500).json({ message: 'Lỗi server khi lấy danh sách báo cáo comment' });
   }
 });
+
+/**
+ * =====================================================
+ * 🏠 LẤY DANH SÁCH BÁO CÁO PHÒNG (dùng cho Reports.jsx)
+ * GET /api/admin/room-reports
+ * =====================================================
+ */
+router.get('/room-reports', auth, isAdmin, adminController.listReports);
 
 /**
  * =====================================================
@@ -64,7 +72,6 @@ router.patch('/reports/:reportId', auth, isAdmin, async (req, res) => {
 
 /**
  * =====================================================
- * ✨ ROUTE MỚI ĐƯỢC THÊM VÀO ✨
  * 🔇 LẤY DANH SÁCH USER ĐANG BỊ GIỚI HẠN CHAT
  * GET /api/admin/muted-users
  * =====================================================
@@ -73,20 +80,17 @@ router.get('/muted-users', auth, isAdmin, adminController.getMutedUsers);
 
 /**
  * =====================================================
- * 🧱 ROUTE BỔ SUNG TỪ CODE 2 (QUẢN LÝ BÁO CÁO)
+ * 🧱 QUẢN LÝ BÁO CÁO PHÒNG
  * =====================================================
  */
 
-// Lấy danh sách báo cáo (gọi tới controller để xử lý logic nâng cao)
-router.get('/reports/all', auth, isAdmin, adminController.listReports);
+// Bỏ qua báo cáo phòng
+router.post('/room-reports/:id/ignore', auth, isAdmin, adminController.ignoreReport);
 
-// Bỏ qua báo cáo (ignore)
-router.post('/reports/:id/ignore', auth, isAdmin, adminController.ignoreReport);
+// Cảnh báo chủ phòng
+router.post('/room-reports/:id/warn', auth, isAdmin, adminController.warnOwner);
 
-// Cảnh báo chủ phòng hoặc người vi phạm (warn)
-router.post('/reports/:id/warn', auth, isAdmin, adminController.warnOwner);
-
-// Cấm phòng (ban room)
-router.get('/reports', auth, isAdmin, adminController.listReports);
+// Cấm phòng
+router.post('/room-reports/:id/ban-room', auth, isAdmin, adminController.banRoom);
 
 module.exports = router;

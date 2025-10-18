@@ -1,3 +1,4 @@
+// Reports.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
 import axios from 'axios';
@@ -12,7 +13,8 @@ export default function Reports() {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const { data } = await axios.get('http://localhost:8800/api/admin/reports', {
+      // 🔥 THAY ĐỔI: từ /reports → /room-reports
+      const { data } = await axios.get('http://localhost:8800/api/admin/room-reports', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (data && data.success) setReports(data.data);
@@ -30,9 +32,8 @@ export default function Reports() {
   useEffect(() => {
     if (!socket) return;
     const handler = (payload) => {
-      // payload: { roomId, reportId, category }
       fetchReports();
-      toast.info('Có báo cáo mới');
+      toast.info('Có báo cáo phòng mới');
     };
     socket.on('room-reported', handler);
     return () => socket.off('room-reported', handler);
@@ -42,18 +43,21 @@ export default function Reports() {
     try {
       const token = localStorage.getItem('token');
       let url = '';
-      if (action === 'ignore') url = `/api/admin/reports/${reportId}/ignore`;
-      if (action === 'warn') url = `/api/admin/reports/${reportId}/warn`;
-      if (action === 'ban') url = `/api/admin/reports/${reportId}/ban-room`;
+      // 🔥 THAY ĐỔI: Đổi tất cả /reports/:id → /room-reports/:id
+      if (action === 'ignore') url = `/api/admin/room-reports/${reportId}/ignore`;
+      if (action === 'warn') url = `/api/admin/room-reports/${reportId}/warn`;
+      if (action === 'ban') url = `/api/admin/room-reports/${reportId}/ban-room`;
 
-      // for ban action allow admin to provide reason
       let body = {};
       if (action === 'ban') {
         const reason = window.prompt('Lý do cấm phòng (tuỳ chọn):', 'Vi phạm chính sách');
         body = { reason };
       }
 
-      const { data } = await axios.post(`http://localhost:8800${url}`, body, { headers: { Authorization: `Bearer ${token}` } });
+      const { data } = await axios.post(`http://localhost:8800${url}`, body, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      
       if (data && data.success) {
         toast.success(data.msg || 'Thao tác thành công');
         fetchReports();
@@ -99,9 +103,15 @@ export default function Reports() {
                     </span>
                   </td>
                   <td>
-                    <button className="AdminReports-btn" onClick={() => doAction(r._id, 'ignore')} disabled={r.status !== 'open'}>Bỏ qua</button>
-                    <button className="AdminReports-btn AdminReports-btn-warning" onClick={() => doAction(r._id, 'warn')} disabled={r.status !== 'open'}>Cảnh báo chủ phòng</button>
-                    <button className="AdminReports-btn AdminReports-btn-danger" onClick={() => doAction(r._id, 'ban')} disabled={r.status !== 'open'}>Xóa phòng / Cấm phòng</button>
+                    <button className="AdminReports-btn" onClick={() => doAction(r._id, 'ignore')} disabled={r.status !== 'open'}>
+                      Bỏ qua
+                    </button>
+                    <button className="AdminReports-btn AdminReports-btn-warning" onClick={() => doAction(r._id, 'warn')} disabled={r.status !== 'open'}>
+                      Cảnh báo chủ phòng
+                    </button>
+                    <button className="AdminReports-btn AdminReports-btn-danger" onClick={() => doAction(r._id, 'ban')} disabled={r.status !== 'open'}>
+                      Xóa phòng / Cấm phòng
+                    </button>
                   </td>
                 </tr>
               ))}

@@ -1,4 +1,5 @@
 const Room = require('../models/room.js');
+const RoomReport = require('../models/RoomReport'); // ✅ THÊM DÒNG NÀY
 const { customAlphabet } = require('nanoid');
 const cleanupPlayerScripts = require('../utils/cleanupPlayerScripts'); 
 const { scheduleRoomCleanup } = require('../services/cleanupService');
@@ -13,8 +14,6 @@ const populateRoom = async (roomId) => {
 // BÁO CÁO PHÒNG
 // POST /api/rooms/:roomId/report
 // ==========================
-const RoomReport = require('../models/RoomReport');
-
 exports.reportRoom = async (req, res) => {
     try {
         const { roomId } = req.params;
@@ -26,15 +25,14 @@ exports.reportRoom = async (req, res) => {
 
         const reporterId = req.user?.id || null;
 
-        // ✨ SỬA: Đổi 'Report' thành 'RoomReport'
         const report = new RoomReport({ room: room._id, reporter: reporterId, category, details });
         await report.save();
 
-        // Tăng số lượng báo cáo trên phòng (dùng cho admin dashboard)
+        // Tăng số lượng báo cáo trên phòng
         room.reportCount = (room.reportCount || 0) + 1;
         await room.save();
 
-        // Optionally emit socket event for admins
+        // Socket event for admins
         const io = req.app.get('io');
         if (io) {
             io.emit('room-reported', { roomId: room._id.toString(), reportId: report._id.toString(), category });
@@ -46,6 +44,7 @@ exports.reportRoom = async (req, res) => {
         return res.status(500).json({ msg: 'Lỗi server khi gửi báo cáo.', error: err.message });
     }
 };
+
 // ==========================
 // TẠO PHÒNG MỚI - FIXED ✅
 // ==========================
@@ -184,7 +183,7 @@ exports.startSession = async (req, res) => {
   }
 };
 // ==========================
-// KẾT THÚC PHIÊN LIVE (CÓ DỌN FILE TẠM + Thống kê duration)
+// KẾT THÚC PHIÊN LIVE
 // ==========================
 exports.endSession = async (req, res) => {
   try {
@@ -193,80 +192,72 @@ exports.endSession = async (req, res) => {
     if (!room) return res.status(404).json({ msg: "Không tìm thấy phòng." });
 
     if (room.owner.toString() !== req.user.id) {
-      return res
-        .status(403)
-        .json({ msg: "Bạn không có quyền kết thúc phiên." });
+      return res.status(403).json({ msg: "Bạn không có quyền kết thúc phiên." });
     }
 
-    // 🧹 Dọn toàn bộ file rác player-script khi kết thúc phòng
+    // 🧹 Dọn file rác
     cleanupPlayerScripts();
 
-    // ✅ Cập nhật trạng thái phòng và thời gian kết thúc
+    // ✅ Cập nhật trạng thái phòng
     room.status = "ended";
     room.endedAt = new Date();
 
-    // 🔥 Tính tổng thời gian phiên (nếu có startedAt)
+    // 🔥 Tính tổng thời gian phiên
     if (room.startedAt) {
-      const duration = Math.floor((room.endedAt - room.startedAt) / 1000); // seconds
+      const duration = Math.floor((room.endedAt - room.startedAt) / 1000);
       room.statistics.totalDuration = duration;
     }
 
     await room.save();
 
-    // ⏰ BƯỚC 2: LẬP LỊCH DỌN DẸP FILE TRÊN CLOUD HOẶC LOCAL SAU 1 GIỜ
+    // ⏰ Lập lịch dọn dẹp
     scheduleRoomCleanup(roomId);
 
-    // ✅ Gửi socket thông báo tới tất cả thành viên TRỪ chủ phòng
+    // ✅ Socket notifications
     const io = req.app.get("io");
-
     if (io) {
-     const roomSockets = await io.in(roomId).fetchSockets();
-
-  // Gửi thông báo "phòng đã kết thúc" đến TẤT CẢ sockets trong room
-  roomSockets.forEach((socket) => {
-    // ✅ FIX: Kiểm tra cả socket.userId để bao gồm admin ghost
-    const socketUserId = socket.userId || socket.user?.id;
-
-    // Chỉ KHÔNG gửi cho chính host (dựa vào userId)
-    if (socketUserId !== req.user.id) {
-      socket.emit("room-ended", {
-        message: "Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.",
+      const roomSockets = await io.in(roomId).fetchSockets();
+      
+      roomSockets.forEach((socket) => {
+        const socketUserId = socket.userId || socket.user?.id;
+        if (socketUserId !== req.user.id) {
+          socket.emit("room-ended", {
+            message: "Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.",
+          });
+          console.log(`📤 [END-SESSION] Sent room-ended to socket ${socket.id}`);
+        }
       });
-       console.log(`📤 [END-SESSION] Sent room-ended to socket ${socket.id} (userId: ${socketUserId}, isGhost: ${socket.isGhostMode})`);
-    }
-  });
 
-      // 🔔 Gửi tới toàn bộ client đang ở homepage để cập nhật danh sách phòng
       io.emit("room-ended-homepage", { roomId });
+      
+      try {
+        io.emit("room-members-changed", {
+          roomId: String(roomId),
+          membersCount: 0,
+          totalJoins: room.statistics?.totalJoins || 0,
+          peakMembers: room.statistics?.peakMembers || 0,
+        });
+        console.log("[END-SESSION] Emitted room-members-changed with membersCount=0");
+      } catch (e) {
+        console.warn("[END-SESSION] Could not emit room-members-changed:", e.message);
+      }
+    }
 
-      // 🔄 Emit sự kiện membersCount = 0 để UI cập nhật ngay lập tức
-  try {
-    io.emit("room-members-changed", {
-      roomId: String(roomId),
-      membersCount: 0,
-      totalJoins: room.statistics?.totalJoins || 0,
-      peakMembers: room.statistics?.peakMembers || 0,
-    });
-    console.log("[END-SESSION] Emitted room-members-changed with membersCount=0");
-  } catch (e) {
-    console.warn("[END-SESSION] Could not emit room-members-changed:", e.message);
-  }
-}
     console.log(`📢 Phòng ${room.name} đã kết thúc lúc ${room.endedAt}`);
-    console.log(`📢 Emitted 'room-ended-homepage' for room ID: ${roomId}`);
 
-    // ✅ Phản hồi về client
+    // ✅ FIX: XÓA BÁO CÁO PHÒNG (DÙNG ĐÚNG MODEL)
+    try {
+      const deleteResult = await RoomReport.deleteMany({ room: roomId });
+      console.log(`[CLEANUP] ✅ Deleted ${deleteResult.deletedCount} room reports for room ${roomId} on endSession`);
+    } catch (e) {
+      console.error(`[CLEANUP] ❌ Failed to delete room reports for room ${roomId}:`, e.message);
+    }
+
     res.status(200).json({
       msg: "Phiên đã kết thúc. File tạm đã được dọn và tài nguyên trên Cloudinary sẽ được xóa sau 1 giờ.",
       room,
     });
-    // Xóa các báo cáo liên quan ngay khi phiên kết thúc để tránh giữ báo cáo cũ
-    try {
-      await Report.deleteMany({ room: roomId });
-      console.log(`[CLEANUP] Deleted reports for room ${roomId} on endSession`);
-    } catch (e) {
-      console.warn(`[CLEANUP] Failed to delete reports for room ${roomId} on endSession:`, e.message);
-    }
+
   } catch (err) {
     console.error("❌ Lỗi endSession:", err);
     res.status(500).json({ msg: "Lỗi server", error: err.message });
