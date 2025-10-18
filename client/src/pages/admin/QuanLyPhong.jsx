@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import "./QuanLyPhong.css";
-import { Music, Eye, Trash2, Ban, CheckCircle } from "lucide-react";
+import { Music, Eye, Trash2 } from "lucide-react";
 import ChuyenTrang from "../../components/ChuyenTrang";
 import axios from "axios";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -8,12 +8,11 @@ import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import ModalPhong from '../../components/ModalPhong';
 
-// Helper object để dịch status
+// Helper object để dịch status (loại bỏ 'banned' vì không còn dùng)
 const statusMap = {
   waiting: "Đang chờ",
   live: "Hoạt động",
   ended: "Đã kết thúc",
-  banned: "Bị cấm",
 };
 
 const QuanLyPhong = () => {
@@ -51,6 +50,7 @@ const QuanLyPhong = () => {
         sortOrder: 'desc'
       };
 
+      // Loại bỏ 'banned' trong filter nếu cần, nhưng API có thể vẫn hỗ trợ status khác
       const { data } = await axios.get(
         "http://localhost:8800/api/admin/rooms",
         {
@@ -64,7 +64,7 @@ const QuanLyPhong = () => {
         setTotalPages(data.pagination.totalPages);
       }
     } catch (err) {
-      console.error("❌ Lỗi fetch rooms:", err);
+      console.error("Lỗi fetch rooms:", err);
       toast.error(err.response?.data?.msg || "Không thể tải danh sách phòng");
     } finally {
       setLoading(false);
@@ -76,7 +76,7 @@ const QuanLyPhong = () => {
   // =============================================
   useEffect(() => {
     if (!socket) {
-      console.warn('⚠️ [QuanLyPhong] Socket not available');
+      console.warn('[QuanLyPhong] Socket not available');
       return;
     }
 
@@ -209,59 +209,12 @@ const QuanLyPhong = () => {
           fetchRooms();
         }
       } catch (err) {
-        console.error("❌ Lỗi xóa phòng:", err);
+        console.error("Lỗi xóa phòng:", err);
         toast.error(err.response?.data?.msg || "Không thể xóa phòng");
       }
     }
   };
 
-  // =============================================
-  // BAN/UNBAN ROOM
-  // =============================================
-  const toggleBanRoom = async (roomId, isBanned, roomName) => {
-    const action = isBanned ? "bỏ cấm" : "cấm";
-    let banReason = "";
-
-    if (!isBanned) {
-      const { value } = await Swal.fire({
-        title: `Cấm phòng "${roomName}"`,
-        input: 'textarea',
-        inputLabel: 'Lý do cấm',
-        inputPlaceholder: 'Nhập lý do cấm phòng...',
-        showCancelButton: true,
-        confirmButtonText: 'Cấm',
-        cancelButtonText: 'Hủy'
-      });
-      if (!value) return;
-      banReason = value;
-    } else {
-      const result = await Swal.fire({
-        title: `Bỏ cấm phòng "${roomName}"?`,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "Bỏ cấm",
-        cancelButtonText: "Hủy"
-      });
-      if (!result.isConfirmed) return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-      const { data } = await axios.patch(
-        `http://localhost:8800/api/admin/rooms/${roomId}/ban`,
-        { banReason },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (data.success) {
-        toast.success(data.msg);
-        fetchRooms();
-      }
-    } catch (err) {
-      console.error(`❌ Lỗi ${action} phòng:`, err);
-      toast.error(err.response?.data?.msg || `Không thể ${action} phòng`);
-    }
-  };
-  
   // =============================================
   // VIEW ROOM DETAILS
   // =============================================
@@ -274,7 +227,7 @@ const QuanLyPhong = () => {
       );
       if (data.success) setSelectedRoom(data.data);
     } catch (err) {
-      console.error("❌ Lỗi lấy chi tiết phòng:", err);
+      console.error("Lỗi lấy chi tiết phòng:", err);
       toast.error("Không thể tải chi tiết phòng");
     }
   };
@@ -293,7 +246,7 @@ const QuanLyPhong = () => {
   };
 
   // =============================================
-  // CLEAR FILTERS (✨ ĐÃ CẬP NHẬT)
+  // CLEAR FILTERS
   // =============================================
   const clearSearchFilter = () => {
     setSearchTerm('');
@@ -333,7 +286,7 @@ const QuanLyPhong = () => {
             <option value="waiting">Đang chờ</option>
             <option value="live">Hoạt động</option>
             <option value="ended">Đã kết thúc</option>
-            <option value="banned">Bị cấm</option>
+            {/* Loại bỏ option banned */}
           </select>
 
           <input
@@ -347,7 +300,7 @@ const QuanLyPhong = () => {
         </div>
 
         {/* ============================================= */}
-        {/* ✨ PHẦN BỘ LỌC ĐÃ CẬP NHẬT                */}
+        {/* PHẦN BỘ LỌC ĐÃ CẬP NHẬT (loại bỏ banned)     */}
         {/* ============================================= */}
         {(searchTerm || statusFilter !== 'all') && (
           <div className="QuanLyPhong-activeFilters">
@@ -360,7 +313,7 @@ const QuanLyPhong = () => {
                   className="QuanLyPhong-filterTag-close" 
                   title="Xóa bộ lọc từ khóa"
                 >
-                  &times;
+                  ×
                 </button>
               </span>
             )}
@@ -372,7 +325,7 @@ const QuanLyPhong = () => {
                   className="QuanLyPhong-filterTag-close" 
                   title="Xóa bộ lọc trạng thái"
                 >
-                  &times;
+                  ×
                 </button>
               </span>
             )}
@@ -407,13 +360,11 @@ const QuanLyPhong = () => {
                     <td className="QuanLyPhong-td">{room.members}</td>
                     <td className="QuanLyPhong-td">
                       <span className={`QuanLyPhong-status ${
-                        room.isBanned ? "QuanLyPhong-banned"
-                        : room.status === "waiting" ? "QuanLyPhong-waiting"
+                        room.status === "waiting" ? "QuanLyPhong-waiting"
                         : room.status === "live" ? "QuanLyPhong-live"
                         : "QuanLyPhong-ended"
                         }`}>
-                        {room.isBanned ? "Bị cấm" 
-                        : statusMap[room.status] || "Không xác định"}
+                        {statusMap[room.status] || "Không xác định"}
                       </span>
                     </td>
                     <td className="QuanLyPhong-td">{room.created}</td>
@@ -425,13 +376,6 @@ const QuanLyPhong = () => {
                           title="Xem chi tiết"
                         >
                           <Eye size={18} />
-                        </button>
-                        <button
-                          className={room.isBanned ? "QuanLyPhong-unbanBtn" : "QuanLyPhong-banBtn"}
-                          onClick={() => toggleBanRoom(room.id, room.isBanned, room.name)}
-                          title={room.isBanned ? "Bỏ cấm" : "Cấm phòng"}
-                        >
-                          {room.isBanned ? <CheckCircle size={16} /> : <Ban size={16} />}
                         </button>
                         <button
                           className="QuanLyPhong-trashBtn"

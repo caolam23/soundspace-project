@@ -3,6 +3,7 @@
 const schedule = require('node-schedule');
 const { cloudinary } = require('../config/uploadConfig');
 const Room = require('../models/room.js');
+const Report = require('../models/RoomReport');
 
 /**
  * Trích xuất public_id từ URL Cloudinary
@@ -68,6 +69,26 @@ const cleanupRoomResources = async (roomId) => {
     console.error(`[DỌN DẸP THẤT BẠI] 🔥 Lỗi khi xóa tài nguyên cho phòng ${roomId}:`, err);
   }
 };
+/**
+ * Sau khi dọn dẹp tài nguyên, xóa luôn bản ghi phòng và các báo cáo liên quan
+ */
+const finalizeRoomDeletion = async (roomId) => {
+  try {
+    // Delete reports first
+    await Report.deleteMany({ room: roomId });
+    console.log(`[CLEANUP] Deleted reports for room ${roomId}`);
+  } catch (e) {
+    console.warn(`[CLEANUP] Failed to delete reports for room ${roomId}:`, e.message);
+  }
+
+  try {
+    await Room.findByIdAndDelete(roomId);
+    console.log(`[CLEANUP] Deleted room document ${roomId} from DB`);
+  } catch (e) {
+    console.warn(`[CLEANUP] Failed to delete room ${roomId} from DB:`, e.message);
+  }
+};
+
 
 /**
  * ⏰ Lên lịch dọn dẹp sau delayMs mili giây (mặc định 2 phút để test)
@@ -78,11 +99,39 @@ const scheduleRoomCleanup = (roomId, delayMs = 2 * 60 * 60 * 1000) => {
   console.log(`[LỊCH DỌN DẸP] ⏰ Tài nguyên phòng ${roomId} sẽ được xóa lúc ${deletionTime.toLocaleTimeString()}`);
   schedule.scheduleJob(deletionTime, async () => {
     await cleanupRoomResources(roomId);
+    // finalize deletion (remove room doc + related reports)
+    try { await finalizeRoomDeletion(roomId); } catch (e) { console.warn('[CLEANUP] finalizeRoomDeletion failed:', e.message); }
   });
 };
 
 const restoreScheduledCleanups = async () => {
   console.log('🔁 Đang khôi phục các lịch dọn dẹp phòng còn dang dở...');
+   // Clean up any orphaned reports that reference non-existing rooms
+  const removeOrphanReports = async () => {
+    try {
+      console.log('[CLEANUP] Checking for orphaned reports...');
+      const allReports = await Report.find().select('_id room').lean();
+      if (!allReports || allReports.length === 0) {
+        console.log('[CLEANUP] No reports to check.');
+        return;
+      }
+      const roomIds = Array.from(new Set(allReports.map(r => String(r.room)).filter(Boolean)));
+      if (roomIds.length === 0) return;
+      const existingRooms = await Room.find({ _id: { $in: roomIds } }).select('_id').lean();
+      const existingSet = new Set(existingRooms.map(r => String(r._id)));
+      const orphanReportIds = allReports.filter(r => !existingSet.has(String(r.room))).map(r => r._id);
+      if (orphanReportIds.length > 0) {
+        await Report.deleteMany({ _id: { $in: orphanReportIds } });
+        console.log(`[CLEANUP] Deleted ${orphanReportIds.length} orphaned reports.`);
+      } else {
+        console.log('[CLEANUP] No orphaned reports found.');
+      }
+    } catch (e) {
+      console.warn('[CLEANUP] removeOrphanReports failed:', e.message);
+    }
+  };
+
+  await removeOrphanReports();
   const rooms = await Room.find({ status: 'ended', endedAt: { $exists: true } });
   const now = Date.now();
 

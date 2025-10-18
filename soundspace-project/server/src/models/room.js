@@ -160,6 +160,7 @@ const roomSchema = new mongoose.Schema(
     // =============================================
     isBanned: { type: Boolean, default: false },
     banReason: { type: String, trim: true, default: "" },
+    reportCount: { type: Number, default: 0 },
 
     // =============================================
     // Trình phát nhạc

@@ -2,18 +2,24 @@
 import React, { useEffect, useState, useRef, useContext } from 'react';
 import './RoomChat.css';
 import { AuthContext } from '../contexts/AuthContext';
-import { Send, Flag, MoreVertical } from 'react-feather';
-import ReportModal from './ReportModal'; // 🆕 Import Modal báo cáo
-import { toast } from 'react-toastify';   // 🆕 Import toastify để hiển thị thông báo
+import { Send, Flag, MoreVertical, Shield } from 'react-feather'; // Thêm Shield icon
+import ReportModal from './ReportModal'; // Import Modal báo cáo từ code 1
+import { toast } from 'react-toastify'; // Import toastify để hiển thị thông báo
 import 'react-toastify/dist/ReactToastify.css';
 
-export default function RoomChat({ roomId, ownerId = null, initialMessages = [], onNewMessage }) {
+export default function RoomChat({
+  roomId,
+  ownerId = null,
+  initialMessages = [],
+  onNewMessage,
+  isGhostMode = false, // Thêm prop từ code 2
+}) {
   const { user, socket } = useContext(AuthContext);
   const [messages, setMessages] = useState(initialMessages || []);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [activeMenuId, setActiveMenuId] = useState(null);
-  const [reportingMessage, setReportingMessage] = useState(null); // 🆕 modal báo cáo
+  const [reportingMessage, setReportingMessage] = useState(null); // State cho modal báo cáo từ code 1
 
   const listRef = useRef(null);
   const msgRefs = useRef({});
@@ -83,8 +89,14 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
     tryJoin();
     socket.on('connect', tryJoin);
 
-    // Khi có tin nhắn mới
+    // Khi có tin nhắn mới (kết hợp logic từ cả 2 file)
     const handleNew = (msg) => {
+      // Logic từ code 2: Xử lý tin nhắn ghost mode
+      if (msg.isGhost) {
+        msg.avatar = '/images/admin-ghost-avatar.png';
+        msg.username = 'Admin';
+      }
+
       setMessages((prev) => {
         const tempIndex = prev.findIndex(
           (m) =>
@@ -94,14 +106,11 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
             m.username === msg.username
         );
         const normalizedMsg = { ...msg, id: msg.id || msg._id };
-        if (
-          ownerId &&
-          (String(normalizedMsg.userId) === String(ownerId) ||
-            String(normalizedMsg._id) === String(ownerId) ||
-            String(normalizedMsg.username) === String(ownerId))
-        ) {
+
+        if (ownerId && String(normalizedMsg.userId) === String(ownerId)) {
           normalizedMsg.isHost = true;
         }
+
         if (tempIndex !== -1) {
           const next = [...prev];
           next[tempIndex] = normalizedMsg;
@@ -116,14 +125,11 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
       }, 50);
     };
 
-    
-
-    // 🆕 Khi người dùng bị mute
+    // Các listener từ code 1
     const handleUserMuted = ({ message }) => {
       toast.warn(message, { position: 'bottom-center', autoClose: 5000 });
     };
 
-    // 🆕 Khi server gửi lỗi
     const handleChatError = ({ message }) => {
       toast.error(message);
     };
@@ -138,10 +144,10 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
       socket.off('chat-error', handleChatError);
       socket.off('connect', tryJoin);
     };
-  }, [socket]);
+  }, [socket, roomId, ownerId, onNewMessage]); // Thêm dependencies để đảm bảo hàm luôn cập nhật
 
   // ==========================
-  // Gửi tin nhắn
+  // Gửi tin nhắn (kết hợp logic từ cả 2 file)
   // ==========================
   const sendMessage = (e) => {
     e && e.preventDefault();
@@ -151,17 +157,19 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
     const payload = {
       roomId,
       text: text.trim(),
+      isGhostMode: isGhostMode, // Thêm flag từ code 2
       meta: replyTo ? { replyTo: { id: replyTo.id, username: replyTo.username } } : {},
     };
 
     const tempMsg = {
       id: `temp-${Date.now()}`,
       userId: user?._id || null,
-      username: user?.username || 'You',
-      avatar: user?.avatar || '/default-avatar.png',
+      username: isGhostMode ? 'Admin' : user?.username || 'You', // Thay đổi nếu là ghost
+      avatar: isGhostMode ? '/images/admin-ghost-avatar.png' : user?.avatar || '/default-avatar.png',
       text: text.trim(),
       createdAt: new Date().toISOString(),
       meta: payload.meta,
+      isGhost: isGhostMode, // Đánh dấu là ghost
     };
 
     if (ownerId && user && String(user._id) === String(ownerId)) {
@@ -197,7 +205,7 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
   };
 
   // ==========================
-  // 🆕 Xử lý gửi báo cáo
+  // Xử lý gửi báo cáo (từ code 1)
   // ==========================
   const handleReportSubmit = (reason) => {
     if (!socket || !reportingMessage) return;
@@ -240,14 +248,24 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
             const msgId = String(m.id || m._id);
             const isMyMessage = user && String(user._id) === String(m.userId);
             return (
-              <div id={`msg-${msgId}`} key={msgId} className="roomchat-msg" ref={(el) => (msgRefs.current[msgId] = el)}>
+              <div
+                id={`msg-${msgId}`}
+                key={msgId}
+                className={`roomchat-msg ${m.isGhost ? 'roomchat-msg-ghost' : ''}`} // Thêm class ghost
+                ref={(el) => (msgRefs.current[msgId] = el)}
+              >
                 <img className="roomchat-avatar" src={m.avatar || '/default-avatar.png'} alt={m.username} />
                 <div className="roomchat-body">
                   <div className="roomchat-meta">
-                    <span className="roomchat-username" title={m.username}>
+                    <span className={`roomchat-username ${m.isGhost ? 'roomchat-username-ghost' : ''}`} title={m.username}>
                       {m.username}
                     </span>
                     {m.isHost && <span className="roomchat-host-badge">HOST</span>}
+                    {m.isGhost && ( // Thêm badge ghost từ code 2
+                      <span className="roomchat-ghost-badge" title="Admin (Ghost Mode)">
+                        <Shield size={12} />
+                      </span>
+                    )}
                     <span className="roomchat-time">{new Date(m.createdAt).toLocaleTimeString()}</span>
                   </div>
 
@@ -284,30 +302,29 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
                   </button>
 
                   {activeMenuId === msgId && (
-                    <div className="roomchat-action-menu" ref={menuRef}>
-                      <button className="roomchat-action-btn" onClick={() => handleReplyClick(m)}>
-                        Reply
-                      </button>
-                        
-                        {/* 👇 THAY ĐỔI Ở ĐÂY 👇 */}
-                      {/* Chỉ hiển thị nút báo cáo nếu đó không phải là tin nhắn của mình */}
-                      {!isMyMessage && (
-                        <button
-                          className="roomchat-action-btn"
-                          onClick={() => {
-                            setReportingMessage(m);
-                            setActiveMenuId(null);
-                          }}
-                        >
-                          <Flag size={14} /> Báo cáo
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                    <div className="roomchat-action-menu" ref={menuRef}>
+                      <button className="roomchat-action-btn" onClick={() => handleReplyClick(m)}>
+                        Reply
+                      </button>
+
+                      {/* Logic báo cáo từ code 1 */}
+                      {!isMyMessage && (
+                        <button
+                          className="roomchat-action-btn"
+                          onClick={() => {
+                            setReportingMessage(m);
+                            setActiveMenuId(null);
+                          }}
+                        >
+                          <Flag size={14} /> Báo cáo
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Form nhập tin nhắn */}
@@ -335,7 +352,7 @@ export default function RoomChat({ roomId, ownerId = null, initialMessages = [],
         </form>
       </div>
 
-      {/* 🆕 Modal báo cáo */}
+      {/* Modal báo cáo từ code 1 */}
       {reportingMessage && (
         <ReportModal
           message={reportingMessage}

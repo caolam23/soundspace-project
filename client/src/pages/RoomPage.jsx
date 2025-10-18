@@ -5,78 +5,94 @@ import axios from "axios";
 import { AuthContext } from "../contexts/AuthContext";
 import {
   LogOut,
-  Headphones,
-  Send,
-  SkipBack,
-  SkipForward,
-  Pause,
-  Flag,
   XCircle,
   UserPlus,
+  Flag
 } from "react-feather";
+import { Ghost } from "lucide-react";
 import "./RoomPage.css";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import MusicPlayer from "../components/MusicPlayer";
 import RoomChat from "../components/RoomChat";
-import { toastConfig } from "../services/toastConfig"; // hoặc đường dẫn bạn lưu file config
+import ReportRoomModal from "../components/ReportRoomModal";
+import { toastConfig } from "../services/toastConfig";
+import { reportRoom } from "../services/api";
 
 function RoomPage() {
+  // ============================================
+  // REFS
+  // ============================================
+  const isGhostModeRef = useRef(false);
   const isReloading = useRef(false);
   const roomRef = useRef(null);
   const hasInitialized = useRef(false);
+  const hasHandledRoomEnd = useRef(false);
+
+  // ============================================
+  // HOOKS
+  // ============================================
   const { roomId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-
   const { user, socket } = useContext(AuthContext);
 
+  // ============================================
+  // STATES
+  // ============================================
   const [room, setRoom] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [members, setMembers] = useState([]);
   const [joinNotification, setJoinNotification] = useState(null);
   const [joinRequests, setJoinRequests] = useState([]);
   const [leaveNotification, setLeaveNotification] = useState(null);
-  const [hostFeedback, setHostFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("chat");
+  const [isGhostMode, setIsGhostMode] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
+  // ============================================
+  // SYNC ROOM TO REF
+  // ============================================
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
 
+  // ============================================
+  // COMPUTED PROPERTIES
+  // ============================================
   const isHost = user && room && user._id === room.owner._id;
+  const hasPlaylist = Array.isArray(room?.playlist) && room.playlist.length > 0;
+  const isPlayingFlag = !!room?.isPlaying;
+  const canReport = room?.status === 'live' && (hasPlaylist || isPlayingFlag);
 
-  // Append incoming saved chat message into room state so tab switches keep messages
-  // HÀM MỚI ĐÃ SỬA LỖI
-  const appendChatMessage = (msg) => {
-    try {
-      setChatMessages((prevMessages) => {
-        // Tránh thêm tin nhắn trùng lặp nếu đã tồn tại
-        if (prevMessages.some((c) => String(c._id || c.id) === String(msg.id || msg._id))) {
-          return prevMessages;
-        }
-        // Tạo object tin nhắn mới để đảm bảo cấu trúc nhất quán
-        const newMsg = {
-          _id: msg.id || msg._id,
-          userId: msg.userId,
-          username: msg.username,
-          avatar: msg.avatar,
-          text: msg.text,
-          meta: msg.meta,
-          createdAt: msg.createdAt
-        };
-        // Thêm tin nhắn mới vào mảng
-        return [...prevMessages, newMsg];
-      });
-    } catch (e) {
-      console.warn('appendChatMessage error', e);
-    }
-  };
+  // ============================================
+  // APPEND CHAT MESSAGE
+  // ============================================
+  const appendChatMessage = useCallback((msg) => {
+    setChatMessages((prevMessages) => {
+      if (prevMessages.some((c) => String(c._id || c.id) === String(msg.id || msg._id))) {
+        return prevMessages;
+      }
+      const newMsg = {
+        _id: msg.id || msg._id,
+        userId: msg.userId,
+        username: msg.username,
+        avatar: msg.avatar,
+        text: msg.text,
+        meta: msg.meta,
+        createdAt: msg.createdAt,
+        isGhost: msg.isGhost || false
+      };
+      return [...prevMessages, newMsg];
+    });
+  }, []);
 
-  // API kết thúc phòng
+  // ============================================
+  // END ROOM API
+  // ============================================
   const endRoomAPI = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
@@ -92,9 +108,13 @@ function RoomPage() {
     }
   }, [roomId]);
 
-  // Host xử lý join-request
+  // ============================================
+  // HANDLE NEW JOIN REQUEST (HOST)
+  // ============================================
   const handleNewJoinRequest = useCallback(
     ({ requester, roomId: requestedRoomId }) => {
+      if (isGhostModeRef.current) return;
+      
       if (roomId === requestedRoomId) {
         setJoinRequests((prev) => {
           if (prev.some((r) => r.requester._id === requester._id)) return prev;
@@ -105,7 +125,9 @@ function RoomPage() {
     [roomId]
   );
 
-  // Accept / Deny handlers for host UI
+  // ============================================
+  // RESPOND TO JOIN REQUEST
+  // ============================================
   const respondToRequest = useCallback((requesterId, accepted) => {
     socket.emit("respond-to-request", {
       requesterId,
@@ -125,58 +147,8 @@ function RoomPage() {
   }, [roomId, socket]);
 
   // ============================================
-  // 🔽 THÊM useEffect NÀY VÀO 🔽
-  // Lắng nghe sự kiện xóa bình luận
+  // DETECT RELOAD/CLOSE
   // ============================================
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleCommentDeleted = ({ commentId }) => {
-      console.log(`[RoomPage] Received delete event for comment: ${commentId}`);
-      setChatMessages((prevMessages) =>
-        prevMessages.filter((m) => String(m._id || m.id) !== String(commentId))
-      );
-    };
-
-    socket.on('comment-deleted', handleCommentDeleted);
-
-    return () => {
-      socket.off('comment-deleted', handleCommentDeleted);
-    };
-  }, [socket]);
-
-  // ============================================
-    // 🔽 THÊM useEffect MỚI NÀY VÀO 🔽
-    // LẮNG NGHE THÔNG BÁO HÀNH ĐỘNG TỪ ADMIN
-    // ============================================
-    useEffect(() => {
-        if (!socket) return;
-
-        const handleActionNotification = ({ type, message }) => {
-            // Dựa vào "type" mà server gửi về, chúng ta có thể hiển thị các loại thông báo khác nhau
-            switch (type) {
-                case 'warning':
-                    toast.warn(message, { icon: "⚠️" });
-                    break;
-                case 'error':
-                    toast.error(message, { icon: "🚫" });
-                    break;
-                default:
-                    toast.info(message);
-                    break;
-            }
-        };
-
-        // Lắng nghe sự kiện từ server
-        socket.on('action-notification', handleActionNotification);
-
-        // Cleanup: gỡ bỏ listener khi component bị unmount
-        return () => {
-            socket.off('action-notification', handleActionNotification);
-        };
-    }, [socket]); // Hook này chỉ phụ thuộc vào socket
-
-  // Detect reload/close
   useEffect(() => {
     const handleBeforeUnload = () => {
       isReloading.current = true;
@@ -188,15 +160,66 @@ function RoomPage() {
   }, []);
 
   // ============================================
+  // DETECT GHOST MODE FROM LOCATION STATE (RUN ONCE)
+  // ============================================
+  useEffect(() => {
+    if (location.state?.isGhostMode) {
+      setIsGhostMode(true);
+      isGhostModeRef.current = true;
+    }
+  }, []); // ✅ RUN ONCE
+
+  // ============================================
+  // COMMENT DELETED LISTENER
+  // ============================================
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleCommentDeleted = ({ commentId }) => {
+      setChatMessages((prevMessages) =>
+        prevMessages.filter((m) => String(m._id || m.id) !== String(commentId))
+      );
+    };
+
+    socket.on('comment-deleted', handleCommentDeleted);
+    return () => socket.off('comment-deleted', handleCommentDeleted);
+  }, [socket]);
+
+  // ============================================
+  // ACTION NOTIFICATION (FROM ADMIN)
+  // ============================================
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleActionNotification = ({ type, message }) => {
+      switch (type) {
+        case 'warning':
+          toast.warn(message, { icon: "⚠️" });
+          break;
+        case 'error':
+          toast.error(message, { icon: "🚫" });
+          break;
+        default:
+          toast.info(message);
+          break;
+      }
+    };
+
+    socket.on('action-notification', handleActionNotification);
+    return () => socket.off('action-notification', handleActionNotification);
+  }, [socket]);
+
+  // ============================================
   // MAIN USEEFFECT - FETCH & SOCKET SETUP
   // ============================================
   useEffect(() => {
-    if (!user) return;
+    if (!user || !socket) return;
 
     let currentUserIsHost = false;
     let cleanedUp = false;
     let socketJoined = false;
     const roomKey = `room_visited_${roomId}`;
+    const isGhostModeNow = isGhostModeRef.current;
 
     const fetchRoomDetails = async () => {
       try {
@@ -206,97 +229,77 @@ function RoomPage() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        const hasVisited = localStorage.getItem(roomKey);
-        
-        const isReload = performance.navigation.type === 1 ||
-                         performance.getEntriesByType('navigation')[0]?.type === 'reload';
-        
-        const isNewNavigation = !!(location.state?.fromCreate ||
-                                   location.state?.fromJoin ||
-                                   location.state?.fromApproval);
-        
-        if (isNewNavigation) {
-          window.history.replaceState({}, document.title);
-        }
-        
-        // Handle reload behavior
-        if (hasVisited && isReload && !isNewNavigation) {
-          const userIsHost = String(user._id) === String(fetchedRoom.owner._id);
+        // ============================================
+        // RELOAD HANDLING (SKIP FOR GHOST MODE)
+        // ============================================
+        if (!isGhostModeNow) {
+          const hasVisited = localStorage.getItem(roomKey);
+          const isReload = performance.navigation.type === 1 ||
+                           performance.getEntriesByType('navigation')[0]?.type === 'reload';
+          const isNewNavigation = !!(location.state?.fromCreate ||
+                           location.state?.fromJoin ||
+                           location.state?.fromApproval ||
+                           location.state?.fromAdmin);
           
-          localStorage.removeItem(roomKey);
+          if (isNewNavigation) {
+            window.history.replaceState({}, document.title);
+          }
           
-          if (userIsHost) {
-            toast.error("Host không được reload khi đang live! Phòng đã bị kết thúc.", {
-            ...toastConfig,
-            autoClose: 4200, // ⏳ hiển thị lâu hơn 2 giây
-            icon: "💀",
-            style: {
-              ...toastConfig.style,
-              background: "linear-gradient(135deg, #2b2b2b, #3a3a3a)",
-              color: "#ff8a8a", // chữ đỏ nhạt nhẹ
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-            },
-          });
-            await endRoomAPI();
-            navigate("/home", { replace: true });
-            return;
-          } else {
-            socket.emit("leave-room", { roomId, userId: user._id });
-            toast.warning("Bạn đã reload trang — bạn đã bị đẩy ra khỏi phòng.", {
+          if (hasVisited && isReload && !isNewNavigation) {
+            const userIsHost = String(user._id) === String(fetchedRoom.owner._id);
+            localStorage.removeItem(roomKey);
+            
+            if (userIsHost) {
+              toast.error("Host không được reload khi đang live! Phòng đã bị kết thúc.", {
+                ...toastConfig,
+                autoClose: 4200,
+                icon: "💀",
+              });
+              await endRoomAPI();
+              navigate("/home", { replace: true });
+              return;
+            } else {
+              socket.emit("leave-room", { roomId, userId: user._id });
+              toast.warning("Bạn đã reload trang — bạn đã bị đẩy ra khỏi phòng.", {
                 ...toastConfig,
                 icon: "🔄",
-                style: {
-                  ...toastConfig.style,
-                  background: "linear-gradient(135deg, #1CB5E0, #000046)", // xanh lạnh
-                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
-                },
               });
-            navigate("/home", { replace: true });
-            return;
+              navigate("/home", { replace: true });
+              return;
+            }
           }
-        }
-        if (!hasVisited) {
-          localStorage.setItem(roomKey, "true");
+          if (!hasVisited) {
+            localStorage.setItem(roomKey, "true");
+          }
         }
         
         hasInitialized.current = true;
 
-        const isMember = (fetchedRoom.members || []).some(
-          (m) => String(m._id) === String(user._id)
-        );
+        // ============================================
+        // AUTO-JOIN PUBLIC ROOM (SKIP FOR GHOST MODE)
+        // ============================================
+        if (!isGhostModeNow) {
+          const isMember = (fetchedRoom.members || []).some(
+            (m) => String(m._id) === String(user._id)
+          );
 
-        // Auto-join for public rooms
-        if (!isMember && fetchedRoom.privacy === "public") {
-          try {
-            const joinRes = await axios.post(
-              `http://localhost:8800/api/rooms/${roomId}/join`,
-              {},
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            fetchedRoom = joinRes.data.room || fetchedRoom;
-            
+          if (!isMember && fetchedRoom.privacy === "public") {
             try {
-              const myUsername = user.username || (joinRes.data.room?.owner?.username) || null;
-              if (myUsername) {
-                setJoinNotification({ username: myUsername, id: Date.now() });
-                setTimeout(() => setJoinNotification(null), 4000);
-              }
-            } catch (e) { /* ignore */ }
-          } catch (joinErr) {
-            console.error("❌ Lỗi join phòng public:", joinErr);
+              const joinRes = await axios.post(
+                `http://localhost:8800/api/rooms/${roomId}/join`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              fetchedRoom = joinRes.data.room || fetchedRoom;
+            } catch (joinErr) {
+              console.error("❌ Lỗi join phòng public:", joinErr);
+            }
           }
         }
 
         if (cleanedUp) return;
         
-        // Merge fetchedRoom with existing room to avoid accidentally
-        // removing properties like playlist when the server returns
-        // a partial room object in some socket callbacks.
-        setRoom((prev) => {
-          if (!prev) return fetchedRoom;
-          return { ...prev, ...fetchedRoom };
-        });
+        setRoom(fetchedRoom);
         setChatMessages(fetchedRoom.chat || []);
 
         const owner = fetchedRoom.owner ? [fetchedRoom.owner] : [];
@@ -305,34 +308,76 @@ function RoomPage() {
         );
         setMembers([...owner, ...otherMembers]);
 
-        // Join socket room
+        // ============================================
+        // SOCKET JOIN: GHOST vs NORMAL
+        // ============================================
         if (socket.connected) {
-          socket.emit("join-room", roomId);
+          if (isGhostModeNow) {
+            socket.emit("join-room-ghost", { roomId, isAdmin: user.role === 'admin' });
+          } else {
+            socket.emit("join-room", roomId);
+          }
           socketJoined = true;
         } else {
           socket.once("connect", () => {
-            socket.emit("join-room", roomId);
+            if (isGhostModeNow) {
+              socket.emit("join-room-ghost", { roomId, isAdmin: user.role === 'admin' });
+            } else {
+              socket.emit("join-room", roomId);
+            }
             socketJoined = true;
           });
         }
-
+        
         if (String(user._id) === String(fetchedRoom.owner?._id)) {
           currentUserIsHost = true;
           socket.on("new-join-request", handleNewJoinRequest);
         }
+
+        // ============================================
+        // PLAYLIST/PLAYBACK LISTENERS
+        // ============================================
+        const handlePlaylistUpdated = (newPlaylist) => {
+          setRoom((prev) => ({ 
+            ...prev, 
+            playlist: Array.isArray(newPlaylist) ? newPlaylist : prev?.playlist || [] 
+          }));
+        };
+
+        const handlePlaybackStateChanged = (newState) => {
+          setRoom((prev) => ({
+            ...prev,
+            playlist: Array.isArray(newState?.playlist) ? newState.playlist : prev?.playlist,
+            currentTrackIndex: newState?.currentTrackIndex ?? prev?.currentTrackIndex,
+            isPlaying: newState?.isPlaying ?? prev?.isPlaying,
+          }));
+        };
+
+        const handleRoomStatusChanged = (payload) => {
+          if (!payload || String(payload.roomId || payload._id) !== String(roomId)) return;
+          setRoom((prev) => ({ ...prev, status: payload.status ?? prev?.status }));
+        };
+
+        socket.on('playlist-updated', handlePlaylistUpdated);
+        socket.on('playback-state-changed', handlePlaybackStateChanged);
+        socket.on('room-status-changed', handleRoomStatusChanged);
+
+        setIsLoading(false);
+
       } catch (err) {
         console.error("❌ Lỗi khi lấy thông tin phòng:", err);
         setError(err.response?.data?.msg || "Không thể tải phòng.");
         toast.error(err.response?.data?.msg || "Không thể tải phòng.");
         navigate("/home");
-      } finally {
         setIsLoading(false);
       }
     };
 
     fetchRoomDetails();
 
-    // Socket event handlers
+    // ============================================
+    // UPDATE MEMBERS
+    // ============================================
     const handleUpdateMembers = (data) => {
       const updatedMembers = data.members || data;
       if (!updatedMembers || updatedMembers.length === 0) return;
@@ -354,82 +399,94 @@ function RoomPage() {
       }
     };
 
+    // ============================================
+    // USER JOINED NOTIFICATION (IGNORE IN GHOST MODE)
+    // ============================================
     const handleUserJoined = ({ username, avatar }) => {
-      // 🆕 Thêm điều kiện: Không hiển thị thông báo nếu đó là chính mình
-      if (user && user.username === username) return;
-      
-      const memberAvatar =
-        avatar || members.find((m) => m.username === username)?.avatar || "/default-avatar.png";
-
-      setJoinNotification({ username, avatar: memberAvatar, id: Date.now() });
-      setTimeout(() => setJoinNotification(null), 4000);
-    };
-    const handleRoomEnded = (data) => {
-      if (!currentUserIsHost) toast.info(data.message);
-      navigate("/home");
+      if (isGhostModeRef.current) return;
+      if (user && user.username === username) return;
+      
+      setJoinNotification({ username, avatar: avatar || "/default-avatar.png", id: Date.now() });
+      setTimeout(() => setJoinNotification(null), 4000);
     };
 
     socket.on("update-members", handleUpdateMembers);
     socket.on("user-joined-notification", handleUserJoined);
-    socket.on("room-ended", handleRoomEnded);
 
-    // Cleanup
+    // ============================================
+    // CLEANUP
+    // ============================================
     return () => {
       cleanedUp = true;
       
-      if (!isReloading.current) {
+      socket.off("update-members", handleUpdateMembers);
+      socket.off("user-joined-notification", handleUserJoined);
+      socket.off("new-join-request", handleNewJoinRequest);
+      socket.off('playlist-updated');
+      socket.off('playback-state-changed');
+      socket.off('room-status-changed');
+      
+      if (!isReloading.current && !isGhostModeNow) {
         localStorage.removeItem(roomKey);
       }
       
       if (socketJoined) {
-        if (currentUserIsHost) {
+        if (isGhostModeNow) {
+          socket.emit("leave-room-ghost", { roomId });
+        } else if (currentUserIsHost) {
           endRoomAPI();
         } else if (user) {
           socket.emit("leave-room", { roomId, userId: user._id });
         }
       }
-
-      socket.off("update-members", handleUpdateMembers);
-      socket.off("user-joined-notification", handleUserJoined);
-      socket.off("room-ended", handleRoomEnded);
-      socket.off("new-join-request", handleNewJoinRequest);
     };
-  }, [roomId, user, socket, navigate, handleNewJoinRequest, endRoomAPI, location.state]);
+  }, [roomId, user, socket, navigate, endRoomAPI, handleNewJoinRequest]); // ✅ FIXED DEPENDENCIES
 
+  // ============================================
+  // USER LEFT NOTIFICATION + ROOM BANNED
+  // ============================================
   useEffect(() => {
-        const handleUserLeft = ({ username, avatar, userId }) => { // ⚠️ Nên thêm userId để lọc chính xác hơn
-            // Lọc bỏ nếu người rời phòng là chính mình (đã chuyển hướng về /home)
-            if (user && user._id === userId) return; // Lọc bằng _id sẽ chính xác hơn
+    if (!socket) return;
 
-            const memberAvatar = avatar || "/default-avatar.png";
+    const handleUserLeft = ({ username, avatar, userId }) => {
+      if (isGhostModeRef.current) return;
+      if (user && user._id === userId) return;
 
-            // Hiển thị thông báo rời phòng
-            setLeaveNotification({ username, avatar: memberAvatar, id: Date.now() });
+      setLeaveNotification({ username, avatar: avatar || "/default-avatar.png", id: Date.now() });
+      setTimeout(() => setLeaveNotification(null), 4000);
+    };
 
-            // Tự động ẩn sau 4 giây
-            const timer = setTimeout(() => setLeaveNotification(null), 4000);
-            return () => clearTimeout(timer);
-        };
+    const handleRoomBanned = (data) => {
+      if (data && String(data.roomId) === String(roomId)) {
+        toast.error('Phòng đã bị cấm bởi quản trị viên. Bạn sẽ được chuyển về trang chủ.', { ...toastConfig });
+        localStorage.removeItem(`room_visited_${roomId}`);
+        setTimeout(() => navigate('/home'), 1200);
+      }
+    };
 
-        socket.on("user-left-notification", handleUserLeft);
+    socket.on("user-left-notification", handleUserLeft);
+    socket.on('room-banned', handleRoomBanned);
 
-        return () => {
-            socket.off("user-left-notification", handleUserLeft);
-        };
-    }, [socket, user])
+    return () => {
+      socket.off("user-left-notification", handleUserLeft);
+      socket.off('room-banned', handleRoomBanned);
+    };
+  }, [socket, user, roomId, navigate]);
 
-  // Guest join approval handling
+  // ============================================
+  // JOIN REQUEST ACCEPTED/DENIED
+  // ============================================
   useEffect(() => {
+    if (!socket) return;
+
     const handleJoinRequestAccepted = async ({ roomId: acceptedRoomId, room: payload }) => {
+      if (isGhostModeRef.current) return;
       if (acceptedRoomId !== roomId) return;
       
       try {
         socket.emit("join-room", roomId);
         
-        setRoom((prev) => {
-          if (!prev) return payload;
-          return { ...prev, ...payload, playlist: payload.playlist ?? prev.playlist };
-        });
+        setRoom(payload);
         const owner = payload.owner ? [payload.owner] : [];
         const otherMembers = (payload.members || []).filter(
           (m) => String(m._id) !== String(payload.owner?._id)
@@ -447,10 +504,7 @@ function RoomPage() {
         );
         
         if (freshRoom.members.length >= payload.members.length) {
-          setRoom((prev) => {
-            if (!prev) return freshRoom;
-            return { ...prev, ...freshRoom };
-          });
+          setRoom(freshRoom);
           const freshOwner = freshRoom.owner ? [freshRoom.owner] : [];
           const freshOthers = (freshRoom.members || []).filter(
             (m) => String(m._id) !== String(freshRoom.owner?._id)
@@ -465,6 +519,7 @@ function RoomPage() {
     };
 
     const handleJoinRequestDenied = ({ message }) => {
+      if (isGhostModeRef.current) return;
       toast.error(message || "Yêu cầu tham gia bị từ chối.");
       navigate("/home");
     };
@@ -478,9 +533,11 @@ function RoomPage() {
     };
   }, [roomId, socket, navigate]);
 
-  // Prevent host from closing tab during live
+  // ============================================
+  // PREVENT HOST FROM CLOSING TAB (EXCEPT GHOST MODE)
+  // ============================================
   useEffect(() => {
-    if (!isHost) return;
+    if (!isHost || isGhostMode) return;
 
     const handleBeforeUnload = (event) => {
       event.preventDefault();
@@ -499,84 +556,74 @@ function RoomPage() {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [isHost]);
+  }, [isHost, isGhostMode]);
 
   // ============================================
-// XỬ LÝ KHI HOST BỊ CHẶN
-// ============================================
-useEffect(() => {
-  if (!isHost || !socket) return;
+  // HOST BLOCKED
+  // ============================================
+  useEffect(() => {
+    if (!isHost || !socket) return;
 
-  const handleHostBlocked = ({ blocked, message }) => {
-    if (blocked) {
-      console.log('🚫 [HOST-BLOCKED] Host bị chặn, kết thúc phòng...');
-      
-      // Hiển thị thông báo cho host
-      toast.error(message || 'Tài khoản của bạn đã bị chặn.', {
-        ...toastConfig,
-        autoClose: 3000,
-        icon: "🚫",
-        style: {
-          ...toastConfig.style,
-          background: "linear-gradient(135deg, #ff0000, #8B0000)",
-          color: "#ffffff",
-          border: "1px solid rgba(255, 255, 255, 0.2)",
-          boxShadow: "0 4px 20px rgba(255, 0, 0, 0.5)",
-        },
-      });
+    const handleHostBlocked = ({ blocked, message }) => {
+      if (blocked) {
+        toast.error(message || 'Tài khoản của bạn đã bị chặn.', {
+          ...toastConfig,
+          autoClose: 3000,
+          icon: "🚫",
+        });
 
-      // Xóa localStorage và chuyển về home sau 2 giây
-      setTimeout(() => {
-        localStorage.removeItem(`room_visited_${roomId}`);
-        navigate('/home', { replace: true });
-      }, 2000);
-    }
-  };
+        setTimeout(() => {
+          localStorage.removeItem(`room_visited_${roomId}`);
+          navigate('/home', { replace: true });
+        }, 2000);
+      }
+    };
 
-  socket.on('user-blocked', handleHostBlocked);
+    socket.on('user-blocked', handleHostBlocked);
+    return () => socket.off('user-blocked', handleHostBlocked);
+  }, [isHost, socket, roomId, navigate]);
 
-  return () => {
-    socket.off('user-blocked', handleHostBlocked);
-  };
-}, [isHost, socket, roomId, navigate]);
+  // ============================================
+  // UNIFIED ROOM-ENDED
+  // ============================================
+  useEffect(() => {
+    if (!socket) return;
 
-// ============================================
-// XỬ LÝ KHI PHÒNG BỊ KẾT THÚC (CHO MEMBER)
-// ============================================
-useEffect(() => {
-  if (!socket) return;
+    const handleUnifiedRoomEnded = (data) => {
+      if (hasHandledRoomEnd.current) return;
+      hasHandledRoomEnd.current = true;
 
-  const handleRoomEndedByHostBlock = (data) => {
-    if (data.reason === 'host-blocked') {
-      console.log('🚫 [ROOM-ENDED] Phòng bị kết thúc do host bị chặn');
-      
-      toast.warning('Phòng đã kết thúc vì chủ phòng bị chặn.', {
-        ...toastConfig,
-        autoClose: 3000,
-        icon: "⚠️",
-        style: {
-          ...toastConfig.style,
-          background: "linear-gradient(135deg, #ff9800, #f57c00)",
-          color: "#ffffff",
-        },
-      });
+      localStorage.removeItem(`room_visited_${roomId}`);
 
-      // Xóa localStorage và chuyển về home
-      setTimeout(() => {
-        localStorage.removeItem(`room_visited_${roomId}`);
-        navigate('/home', { replace: true });
-      }, 2000);
-    }
-  };
+      // HOST BỊ CHẶN
+      if (data.reason === "host-blocked") {
+        toast.warning("Phòng đã kết thúc vì chủ phòng bị chặn.", { ...toastConfig });
+        setTimeout(() => navigate("/home", { replace: true }), 2000);
+        return;
+      }
 
-  socket.on('room-ended', handleRoomEndedByHostBlock);
+      // GHOST MODE
+      if (isGhostModeRef.current) {
+        toast.info("Phòng đã kết thúc bởi chủ phòng.", { ...toastConfig });
+        setTimeout(() => navigate("/admin/quanlyphong", { replace: true }), 1500);
+        return;
+      }
 
-  return () => {
-    socket.off('room-ended', handleRoomEndedByHostBlock);
-  };
-}, [socket, roomId, navigate]);
+      // NORMAL MEMBER
+      if (!isHost) {
+        toast.info(data.message || "Phòng đã được chủ phòng kết thúc.", { ...toastConfig });
+      }
 
-  // Host end room handler
+      navigate("/home", { replace: true });
+    };
+
+    socket.on("room-ended", handleUnifiedRoomEnded);
+    return () => socket.off("room-ended", handleUnifiedRoomEnded);
+  }, [socket, navigate, isHost, roomId]);
+
+  // ============================================
+  // HANDLE END ROOM
+  // ============================================
   const handleEndRoom = async () => {
     const result = await Swal.fire({
       title: "Xác nhận",
@@ -599,25 +646,64 @@ useEffect(() => {
     }
   };
 
-  // Guest leave room handler
-  const handleLeaveRoom = () => {
-    socket.emit("leave-room", { roomId, userId: user._id });
-    localStorage.removeItem(`room_visited_${roomId}`);
-    navigate("/home");
+  // ============================================
+  // HANDLE LEAVE ROOM (GHOST MODE → ADMIN)
+  // ============================================
+  const handleLeaveRoom = useCallback(() => {
+    if (isGhostMode && location.state?.returnToAdmin) {
+      navigate('/admin/quanlyphong', { replace: true });
+    } else {
+      socket.emit("leave-room", { roomId, userId: user._id });
+      localStorage.removeItem(`room_visited_${roomId}`);
+      navigate("/home");
+    }
+  }, [isGhostMode, location.state, navigate, socket, roomId, user]);
+
+  // ============================================
+  // HANDLE SUBMIT REPORT
+  // ============================================
+  const handleSubmitReport = async ({ category, details }) => {
+    try {
+      await reportRoom(roomId, { category, details });
+      toast.success('Cảm ơn — báo cáo của bạn đã được gửi.', { ...toastConfig });
+      setReportOpen(false);
+    } catch (err) {
+      console.error('Report failed', err);
+      toast.error(err?.response?.data?.msg || 'Không thể gửi báo cáo. Vui lòng thử lại.');
+    }
   };
 
+  // ============================================
+  // LOADING & ERROR STATES
+  // ============================================
   if (isLoading) return <div>Đang tải phòng...</div>;
   if (error) return <div>Lỗi: {error}</div>;
   if (!room) return <div>Không tìm thấy phòng.</div>;
-  
+
+  // ============================================
+  // RENDER
+  // ============================================
   return (
-    <div className="roompage-container">
-      {/* ================= HEADER ================= */}
+    <div className={`roompage-container ${isGhostMode ? 'ghost-mode' : ''}`}>
+      {isGhostMode && (
+        <div className="ghost-mode-watermark">
+          👻 Ghost Mode
+        </div>
+      )}
+
       <header className="roompage-header">
         <div className="roompage-header-info">
           <h1>{room.name}</h1>
           {room.description && <p>{room.description}</p>}
-          {room.privacy === "private" && isHost && (
+          
+          {isGhostMode && (
+            <div className="roompage-ghost-badge">
+              <Ghost size={16} />
+              <span>Chế độ Ghost</span>
+            </div>
+          )}
+          
+          {room.privacy === "private" && isHost && !isGhostMode && (
             <div className="roompage-roomcode">
               Mã phòng: <strong>{room.roomCode}</strong>
             </div>
@@ -625,7 +711,7 @@ useEffect(() => {
         </div>
 
         <div className="roompage-header-actions">
-          {isHost ? (
+          {isHost && !isGhostMode ? (
             <>
               <button className="btn btn-danger-outline" onClick={handleEndRoom}>
                 <XCircle size={16} />
@@ -637,20 +723,33 @@ useEffect(() => {
               </button>
             </>
           ) : (
-            <button className="btn btn-leave-room" onClick={handleLeaveRoom}>
-              <LogOut size={16} />
-              <span>Rời phòng</span>
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {!isGhostMode && (
+                <button
+                  className={`btn btn-report-room ${!canReport ? 'disabled' : ''}`}
+                  onClick={() => canReport && setReportOpen(true)}
+                  title={canReport ? 'Báo cáo phòng' : 'Chỉ có thể báo cáo khi phòng đang phát nhạc'}
+                  disabled={!canReport}
+                >
+                  <Flag size={16} />
+                  <span>Báo cáo</span>
+                </button>
+              )}
+              <button 
+                className={`btn-leave-room ${isGhostMode ? 'ghost-mode-btn' : ''}`}
+                onClick={handleLeaveRoom}
+              >
+                <LogOut size={16} />
+                <span>{isGhostMode ? 'Quay lại' : 'Rời phòng'}</span>
+              </button>
+            </div>
           )}
         </div>
       </header>
 
-      {/* ================= MAIN ================= */}
       <main className="roompage-main new-layout">
-        {/* ===== CỘT TRÁI: Join Requests + MusicPlayer ===== */}
         <div className="roompage-left-column">
-          {/* Join requests box for host */}
-          {isHost && joinRequests.length > 0 && (
+          {isHost && !isGhostMode && joinRequests.length > 0 && (
             <div className="join-requests-container">
               <h3>Yêu cầu tham gia</h3>
               <ul>
@@ -671,25 +770,19 @@ useEffect(() => {
                     <div className="join-request-actions">
                       {r.status && r.status !== "pending" ? (
                         <div className={`join-request-status ${r.status}`}>
-                          {r.status === "accepted"
-                            ? "Đã chấp nhận"
-                            : "Đã từ chối"}
+                          {r.status === "accepted" ? "Đã chấp nhận" : "Đã từ chối"}
                         </div>
                       ) : (
                         <>
                           <button
                             className="btn btn-accept"
-                            onClick={() =>
-                              respondToRequest(r.requester._id, true)
-                            }
+                            onClick={() => respondToRequest(r.requester._id, true)}
                           >
                             Chấp nhận
                           </button>
                           <button
                             className="btn btn-deny"
-                            onClick={() =>
-                              respondToRequest(r.requester._id, false)
-                            }
+                            onClick={() => respondToRequest(r.requester._id, false)}
                           >
                             Từ chối
                           </button>
@@ -702,49 +795,44 @@ useEffect(() => {
             </div>
           )}
 
-          {/* Music Player */}
           <MusicPlayer
             roomData={room}
-            isHost={isHost}
+            isHost={isHost && !isGhostMode}
             roomId={roomId}
             socket={socket}
           />
         </div>
 
-        {/* ===== CỘT PHẢI: Chat + Participants ===== */}
         <aside className="roompage-right">
           <div className="roompage-tabs">
             <div
-              className={`roompage-tab ${
-                activeTab === "chat" ? "active" : ""
-              }`}
+              className={`roompage-tab ${activeTab === "chat" ? "active" : ""}`}
               onClick={() => setActiveTab("chat")}
             >
               Trò chuyện ({chatMessages.length})
             </div>
             <div
-              className={`roompage-tab ${
-                activeTab === "participants" ? "active" : ""
-              }`}
+              className={`roompage-tab ${activeTab === "participants" ? "active" : ""}`}
               onClick={() => setActiveTab("participants")}
             >
               Thành viên ({members.length})
             </div>
           </div>
 
-          {/* Chat box (realtime) */}
           {activeTab === "chat" && (
             <div style={{ height: '570px', display: 'flex', flexDirection: 'column' }}>
               <RoomChat
                 roomId={roomId}
                 ownerId={room?.owner?._id}
-                initialMessages={chatMessages} // <-- SỬA Ở ĐÂY
-                onNewMessage={appendChatMessage} 
+                initialMessages={chatMessages}
+                onNewMessage={appendChatMessage}
+                isGhostMode={isGhostMode}
+                canReport={canReport}
+                onOpenReport={() => setReportOpen(true)}
               />
             </div>
           )}
 
-          {/* Participants list */}
           {activeTab === "participants" && (
             <div className="roompage-participants">
               <ul className="roompage-participant-list">
@@ -767,13 +855,10 @@ useEffect(() => {
               </ul>
             </div>
           )}
-
-          {/* Chat input is included inside RoomChat component */}
         </aside>
       </main>
       
-      {/* Bottom-right join notification */}
-      {joinNotification && (
+      {joinNotification && !isGhostMode && (
         <div className="join-toast" role="status" aria-live="polite">
           <div className="join-toast-content">
             <img
@@ -789,23 +874,28 @@ useEffect(() => {
         </div>
       )}
 
-      {/* 🆕 Bottom-right leave notification */}
-      {leaveNotification && (
-        <div className="join-toast leave-toast" role="status" aria-live="polite">
-          <div className="join-toast-content">
-            <img
-              className="join-toast-avatar"
-              src={leaveNotification.avatar || '/default-avatar.png'}
-              alt={leaveNotification.username}
-            />
-            <div className="join-toast-body">
-              <div className="join-toast-username">{leaveNotification.username}</div>
-              <div className="join-toast-subtitle">đã rời phòng</div>
-            </div>
-          </div>
-        </div>
-      )}
+      {leaveNotification && !isGhostMode && (
+        <div className="join-toast leave-toast" role="status" aria-live="polite">
+          <div className="join-toast-content">
+            <img
+              className="join-toast-avatar"
+              src={leaveNotification.avatar || '/default-avatar.png'}
+              alt={leaveNotification.username}
+            />
+            <div className="join-toast-body">
+              <div className="join-toast-username">{leaveNotification.username}</div>
+              <div className="join-toast-subtitle">đã rời phòng</div>
+            </div>
+          </div>
+        </div>
+      )}
 
+      <ReportRoomModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        onSubmit={handleSubmitReport}
+        roomName={room?.name}
+      />
     </div>
   );
 }

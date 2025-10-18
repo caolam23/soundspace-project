@@ -1,6 +1,7 @@
 // server/src/controllers/QuanLyPhongController.js
 const Room = require('../models/room');
 const User = require('../models/User');
+const RoomReport = require('../models/RoomReport');
 
 /**
  * =============================================
@@ -178,6 +179,15 @@ exports.deleteRoom = async (req, res) => {
     }
 
     await Room.findByIdAndDelete(roomId);
+
+    // Remove any reports associated with this room to avoid orphaned report records
+    try {
+      await RoomReport.deleteMany({ room: roomId });
+      console.log(`[CLEANUP] Deleted reports for removed room ${roomId}`);
+    } catch (e) {
+      console.warn(`[CLEANUP] Failed to delete reports for room ${roomId}:`, e.message);
+    }
+
 
     res.status(200).json({
       success: true,
