@@ -1,21 +1,265 @@
-.AdminReports-wrapper { padding: 20px; }
-.AdminReports-tableWrapper { overflow-x: auto; margin-top: 12px; }
-.AdminReports-table { width: 100%; border-collapse: collapse; }
-.AdminReports-table th, .AdminReports-table td { padding: 10px 12px; border-bottom: 1px solid #eee; text-align: left; }
-.AdminReports-table th { background: #fafafa; font-weight: 700; }
-.AdminReports-table td .AdminReports-btn { margin-right: 8px; }
-.AdminReports-btn { padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-.AdminReports-btn-warning { background: #ffecb5; border-color: #f7c948; }
-.AdminReports-btn-danger { background: #fee2e2; border-color: #f87171; }
+/* --- BIẾN SỐ ĐƯỢC CHUYỂN VÀO ĐÂY --- */
+.AdminReports-wrapper {
+  /* --- Biến màu và cài đặt chung --- */
+  --primary-bg: #f8f9fa;
+  --table-bg: #ffffff;
+  --border-color: #dee2e6;
+  --header-bg: #f1f3f5;
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+  --brand-color: #7c3aed;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --success-color: #198754;
+  --info-color: #0dcaf0;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --border-radius: 8px;
 
-.AdminReports-badge {
-	display: inline-block;
-	padding: 6px 10px;
-	border-radius: 8px;
-	font-weight: 700;
-	font-size: 0.9rem;
-	color: #334155;
+  /* --- Thuộc tính gốc của Wrapper --- */
+  padding: 24px;
+  background-color: #ffff;
+  height: 100%;
 }
-.AdminReports-badge-open { background: #fffbeb; border: 1px solid #fef3c7; color: #92400e; }
-.AdminReports-badge-reviewed { background: #ecfeff; border: 1px solid #bff0f2; color: #115e59; }
-.AdminReports-badge-dismissed { background: #f8fafc; border: 1px solid #e6eef6; color: #0f172a; }
+
+.AdminReports-header {
+  margin-bottom: 20px;
+}
+
+.AdminReports-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* --- Table Styling --- */
+.AdminReports-tableWrapper {
+  overflow-x: auto;
+  background-color: var(--table-bg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.AdminReports-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.AdminReports-table th,
+.AdminReports-table td {
+  padding: 12px 16px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.AdminReports-table th {
+  background-color: var(--header-bg);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.AdminReports-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.AdminReports-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.AdminReports-noData {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+/* --- Badges --- */
+.AdminReports-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-weight: 500;
+  font-size: 12px;
+  border: 1px solid transparent;
+}
+
+.AdminReports-badge-open {
+  background-color: #fffbeb;
+  color: #b45309;
+  border-color: #fef3c7;
+}
+.AdminReports-badge-reviewed {
+  background-color: #ecfeff;
+  color: #0e7490;
+  border-color: #cffafe;
+}
+.AdminReports-badge-dismissed {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+/* --- Action Buttons --- */
+.AdminReports-actionGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.AdminReports-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--table-bg);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+}
+
+.AdminReports-btn:hover {
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+}
+
+.AdminReports-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.AdminReports-btn-warning {
+  color: #856404;
+  background-color: #fff3cd;
+  border-color: #ffeeba;
+}
+.AdminReports-btn-warning:hover:not(:disabled) {
+  background-color: #ffeeba;
+}
+
+.AdminReports-btn-danger {
+  color: #721c24;
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+}
+.AdminReports-btn-danger:hover:not(:disabled) {
+  background-color: #f5c6cb;
+}
+
+
+/* --- MODAL STYLES --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(10, 10, 10, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-dialog {
+  background: white;
+  padding: 24px;
+  border-radius: var(--border-radius);
+  width: 90%;
+  max-width: 450px;
+  box-shadow: var(--shadow-md);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-title {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-description {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.modal-form-group {
+  margin-bottom: 20px;
+}
+
+.modal-form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: var(--brand-color);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.modal-btn {
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.modal-btn-secondary {
+  background-color: #e9ecef;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.modal-btn-secondary:hover {
+  background-color: #dee2e6;
+}
+
+.modal-btn-danger {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.modal-btn-danger:hover {
+  background-color: #c82333;
+}

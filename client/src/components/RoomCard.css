@@ -24,7 +24,8 @@
 .room-card-image-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 56.25%;
+  /* THAY ĐỔI 1: Chuyển sang khung ảnh vuông để cân đối */
+  padding-top: 100%; /* Tỷ lệ 1:1 */
 }
 
 .room-card-image {
@@ -33,7 +34,8 @@
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* THAY ĐỔI 2: Đổi lại thành 'cover' để lấp đầy khung */
+  object-fit: cover; 
   transition: transform 0.3s ease;
 }
 
@@ -42,7 +44,7 @@
 }
 
 /* ========================================= */
-/* 🏷️ HUY HIỆU TRẠNG THÁI                  */
+/* 🏷️ HUY HIỆU TRẠNG THÁI                    */
 /* ========================================= */
 .room-status-badge {
   position: absolute;
@@ -80,11 +82,12 @@
 }
 
 /* ========================================= */
-/* 📝 NỘI DUNG THẺ                          */
+/* 📝 NỘI DUNG THẺ                            */
 /* ========================================= */
 .room-card-content {
   padding: 20px 16px 16px 16px;
-  margin-top: 80px;
+  /* THAY ĐỔI 3: Điều chỉnh lại margin để bố cục không bị vỡ */
+  margin-top: 16px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -129,7 +132,7 @@
 }
 
 /* ========================================= */
-/* 🚀 NÚT HÀNH ĐỘNG                         */
+/* 🚀 NÚT HÀNH ĐỘNG                          */
 /* ========================================= */
 .room-card-actions {
   margin-top: auto;
@@ -164,7 +167,7 @@
 
 
 /* ========================================= */
-/* ⏳ MODAL & OVERLAY (GIỮ NGUYÊN)          */
+/* ⏳ MODAL & OVERLAY (GIỮ NGUYÊN)           */
 /* ========================================= */
 .join-wait-overlay {
   position: fixed;

@@ -269,23 +269,11 @@ export default function RoomChat({
                     <span className="roomchat-time">{new Date(m.createdAt).toLocaleTimeString()}</span>
                   </div>
 
-                  {m.meta?.replyTo && (
-                    <div
-                      className="roomchat-reply-snippet compact"
-                      onClick={() => {
-                        const targetId = String(m.meta.replyTo.id);
-                        const node = msgRefs.current[targetId];
-                        if (node && node.scrollIntoView) {
-                          node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          node.classList.add('roomchat-highlight');
-                          setTimeout(() => node.classList.remove('roomchat-highlight'), 2200);
-                        }
-                      }}
-                    >
-                      <span className="roomchat-reply-compact">Replying to @{m.meta.replyTo.username}</span>
-                    </div>
-                  )}
-
+                  {/* === KHỐI CODE ĐÃ BỊ XÓA === 
+                  Tôi đã xóa bỏ hoàn toàn khối `m.meta?.replyTo` ở đây
+                  để loại bỏ dòng "Replying to @Username"
+                  */}
+                  
                   <div className="roomchat-text">{renderMessageText(m.text)}</div>
                 </div>
 

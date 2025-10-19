@@ -247,7 +247,6 @@
 
 .roompage-btn-play-main {
     background-color: #ffffff;
-    color: #121212;
     width: 70px; /* Tăng kích thước nút Play/Pause */
     height: 70px;
     border-radius: 50%;
@@ -264,69 +263,101 @@
 }
 /* Styles cho phần thêm nhạc (được giữ lại từ code gốc) */
 .add-music-section {
-    padding: 10px;
-    background-color: #2a2a3e;
-    border-radius: 8px;
-    margin-bottom: 20px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #1e1e2f, #2c2c44);
+  border: 1px solid rgba(120, 120, 180, 0.2);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .add-music-tabs {
-    display: flex;
-    margin-bottom: 10px;
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .add-music-tabs button {
-    flex: 1;
-    padding: 10px;
-    background: #3c3c54;
-    border: none;
-    color: #a9a9b3;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: background-color 0.2s;
-    font-size: 14px;
+  flex: 1;
+  padding: 7px 0;
+  background: #2b2b45;
+  border: none;
+  color: #b8b8d6;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.25s ease;
+  font-size: 12.5px;
+  border-radius: 8px;
+  font-weight: 500;
 }
 
-.add-music-tabs button:first-child {
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
+.add-music-tabs button svg {
+  width: 15px;
+  height: 15px;
+  opacity: 0.9;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
-.add-music-tabs button:last-child {
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
+
+.add-music-tabs button:hover svg {
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.add-music-tabs button:hover {
+  background: #3a3860;
+  color: #fff;
 }
 
 .add-music-tabs button.active {
-    background-color: #5d5d81;
-    color: white;
+  background: linear-gradient(135deg, #6c63ff, #8a2be2);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(138, 43, 226, 0.45);
+  transform: scale(1.02);
 }
 
+/* --- Ô nhập link và nút + --- */
 .add-music-form {
-    display: flex;
+  display: flex;
+  align-items: center;
 }
 
 .add-music-form input {
-    flex-grow: 1;
-    padding: 10px;
-    border: 1px solid #4a4a6a;
-    background: #1e1e2f;
-    color: white;
-    border-radius: 6px 0 0 6px;
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #3c3c5e;
+  background: #24243a;
+  color: #e4e4f5;
+  border-radius: 6px 0 0 6px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.add-music-form input:focus {
+  border-color: #7a5cff;
 }
 
 .add-music-form button {
-    padding: 0 15px;
-    border: none;
-    background-color: #8a2be2;
-    color: white;
-    font-size: 20px;
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 0 6px 6px 0;
+  padding: 8px 14px;
+  border: none;
+  background: linear-gradient(135deg, #7a5cff, #8a2be2);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 0 6px 6px 0;
+  transition: all 0.25s ease;
 }
+
+.add-music-form button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(138, 43, 226, 0.45);
+}
+
 /* ẢNH thumbnail - ĐƯA LÊN LÀM TRUNG TÂM */
 .roompage-thumbnail-center { 
     order: 1;
@@ -456,4 +487,14 @@
    * Ở đây, ta sẽ dùng animation để ghi đè.
    */
   animation: beat-animation 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+.roompage-btn-icon svg {
+  color: #121212;
+  width: 35px;
+  height: 35px;
+}
+
+.roompage-btn-play-main svg {
+  width: 28px;
+  height: 28px;
 }

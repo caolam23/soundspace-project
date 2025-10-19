@@ -56,12 +56,18 @@ module.exports = function (io, socket) {
         return;
       }
 
+      // ✨✨ THÊM ĐOẠN CODE NÀY VÀO ĐÂY ✨✨
+      if (!comment.userId) {
+          console.warn(`⚠️ Comment ${commentId} không có userId để báo cáo.`);
+          return; // Dừng lại nếu không có userId
+      }
+
       // 🆕 Tạo bản ghi Report mới
       const newReport = new Report({
         reporter: reporterId,
-        reportedUser: comment.userId,
+        reportedUser: comment.userId, // Dòng này sẽ không còn bị lỗi
         roomId,
-        messageId: commentId, // ✅ Dùng _id thực của comment
+        messageId: commentId, 
         messageContent: comment.text,
         reason,
       });

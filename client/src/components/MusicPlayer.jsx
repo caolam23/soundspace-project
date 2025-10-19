@@ -1,7 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { Upload, Link as LinkIcon, Play, Pause, SkipBack, SkipForward } from 'react-feather';
+// Thay thế icon từ react-feather bằng Heroicons
+import {
+  ArrowUpTrayIcon,
+  LinkIcon,
+  PlayIcon,
+  PauseIcon,
+  BackwardIcon,
+  ForwardIcon,
+  MusicalNoteIcon,
+} from '@heroicons/react/24/solid';
 import 'react-toastify/dist/ReactToastify.css';
 import './MusicPlayer.css';
 import { toastConfig } from '../services/toastConfig';
@@ -252,7 +261,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
       }
     };
     const handlePlaybackChange = (newState) => {
-       console.debug('[MusicPlayer] playback-state-changed', newState);
+        console.debug('[MusicPlayer] playback-state-changed', newState);
       if (Array.isArray(newState?.playlist)) {
         if (newState.playlist.length === 0 && (playlist && playlist.length > 0)) {
           console.warn('[MusicPlayer] Ignoring empty playback-state.playlist because local playlist is not empty');
@@ -479,10 +488,12 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
           <div className="add-music-section">
             <div className="add-music-tabs">
               <button onClick={() => setActiveInput('upload')} className={activeInput === 'upload' ? 'active' : ''}>
-                <Upload size={16} /> Tải lên
+                {/* ICON ĐÃ THAY THẾ */}
+                <ArrowUpTrayIcon className="h-4 w-4 mr-1" /> Tải lên
               </button>
               <button onClick={() => setActiveInput('link')} className={activeInput === 'link' ? 'active' : ''}>
-                <LinkIcon size={16} /> Từ link
+                {/* ICON ĐÃ THAY THẾ */}
+                <LinkIcon className="h-4 w-4 mr-1" /> Từ link
               </button>
             </div>
             {activeInput === 'link' && (
@@ -573,26 +584,35 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
                 transform: `scale(${1 + thumbnailPulse * 0.05})`,
                 boxShadow: `0 0 ${thumbnailPulse * 25}px rgba(90, 224, 255, ${thumbnailPulse * 0.6})`,
               }}
-            >🎵</div>
+            >
+              {/* ICON ĐÃ THAY THẾ CHO EMOJI */}
+              <MusicalNoteIcon className="h-24 w-24 text-gray-500" />
+            </div>
           )}
         </div>
 
         <div className="roompage-player-controls-main">
           {isHost ? (
             <>
-              <button className="roompage-btn-icon" onClick={() => sendControlAction('SKIP_PREVIOUS')}><SkipBack size={28} /></button>
+              {/* ICON ĐÃ THAY THẾ */}
+              <button className="roompage-btn-icon" onClick={() => sendControlAction('SKIP_PREVIOUS')}><BackwardIcon className="h-7 w-7" /></button>
               <button className="roompage-btn-icon roompage-btn-play-main" onClick={() => sendControlAction(isPlaying ? 'PAUSE' : 'PLAY')}>
-                {isPlaying ? <Pause size={32} /> : <Play size={32} />}
+                {/* ICON ĐÃ THAY THẾ */}
+                {isPlaying ? <PauseIcon className="h-8 w-8" /> : <PlayIcon className="h-8 w-8" />}
               </button>
-              <button className="roompage-btn-icon" onClick={() => sendControlAction('SKIP_NEXT')}><SkipForward size={28} /></button>
+              {/* ICON ĐÃ THAY THẾ */}
+              <button className="roompage-btn-icon" onClick={() => sendControlAction('SKIP_NEXT')}><ForwardIcon className="h-7 w-7" /></button>
             </>
           ) : (
             <>
-              <button className="roompage-btn-icon" disabled><SkipBack size={28} /></button>
+              {/* ICON ĐÃ THAY THẾ */}
+              <button className="roompage-btn-icon" disabled><BackwardIcon className="h-7 w-7" /></button>
               <button className="roompage-btn-icon roompage-btn-play-main" disabled>
-                {isPlaying ? <Pause size={32} /> : <Play size={32} />}
+                {/* ICON ĐÃ THAY THẾ */}
+                {isPlaying ? <PauseIcon className="h-8 w-8" /> : <PlayIcon className="h-8 w-8" />}
               </button>
-              <button className="roompage-btn-icon" disabled><SkipForward size={28} /></button>
+              {/* ICON ĐÃ THAY THẾ */}
+              <button className="roompage-btn-icon" disabled><ForwardIcon className="h-7 w-7" /></button>
             </>
           )}
         </div>
