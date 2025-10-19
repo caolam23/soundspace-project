@@ -9,7 +9,7 @@
 }
 .report-modal {
   width: 420px;
-  background: linear-gradient(180deg, #0b0710 0%, #0f0920 100%);
+  background:  #1f1f2e;
   border-radius: 10px;
   box-shadow: 0 10px 40px rgba(14,8,30,0.7);
   overflow: hidden;

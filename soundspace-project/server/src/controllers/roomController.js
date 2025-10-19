@@ -228,7 +228,7 @@ exports.endSession = async (req, res) => {
         }
       });
 
-      io.emit("room-ended-homepage", { roomId });
+  io.emit("room-ended-homepage", { roomId, endedBy: req.user.id });
       
       try {
         io.emit("room-members-changed", {
@@ -236,6 +236,7 @@ exports.endSession = async (req, res) => {
           membersCount: 0,
           totalJoins: room.statistics?.totalJoins || 0,
           peakMembers: room.statistics?.peakMembers || 0,
+          endedBy: req.user.id,
         });
         console.log("[END-SESSION] Emitted room-members-changed with membersCount=0");
       } catch (e) {
