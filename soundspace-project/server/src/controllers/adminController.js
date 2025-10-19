@@ -89,10 +89,10 @@ exports.warnOwner = async (req, res) => {
         if (!ownerId)
             return res.status(400).json({ success: false, msg: 'Không có chủ phòng.' });
 
-        // Tăng số lần bị báo cáo và gắn trạng thái
+        // Tăng số lần bị báo cáo (không thay đổi trường status để không che mất trạng thái realtime)
         const updatedUser = await User.findByIdAndUpdate(
             ownerId,
-            { $inc: { reportCount: 1 }, $set: { status: 'reported' } },
+            { $inc: { reportCount: 1 } },
             { new: true }
         );
 
