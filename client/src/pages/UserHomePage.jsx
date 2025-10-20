@@ -140,21 +140,28 @@ function UserHomePage() {
         return () => socket.off('room-info-update', handleRoomUpdate);
     }, [socket]);
 
+    // Exposed fetch function so other components can trigger a refresh
+    const fetchActiveRooms = async () => {
+        try {
+            setIsLoading(true);
+            const res = await axios.get('http://localhost:8800/api/rooms/active');
+            const data = Array.isArray(res.data) ? res.data : res.data.rooms || [];
+            setRooms(data);
+        } catch (error) {
+            console.error("Lỗi khi lấy danh sách phòng:", error);
+            setRooms([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchActiveRooms = async () => {
-            try {
-                setIsLoading(true);
-                const res = await axios.get('http://localhost:8800/api/rooms/active');
-                const data = Array.isArray(res.data) ? res.data : res.data.rooms || [];
-                setRooms(data);
-            } catch (error) {
-                console.error("Lỗi khi lấy danh sách phòng:", error);
-                setRooms([]);
-            } finally {
-                setIsLoading(false);
-            }
-        };
         fetchActiveRooms();
+
+        // Listen for explicit refresh requests (dispatched when a user is redirected from a room)
+        const refreshHandler = () => fetchActiveRooms();
+        window.addEventListener('soundspace:refresh-home', refreshHandler);
+        return () => window.removeEventListener('soundspace:refresh-home', refreshHandler);
     }, []);
 
     useEffect(() => {

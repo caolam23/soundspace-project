@@ -36,10 +36,11 @@ export default function Reports() {
 
   useEffect(() => { fetchReports(); }, []);
 
-  // Keep short-lived history to deduplicate events that arrive multiple times
-  // (server may emit room-ended to every socket in room + a global homepage event)
-  const recentHandled = React.useRef(new Map());
-  const lastGlobalHandled = React.useRef(0);
+  // Keep short-lived history to deduplicate events that arrive multiple times
+  // (server may emit room-ended to every socket in room + a global homepage event)
+  // We'll use a fingerprint key = `${eventName}|${roomId}|${reason}` and ignore duplicates within TTL
+  const recentHandled = React.useRef(new Map());
+  const DEDUPE_TTL = 5000; // ms
 
   useEffect(() => {
     if (!socket || !socketReady) return;
@@ -56,69 +57,79 @@ export default function Reports() {
   useEffect(() => {
     if (!socket || !socketReady) return;
 
-    const refreshHandler = (payload) => {
+    const refreshHandler = (payload, eventName = 'unknown') => {
       try {
         console.log('[Reports] room-end related event received:', payload);
-        const now = Date.now();
-        const DEDUPE_MS = 3000; // ignore duplicate events within 3 seconds
-        const roomId = payload && (payload.roomId || payload._id || payload.id);
+        const now = Date.now();
+        const roomId = payload && (payload.roomId || payload._id || payload.id || '');
+        const reason = payload && payload.reason ? String(payload.reason) : '';
+        const fingerprint = `${eventName}|${roomId}|${reason}`;
 
-        if (roomId) {
-          const last = recentHandled.current.get(String(roomId)) || 0;
-          if (now - last < DEDUPE_MS) {
-            console.log(`[Reports] Duplicate room-end for ${roomId}, ignoring.`);
-            return;
-          }
-          recentHandled.current.set(String(roomId), now);
+        const last = recentHandled.current.get(fingerprint) || 0;
+        if (now - last < DEDUPE_TTL) {
+          console.log(`[Reports] Duplicate event ${fingerprint}, ignoring.`);
+          return;
+        }
+        recentHandled.current.set(fingerprint, now);
+        // Also cleanup old entries
+        for (const [k, t] of recentHandled.current.entries()) {
+          if (now - t > DEDUPE_TTL) recentHandled.current.delete(k);
+        }
 
-          // remove local reports for that room (optimistic) and then sync once
-          setReports(prev => prev.filter(r => {
-            const rid = r.room && (r.room._id || r.room.id || r.room);
-            return String(rid) !== String(roomId);
-          }));
-          fetchReports();
-          toast.info('Một phòng đã kết thúc — cập nhật báo cáo');
-        } else {
-          // global/no-roomId events: dedupe by time window
-          if (now - lastGlobalHandled.current < DEDUPE_MS) {
-            console.log('[Reports] Duplicate global room-end event, ignoring.');
-            return;
-          }
-          lastGlobalHandled.current = now;
-          fetchReports();
-          toast.info('Một phòng đã kết thúc — cập nhật báo cáo');
-        }
+        if (roomId) {
+          // remove local reports for that room (optimistic) and then sync once
+          setReports(prev => prev.filter(r => {
+            const rid = r.room && (r.room._id || r.room.id || r.room);
+            return String(rid) !== String(roomId);
+          }));
+        }
+        fetchReports();
+        toast.info('Một phòng đã kết thúc — cập nhật báo cáo');
       } catch (err) {
         console.error('[Reports] refreshHandler error', err);
         fetchReports();
       }
     };
-    const makeHandler = (eventName) => (payload) => {
-      const adminReasons = ['admin-banned', 'host-blocked'];
-      if (eventName === 'room-ended') {
-        if (payload && payload.reason && adminReasons.includes(payload.reason)) {
-          console.log(`[Reports] Ignoring room-ended from admin action (${payload.reason})`);
-          return;
-        }
-      }
+  const makeHandler = (eventName) => (payload) => {
+      // Only act on events that indicate an actual room end triggered by host or an admin ban
+      const adminEndReasons = ['admin-banned', 'host-blocked', 'admin-action'];
 
-      if (eventName === 'room-deleted' || eventName === 'room-banned') {
-        console.log(`[Reports] Ignoring ${eventName} (admin action)`);
-        return;
-      }
-      refreshHandler(payload);
-    };
+      if (eventName === 'room-ended' || eventName === 'room-ended-homepage') {
+        // If payload has a reason and it's an admin action, still refresh (admins banning rooms should remove reports),
+        // but we want to avoid duplicate triggers caused by member join/leave which previously emitted 'room-members-changed'.
+        // Accept host-ended and admin-banned; ignore other non-terminal signals.
+        const reason = payload && payload.reason;
+        if (reason && !['host-ended', 'admin-banned', 'host-blocked'].includes(reason)) {
+          console.log(`[Reports] Ignoring room-end event with reason=${reason}`);
+          return;
+        }
+      }
 
-    socket.on('room-ended', makeHandler('room-ended'));
-    socket.on('room-ended-homepage', makeHandler('room-ended-homepage'));
-    socket.on('room-deleted', makeHandler('room-deleted'));
-    socket.on('room-members-changed', makeHandler('room-members-changed'));
+      if (eventName === 'room-deleted') {
+        console.log('[Reports] Received room-deleted, will refresh reports');
+      }
+
+      refreshHandler(payload, eventName);
+    };
+
+    socket.on('room-ended', makeHandler('room-ended'));
+    socket.on('room-ended-homepage', makeHandler('room-ended-homepage'));
+    socket.on('room-deleted', makeHandler('room-deleted'));
+    // Listen for explicit room-banned events (admin action) — should also update reports
+    socket.on('room-banned', (payload) => {
+      try {
+        console.log('[Reports] room-banned event received:', payload);
+        // Use the centralized refreshHandler which already shows the admin toast once.
+        refreshHandler(payload);
+      } catch (e) {
+        console.error('[Reports] room-banned handler error', e);
+      }
+    });
 
     return () => {
-      socket.off('room-ended');
-      socket.off('room-ended-homepage');
-      socket.off('room-deleted');
-      socket.off('room-members-changed');
+  socket.off('room-ended');
+  socket.off('room-ended-homepage');
+  socket.off('room-deleted');
     };
   }, [socket, socketReady]);
 

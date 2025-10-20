@@ -29,6 +29,7 @@ function RoomPage() {
   const roomRef = useRef(null);
   const hasInitialized = useRef(false);
   const hasHandledRoomEnd = useRef(false);
+  const timeoutsRef = useRef(new Set());
 
   // ============================================
   // HOOKS
@@ -90,6 +91,16 @@ function RoomPage() {
     });
   }, []);
 
+  // Helper to track timeouts so we can clear them on unmount
+  const setAppTimeout = (fn, ms) => {
+    const id = setTimeout(() => {
+      try { fn(); } catch (e) { console.error('timeout error', e); }
+      timeoutsRef.current.delete(id);
+    }, ms);
+    timeoutsRef.current.add(id);
+    return id;
+  };
+
   // ============================================
   // END ROOM API
   // ============================================
@@ -142,8 +153,9 @@ function RoomPage() {
     );
 
     setTimeout(() => {
-      setJoinRequests((prev) => prev.filter((r) => r.requester._id !== requesterId));
-    }, 5000);
+    setJoinRequests((prev) => prev.filter((r) => r.requester._id !== requesterId));
+  }, 5000);
+  // we don't need to store this one specifically since it's short-lived, but keeping consistency is fine
   }, [roomId, socket]);
 
   // ============================================
@@ -406,8 +418,8 @@ function RoomPage() {
       if (isGhostModeRef.current) return;
       if (user && user.username === username) return;
       
-      setJoinNotification({ username, avatar: avatar || "/default-avatar.png", id: Date.now() });
-      setTimeout(() => setJoinNotification(null), 4000);
+  setJoinNotification({ username, avatar: avatar || "/default-avatar.png", id: Date.now() });
+  setAppTimeout(() => setJoinNotification(null), 4000);
     };
 
     socket.on("update-members", handleUpdateMembers);
@@ -439,6 +451,14 @@ function RoomPage() {
           socket.emit("leave-room", { roomId, userId: user._id });
         }
       }
+      // Clear all tracked timeouts and dismiss toasts to avoid post-unmount UI actions
+      try {
+        for (const id of timeoutsRef.current) {
+          clearTimeout(id);
+        }
+        timeoutsRef.current.clear();
+      } catch (e) { }
+      try { toast.dismiss(); } catch (e) { }
     };
   }, [roomId, user, socket, navigate, endRoomAPI, handleNewJoinRequest]); // ✅ FIXED DEPENDENCIES
 
@@ -452,15 +472,20 @@ function RoomPage() {
       if (isGhostModeRef.current) return;
       if (user && user._id === userId) return;
 
-      setLeaveNotification({ username, avatar: avatar || "/default-avatar.png", id: Date.now() });
-      setTimeout(() => setLeaveNotification(null), 4000);
+  setLeaveNotification({ username, avatar: avatar || "/default-avatar.png", id: Date.now() });
+  setAppTimeout(() => setLeaveNotification(null), 4000);
     };
 
     const handleRoomBanned = (data) => {
       if (data && String(data.roomId) === String(roomId)) {
         toast.error('Phòng đã bị cấm bởi quản trị viên. Bạn sẽ được chuyển về trang chủ.', { ...toastConfig });
         localStorage.removeItem(`room_visited_${roomId}`);
-        setTimeout(() => navigate('/home'), 1200);
+        // Let home refresh its room list so redirected users immediately see current active rooms
+        window.dispatchEvent(new Event('soundspace:refresh-home'));
+        setAppTimeout(() => {
+          toast.dismiss();
+          navigate('/home');
+        }, 1200);
       }
     };
 
@@ -495,7 +520,7 @@ function RoomPage() {
         
         toast.success("Bạn đã được chủ phòng chấp nhận — đang vào phòng!");
         
-        await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise(resolve => setAppTimeout(resolve, 500));
         
         const token = localStorage.getItem("token");
         const { data: freshRoom } = await axios.get(
@@ -572,7 +597,8 @@ function RoomPage() {
           icon: "🚫",
         });
 
-        setTimeout(() => {
+        setAppTimeout(() => {
+          toast.dismiss();
           localStorage.removeItem(`room_visited_${roomId}`);
           navigate('/home', { replace: true });
         }, 2000);
@@ -605,7 +631,10 @@ function RoomPage() {
       // GHOST MODE
       if (isGhostModeRef.current) {
         toast.info("Phòng đã kết thúc bởi chủ phòng.", { ...toastConfig });
-        setTimeout(() => navigate("/admin/quanlyphong", { replace: true }), 1500);
+        setAppTimeout(() => {
+          toast.dismiss();
+          navigate("/admin/quanlyphong", { replace: true });
+        }, 1500);
         return;
       }
 
@@ -614,6 +643,8 @@ function RoomPage() {
         toast.info(data.message || "Phòng đã được chủ phòng kết thúc.", { ...toastConfig });
       }
 
+      // Ask home to refresh active rooms so redirected users see the latest rooms immediately
+      window.dispatchEvent(new Event('soundspace:refresh-home'));
       navigate("/home", { replace: true });
     };
 

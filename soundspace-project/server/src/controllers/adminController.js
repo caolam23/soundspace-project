@@ -154,12 +154,17 @@ exports.banRoom = async (req, res) => {
                 const roomSockets = await io.in(String(room._id)).fetchSockets();
                 roomSockets.forEach((s) => {
                     try {
+                        // Notify clients that the room was banned and ask them to redirect.
+                        // Important: do NOT disconnect the socket entirely — only make it leave the room namespace/room
+                        // so the client connection remains active and can receive global events (new rooms, etc.).
                         s.emit('room-ended', {
                             message: 'Phòng đã bị cấm bởi quản trị viên.',
                             reason: 'admin-banned'
                         });
+                        // Make the socket leave the room so it won't receive room-specific broadcasts
                         s.leave(String(room._id));
-                        s.disconnect(true);
+                        // Previously we disconnected sockets which caused clients to lose realtime updates until reload.
+                        // We intentionally NO LONGER call s.disconnect(true) here.
                     } catch (e) { }
                 });
             } catch (e) {
