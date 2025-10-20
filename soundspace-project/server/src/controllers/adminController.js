@@ -92,7 +92,7 @@ exports.warnOwner = async (req, res) => {
         // Tăng số lần bị báo cáo và gắn trạng thái
         const updatedUser = await User.findByIdAndUpdate(
             ownerId,
-            { $inc: { reportCount: 1 }, $set: { status: 'reported' } },
+            { $inc: { reportCount: 1 } },
             { new: true }
         );
 

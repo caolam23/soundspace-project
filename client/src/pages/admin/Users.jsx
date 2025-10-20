@@ -143,7 +143,6 @@ const Users = () => {
 
   const getStatusDisplay = (status, isBlocked, reportCount) => {
     if (isBlocked) return 'locked';
-    if (reportCount > 0) return 'reported';
     if (status === 'online') return 'active';
     if (status === 'offline') return 'offline';
     return 'active';
@@ -218,7 +217,6 @@ const Users = () => {
               <option value="active">Hoạt động</option>
               <option value="offline">Đã offline</option>
               <option value="locked">Bị khóa</option>
-              <option value="reported">Bị báo cáo</option>
             </select>
           </div>
         </div>
@@ -270,7 +268,7 @@ const Users = () => {
                         {displayStatus === "active" ? "Hoạt động" :
                          displayStatus === "offline" ? "Đã offline" :
                          displayStatus === "locked" ? "Bị khóa" :
-                         displayStatus === "reported" ? "Bị báo cáo" : "Không xác định"}
+                         "Không xác định"}
                       </span>
                     </td>
                     <td>{formatDate(user.createdAt)}</td>

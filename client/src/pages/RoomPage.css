@@ -52,6 +52,7 @@
     display: flex;
     flex-grow: 1;
     overflow: hidden;
+    width: 100%; /* ✅ Thêm dòng này */
 }
 
 /* ================================== */
@@ -249,10 +250,30 @@
 .roompage-right {
     width: 25%;
     min-width: 300px;
+    max-width: 400px; /* ✅ Thêm max-width để không bị quá rộng */
     background-color: var(--bg-secondary);
     border-left: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
+}
+
+/* Layout 3 cột: left (player) + right (chat) */
+.roompage-main.new-layout {
+    display: flex;
+    gap: 0; /* Không có khoảng cách thừa */
+    width: 100%; /* ✅ Chiếm full width */
+}
+
+.roompage-left-column {
+    flex: 1; /* Chiếm phần còn lại */
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* ✅ Quan trọng: tránh overflow */
+}
+
+/* ✅ Đảm bảo Ghost Mode không làm lệch layout */
+.roompage-container.ghost-mode .roompage-main {
+    width: 100%;
 }
 
 .roompage-tabs {
@@ -757,17 +778,18 @@
     color: #F44336; 
 }
 .roompage-ghost-badge {
-  display: inline-flex;
+  display: inline-flex; /* ✅ Đổi từ inline-flex sang inline-flex */
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 6px 12px; /* ✅ Giảm padding cho gọn hơn */
   background: rgba(138, 43, 226, 0.12);
   border: 1px solid rgba(138, 43, 226, 0.3);
   border-radius: 8px;
   color: #c084fc;
   font-size: 13px;
   font-weight: 600;
-  margin-top: 8px;
+  margin-top: 0; /* ✅ Bỏ margin-top */
+  flex-shrink: 0; /* ✅ Không cho badge bị co lại */
 }
 
 .roompage-ghost-badge svg {

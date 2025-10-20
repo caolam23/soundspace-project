@@ -36,6 +36,15 @@ function UserHomePage() {
     // HANDLE INPUT
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+        
+        // Giới hạn ký tự
+        if (name === 'name' && value.length > 50) {
+            return; // Không cho phép nhập thêm nếu vượt quá 50 ký tự
+        }
+        if (name === 'description' && value.length > 130) {
+            return; // Không cho phép nhập thêm nếu vượt quá 130 ký tự
+        }
+        
         setRoomData({ ...roomData, [name]: value });
     };
 
@@ -298,8 +307,10 @@ function UserHomePage() {
                                     placeholder="Ví dụ: Đêm nhạc Lofi & Chill"
                                     value={roomData.name}
                                     onChange={handleInputChange}
+                                    maxLength={50}
                                     required
                                 />
+                                <small className="char-counter">{roomData.name.length}/50 ký tự</small>
                             </div>
 
                             <div className="form-group">
@@ -311,7 +322,9 @@ function UserHomePage() {
                                     placeholder="Giới thiệu về phòng của bạn..."
                                     value={roomData.description}
                                     onChange={handleInputChange}
+                                    maxLength={130}
                                 />
+                                <small className="char-counter">{roomData.description.length}/130 ký tự</small>
                             </div>
 
                             <div className="form-group">

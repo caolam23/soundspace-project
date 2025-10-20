@@ -692,7 +692,7 @@ function RoomPage() {
     )}
 
     <header className="roompage-header">
-      <div className="roompage-header-info">
+       <div className="roompage-header-info">
         {/* Bọc tên phòng và mã phòng vào một div chung */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <h1 style={{ margin: 0 }}>{room.name}</h1>
@@ -705,14 +705,17 @@ function RoomPage() {
           )}
         </div>
 
-        {room.description && <p>{room.description}</p>}
-        
-        {isGhostMode && (
-          <div className="roompage-ghost-badge">
-            <Ghost size={16} />
-            <span>Chế độ Ghost</span>
-          </div>
-        )}
+        {/* ✅ BỌC DESCRIPTION VÀ GHOST BADGE TRONG 1 DIV */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+          {room.description && <p style={{ margin: 0 }}>{room.description}</p>}
+          
+          {isGhostMode && (
+            <div className="roompage-ghost-badge">
+              <Ghost size={16} />
+              <span>Chế độ Ghost</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="roompage-header-actions">
