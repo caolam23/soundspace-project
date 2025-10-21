@@ -226,23 +226,16 @@
     gap: 40px; /* Tăng khoảng cách giữa các nút */
 }
 
-.roompage-btn-icon {
-    background: none;
-    border: none;
-    color: #b3b3b3; /* Giảm độ chói của icon */
-    cursor: pointer;
-    padding: 10px;
-    transition: all 0.2s ease;
-    outline: none;
-}
-
-.roompage-btn-icon:hover {
-    color: #ffffff; /* Sáng lên khi hover */
-}
-
-.roompage-btn-icon:disabled {
-    color: #535353;
-    cursor: default;
+.MusicPlayer-NextMusic{
+    background-color: #ffffff;
+    width: 50px; /* Tăng kích thước nút Next/Previous */
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: transform 0.2s ease;
 }
 
 .roompage-btn-play-main {
