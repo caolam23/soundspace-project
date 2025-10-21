@@ -407,7 +407,7 @@ function RoomPage() {
       if (user && user.username === username) return;
       
       setJoinNotification({ username, avatar: avatar || "/default-avatar.png", id: Date.now() });
-      setTimeout(() => setJoinNotification(null), 4000);
+  setTimeout(() => setJoinNotification(null), 15000);
     };
 
     socket.on("update-members", handleUpdateMembers);
@@ -453,7 +453,7 @@ function RoomPage() {
       if (user && user._id === userId) return;
 
       setLeaveNotification({ username, avatar: avatar || "/default-avatar.png", id: Date.now() });
-      setTimeout(() => setLeaveNotification(null), 4000);
+  setTimeout(() => setLeaveNotification(null), 15000);
     };
 
     const handleRoomBanned = (data) => {

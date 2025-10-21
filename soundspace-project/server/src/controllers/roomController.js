@@ -3,6 +3,7 @@ const RoomReport = require('../models/RoomReport'); // ✅ THÊM DÒNG NÀY
 const { customAlphabet } = require('nanoid');
 const cleanupPlayerScripts = require('../utils/cleanupPlayerScripts'); 
 const { scheduleRoomCleanup } = require('../services/cleanupService');
+const User = require('../models/User');
 // Helper: Populate owner + members
 const populateRoom = async (roomId) => {
   return Room.findById(roomId)
@@ -57,6 +58,16 @@ exports.createRoom = async (req, res) => {
     const { name, description, privacy } = req.body;
     const ownerId = req.user.id;
 
+    // Defensive: ensure owner exists and is not blocked
+    try {
+      const owner = await User.findById(ownerId).select('isBlocked username');
+      if (!owner) return res.status(404).json({ msg: 'Không tìm thấy chủ phòng.' });
+      if (owner.isBlocked) return res.status(403).json({ msg: 'Tài khoản bị chặn, không thể tạo phòng.' });
+    } catch (e) {
+      console.error('[createRoom] Could not verify owner status', e);
+      // continue — we'll let the save attempt and capture real error below
+    }
+
     // Validate input
     if (!name || !name.trim()) {
       return res.status(400).json({ msg: 'Tên phòng không được để trống.' });
@@ -93,9 +104,14 @@ exports.createRoom = async (req, res) => {
     console.log('💾 Creating room with details:', roomDetails);
 
     let newRoom = new Room(roomDetails);
-    await newRoom.save();
-
-    console.log('✅ Room saved to DB:', newRoom._id);
+    try {
+      console.log('[createRoom] About to save new room for owner', ownerId);
+      await newRoom.save();
+      console.log('✅ Room saved to DB:', newRoom._id);
+    } catch (saveErr) {
+      console.error('[createRoom] Error saving new room:', saveErr);
+      throw saveErr; // rethrow to be handled by outer catch
+    }
 
     // Populate owner và members
     newRoom = await Room.findById(newRoom._id)
@@ -223,12 +239,13 @@ exports.endSession = async (req, res) => {
         if (socketUserId !== req.user.id) {
           socket.emit("room-ended", {
             message: "Chủ phòng đã kết thúc phiên. Bạn sẽ được đưa về trang chủ.",
+            reason: 'host-ended'
           });
           console.log(`📤 [END-SESSION] Sent room-ended to socket ${socket.id}`);
         }
       });
 
-  io.emit("room-ended-homepage", { roomId, endedBy: req.user.id });
+      io.emit("room-ended-homepage", { roomId, reason: 'host-ended' });
       
       try {
         io.emit("room-members-changed", {
@@ -236,7 +253,6 @@ exports.endSession = async (req, res) => {
           membersCount: 0,
           totalJoins: room.statistics?.totalJoins || 0,
           peakMembers: room.statistics?.peakMembers || 0,
-          endedBy: req.user.id,
         });
         console.log("[END-SESSION] Emitted room-members-changed with membersCount=0");
       } catch (e) {

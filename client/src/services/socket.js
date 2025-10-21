@@ -8,9 +8,12 @@ const socket = io(SOCKET_URL, {
   transports: ["websocket", "polling"],
 });
 
-// Debug tất cả event để kiểm tra realtime (có thể tắt nếu không cần)
-socket.onAny((event, ...args) => {
-  console.log(`[Socket Event] -> ${event}`, args);
-});
+// Debug tất cả event để kiểm tra realtime (có thể bật bằng VITE_SOCKET_DEBUG=true)
+const SOCKET_DEBUG = import.meta.env.VITE_SOCKET_DEBUG === 'true';
+if (SOCKET_DEBUG) {
+  socket.onAny((event, ...args) => {
+    console.log(`[Socket Event] -> ${event}`, args);
+  });
+}
 
 export default socket;
