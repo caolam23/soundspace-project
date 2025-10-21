@@ -595,24 +595,24 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
           {isHost ? (
             <>
               {/* ICON ĐÃ THAY THẾ */}
-              <button className="roompage-btn-icon" onClick={() => sendControlAction('SKIP_PREVIOUS')}><BackwardIcon className="h-7 w-7" /></button>
+              <button className="MusicPlayer-NextMusic" onClick={() => sendControlAction('SKIP_PREVIOUS')}><BackwardIcon className="h-7 w-7" /></button>
               <button className="roompage-btn-icon roompage-btn-play-main" onClick={() => sendControlAction(isPlaying ? 'PAUSE' : 'PLAY')}>
                 {/* ICON ĐÃ THAY THẾ */}
                 {isPlaying ? <PauseIcon className="h-8 w-8" /> : <PlayIcon className="h-8 w-8" />}
               </button>
               {/* ICON ĐÃ THAY THẾ */}
-              <button className="roompage-btn-icon" onClick={() => sendControlAction('SKIP_NEXT')}><ForwardIcon className="h-7 w-7" /></button>
+              <button className="MusicPlayer-NextMusic" onClick={() => sendControlAction('SKIP_NEXT')}><ForwardIcon className="h-7 w-7" /></button>
             </>
           ) : (
             <>
               {/* ICON ĐÃ THAY THẾ */}
-              <button className="roompage-btn-icon" disabled><BackwardIcon className="h-7 w-7" /></button>
+              <button className="MusicPlayer-NextMusic" disabled><BackwardIcon className="h-7 w-7" /></button>
               <button className="roompage-btn-icon roompage-btn-play-main" disabled>
                 {/* ICON ĐÃ THAY THẾ */}
                 {isPlaying ? <PauseIcon className="h-8 w-8" /> : <PlayIcon className="h-8 w-8" />}
               </button>
               {/* ICON ĐÃ THAY THẾ */}
-              <button className="roompage-btn-icon" disabled><ForwardIcon className="h-7 w-7" /></button>
+              <button className="MusicPlayer-NextMusic" disabled><ForwardIcon className="h-7 w-7" /></button>
             </>
           )}
         </div>
