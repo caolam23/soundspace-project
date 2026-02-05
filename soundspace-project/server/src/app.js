@@ -17,167 +17,172 @@ const playlistRoutes = require('./routes/playlist.routes');
 const streamRoutes = require('./routes/stream.routes');
 const quanLyPhongRoutes = require('./routes/quanLyPhong.routes')
 const statsRoutes = require('./routes/stats');
+const requestRoutes = require('./routes/requestRoutes'); // NEW: Song Request System
 const session = require('express-session');
 const trackVisit = require('./middleware/trackVisit');
 console.log('✅ Loaded quanLyPhongRoutes:', typeof quanLyPhongRoutes);
 
 function createApp() {
-  const app = express();
+  const app = express();
 
-  // ======================================================
-  // 🔧 MIDDLEWARE CƠ BẢN
-  // ======================================================
-  app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true,
-  }));
-  app.use(express.json());
-  app.use(cookieParser());
-  app.use(express.static('public'));
+  // ======================================================
+  // 🔧 MIDDLEWARE CƠ BẢN
+  // ======================================================
+  app.use(cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+  }));
+  app.use(express.json());
+  app.use(cookieParser());
+  app.use(express.static('public'));
 
-  // ======================================================
-  // ✨✨ THÊM SESSION VÀ TRACKVISIT VÀO ĐÂY ✨✨
-  // ======================================================
-    const thirtyMinutes = 30 * 60 * 1000;
-    app.use(session({
-        secret: process.env.SESSION_SECRET || 'soundspace-secret-key-for-session',
-        resave: false,
-        saveUninitialized: true,
-        cookie: {
-            secure: process.env.NODE_ENV === 'production',
-            maxAge: thirtyMinutes,
-            httpOnly: true
-        },
-        rolling: true
-    }));
-    
-    // Đặt trackVisit ngay sau session
-    app.use(trackVisit);
+  // ======================================================
+  // ✨✨ THÊM SESSION VÀ TRACKVISIT VÀO ĐÂY ✨✨
+  // ======================================================
+  const thirtyMinutes = 30 * 60 * 1000;
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'soundspace-secret-key-for-session',
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: thirtyMinutes,
+      httpOnly: true
+    },
+    rolling: true
+  }));
 
-  // ======================================================
-  // 🔐 PASSPORT CONFIG
-  // ======================================================
-  app.use(passport.initialize());
-  require('./config/passport');
+  // Đặt trackVisit ngay sau session
+  app.use(trackVisit);
 
-  // ======================================================
-  // 📡 ĐÍNH SOCKET.IO INSTANCE VÀO REQ
-  // ======================================================
-  app.use((req, res, next) => {
-    req.io = app.get('io');
-    req.userSockets = app.get('userSockets');
-    
-    // 🔍 Debug log (có thể xóa sau khi test)
-    if (req.path.includes('/toggle-lock')) {
-      console.log('🔍 [MIDDLEWARE] Attaching socket to req:');
-      console.log('   req.io exists:', !!req.io);
-      console.log('   req.userSockets exists:', !!req.userSockets);
-      console.log('   req.userSockets type:', req.userSockets?.constructor?.name);
-    }
-    next();
-  });
+  // ======================================================
+  // 🔐 PASSPORT CONFIG
+  // ======================================================
+  app.use(passport.initialize());
+  require('./config/passport');
 
-  // ======================================================
-  // 🚏 CÁC ROUTE CHÍNH
-  // ======================================================
-  console.log('\n🟡 ========== MOUNTING ROUTES ==========');
+  // ======================================================
+  // 📡 ĐÍNH SOCKET.IO INSTANCE VÀO REQ
+  // ======================================================
+  app.use((req, res, next) => {
+    req.io = app.get('io');
+    req.userSockets = app.get('userSockets');
 
-  // Admin (dashboard + reports)
-  console.log('🟡 Mounting: /api/admin -> adminRoutes');
-  app.use('/api/admin', adminRoutes);
+    // 🔍 Debug log (có thể xóa sau khi test)
+    if (req.path.includes('/toggle-lock')) {
+      console.log('🔍 [MIDDLEWARE] Attaching socket to req:');
+      console.log('   req.io exists:', !!req.io);
+      console.log('   req.userSockets exists:', !!req.userSockets);
+      console.log('   req.userSockets type:', req.userSockets?.constructor?.name);
+    }
+    next();
+  });
 
-  // Quản lý phòng
-  console.log('🟡 Mounting: /api/admin -> quanLyPhongRoutes');
-  app.use('/api/admin', quanLyPhongRoutes);
+  // ======================================================
+  // 🚏 CÁC ROUTE CHÍNH
+  // ======================================================
+  console.log('\n🟡 ========== MOUNTING ROUTES ==========');
 
-  console.log('🟡 Mounting: /api/admin/stats -> statsRoutes');
-  app.use('/api/admin/stats', statsRoutes);
+  // Admin (dashboard + reports)
+  console.log('🟡 Mounting: /api/admin -> adminRoutes');
+  app.use('/api/admin', adminRoutes);
 
-  // Auth
-  console.log('🟡 Mounting: /api/auth -> authRoutes');
-  app.use('/api/auth', authRoutes);
+  // Quản lý phòng
+  console.log('🟡 Mounting: /api/admin -> quanLyPhongRoutes');
+  app.use('/api/admin', quanLyPhongRoutes);
 
-  // Room
-  console.log('🟡 Mounting: /api/rooms -> roomRoutes');
-  app.use('/api/rooms', roomRoutes);
+  console.log('🟡 Mounting: /api/admin/stats -> statsRoutes');
+  app.use('/api/admin/stats', statsRoutes);
 
-  // Playlist
-  console.log('🟡 Mounting: /api/rooms -> playlistRoutes');
-  app.use('/api/rooms', playlistRoutes);
+  // Auth
+  console.log('🟡 Mounting: /api/auth -> authRoutes');
+  app.use('/api/auth', authRoutes);
 
-  // Stream
-  console.log('🟡 Mounting: /api/stream -> streamRoutes');
-  app.use('/api/stream', streamRoutes);
+  // Room
+  console.log('🟡 Mounting: /api/rooms -> roomRoutes');
+  app.use('/api/rooms', roomRoutes);
 
-  // Users
-  console.log('🟡 Mounting: /api/users -> userRoutes');
-  app.use('/api/users', userRoutes);
+  // Playlist
+  console.log('🟡 Mounting: /api/rooms -> playlistRoutes');
+  app.use('/api/rooms', playlistRoutes);
 
-  console.log('🟡 ========== ROUTES MOUNTED ==========\n');
+  // NEW: Song Requests
+  console.log('🟡 Mounting: /api/rooms -> requestRoutes (Song Request System)');
+  app.use('/api/rooms', requestRoutes);
 
-  // ======================================================
-  // 🧪 TEST ROUTE
-  // ======================================================
-  app.get('/', (req, res) => {
-    res.send('🎵 SoundSpace Server is running!');
-  });
+  // Stream
+  console.log('🟡 Mounting: /api/stream -> streamRoutes');
+  app.use('/api/stream', streamRoutes);
 
-  // ======================================================
-  // 🔍 DEBUG: LIST ALL REGISTERED ROUTES
-  // ======================================================
-  app.set('listRoutes', () => {
-    console.log('\n🔍 ========== ALL REGISTERED ROUTES ==========');
-    if (!app._router || !app._router.stack) {
-      console.log('   ⚠️ Router not initialized yet');
-      return;
-    }
-    
-    app._router.stack.forEach((middleware) => {
-      if (middleware.route) {
-        const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
-        const path = middleware.route.path;
-        console.log(`   ${methods.padEnd(10)} ${path}`);
-      } else if (middleware.name === 'router' && middleware.handle.stack) {
-        const basePath = middleware.regexp
-          .toString()
-          .replace(/\\/g, '')
-          .replace(/\/\^/g, '')
-          .replace(/\?(?=\/|$)/gi, '')
-          .replace(/\$\//g, '')
-          .split('?')[0] || '';
-        
-        middleware.handle.stack.forEach((handler) => {
-          if (handler.route) {
-            const methods = Object.keys(handler.route.methods).join(', ').toUpperCase();
-            const fullPath = basePath + handler.route.path;
-            console.log(`   ${methods.padEnd(10)} ${fullPath}`);
-          }
-        });
-      }
-    });
-    console.log('🔍 ==========================================\n');
-  });
+  // Users
+  console.log('🟡 Mounting: /api/users -> userRoutes');
+  app.use('/api/users', userRoutes);
 
-  // ======================================================
-  // 🚒 GLOBAL ERROR HANDLING (ĐÃ NÂNG CẤP)
-  // ======================================================
+  console.log('🟡 ========== ROUTES MOUNTED ==========\n');
 
-  // 🧭 404 Handler (Phải nằm trước Global Error Handler)
-  app.use((req, res, next) => {
-    res.status(404).json({ msg: 'Không tìm thấy API endpoint.' });
-  });
+  // ======================================================
+  // 🧪 TEST ROUTE
+  // ======================================================
+  app.get('/', (req, res) => {
+    res.send('🎵 SoundSpace Server is running!');
+  });
 
-  // 🔥 Global Error Handler (Đã nâng cấp)
+  // ======================================================
+  // 🔍 DEBUG: LIST ALL REGISTERED ROUTES
+  // ======================================================
+  app.set('listRoutes', () => {
+    console.log('\n🔍 ========== ALL REGISTERED ROUTES ==========');
+    if (!app._router || !app._router.stack) {
+      console.log('   ⚠️ Router not initialized yet');
+      return;
+    }
+
+    app._router.stack.forEach((middleware) => {
+      if (middleware.route) {
+        const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
+        const path = middleware.route.path;
+        console.log(`   ${methods.padEnd(10)} ${path}`);
+      } else if (middleware.name === 'router' && middleware.handle.stack) {
+        const basePath = middleware.regexp
+          .toString()
+          .replace(/\\/g, '')
+          .replace(/\/\^/g, '')
+          .replace(/\?(?=\/|$)/gi, '')
+          .replace(/\$\//g, '')
+          .split('?')[0] || '';
+
+        middleware.handle.stack.forEach((handler) => {
+          if (handler.route) {
+            const methods = Object.keys(handler.route.methods).join(', ').toUpperCase();
+            const fullPath = basePath + handler.route.path;
+            console.log(`   ${methods.padEnd(10)} ${fullPath}`);
+          }
+        });
+      }
+    });
+    console.log('🔍 ==========================================\n');
+  });
+
+  // ======================================================
+  // 🚒 GLOBAL ERROR HANDLING (ĐÃ NÂNG CẤP)
+  // ======================================================
+
+  // 🧭 404 Handler (Phải nằm trước Global Error Handler)
+  app.use((req, res, next) => {
+    res.status(404).json({ msg: 'Không tìm thấy API endpoint.' });
+  });
+
+  // 🔥 Global Error Handler (Đã nâng cấp)
   // <--- 2. THAY THẾ TOÀN BỘ app.use CŨ BẰNG ĐOẠN NÀY
-  app.use((err, req, res, next) => {
-    
+  app.use((err, req, res, next) => {
+
     // Xử lý lỗi từ Multer trước
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         console.warn(`[MULTER WARN] File quá lớn: ${err.message}`);
-        return res.status(400).json({ 
+        return res.status(400).json({
           // Bạn có thể đổi '100MB' này nếu bạn đặt giới hạn khác
-          message: 'File quá lớn. Kích thước tối đa cho phép là 100MB.' 
+          message: 'File quá lớn. Kích thước tối đa cho phép là 100MB.'
         });
       }
       // Các lỗi multer khác (sai field, v.v.)
@@ -185,17 +190,17 @@ function createApp() {
       return res.status(400).json({ message: `Lỗi upload: ${err.message}` });
     }
 
-    // Nếu không phải lỗi multer, xử lý lỗi 500 như cũ
+    // Nếu không phải lỗi multer, xử lý lỗi 500 như cũ
     console.error('============== LỖI TOÀN CỤC (500) ==============');
-    console.error(err.stack);
-    console.error('================================================');
+    console.error(err.stack);
+    console.error('================================================');
 
-    res.status(500).json({
-      msg: 'Đã có lỗi nghiêm trọng xảy ra ở phía server.',
-    });
-  });
+    res.status(500).json({
+      msg: 'Đã có lỗi nghiêm trọng xảy ra ở phía server.',
+    });
+  });
 
-  return app;
+  return app;
 }
 
 module.exports = createApp;
