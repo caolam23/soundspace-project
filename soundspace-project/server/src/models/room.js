@@ -115,6 +115,42 @@ const roomSchema = new mongoose.Schema(
     },
 
     // =============================================
+    // 🎤 LIVE CO-HOST & STAGE MANAGEMENT
+    // =============================================
+    isLive: {
+      type: Boolean,
+      default: false,
+      description: "Là phòng đang phát sóng trực tiếp",
+    },
+    coHosts: {
+      type: [
+        new mongoose.Schema(
+          {
+            userId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+              required: true,
+            },
+            username: { type: String, required: true },
+            avatar: { type: String, trim: true },
+            micEnabled: { type: Boolean, default: true },
+            cameraEnabled: { type: Boolean, default: true },
+            status: {
+              type: String,
+              enum: ["pending", "active", "inactive"],
+              default: "pending",
+            },
+            joinedAt: { type: Date, default: Date.now },
+            leftAt: { type: Date, default: null },
+          },
+          { timestamps: true, _id: true }
+        ),
+      ],
+      default: [],
+      description: "Danh sách Co-host (người được mời lên sân khấu)",
+    },
+
+    // =============================================
     // Thống kê
     // =============================================
     statistics: {

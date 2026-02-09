@@ -12,6 +12,7 @@ const userRoutes = require('./routes/userRoutes');
 const playlistRoutes = require('./routes/playlist.routes');
 const streamRoutes = require('./routes/stream.routes');
 const quanLyPhongRoutes = require('./routes/quanLyPhong.routes');
+const stageRoutes = require('./routes/stage.routes');
 
 console.log('✅ Loaded quanLyPhongRoutes:', typeof quanLyPhongRoutes);
 
@@ -82,6 +83,9 @@ function createApp() {
   
   console.log('🟡 Mounting: /api/stream -> streamRoutes');
   app.use('/api/stream', streamRoutes);
+  
+  console.log('🟡 Mounting: /api/stage -> stageRoutes');
+  app.use('/api/stage', stageRoutes);
   
   console.log('🟡 Mounting: /api/users -> userRoutes');
   app.use('/api/users', userRoutes);
