@@ -10,6 +10,7 @@ const createApp = require('./app');
 const Room = require('./models/room');
 const User = require('./models/User');
 const registerChatHandlers = require('./controllers/chatHandler');
+const registerStageHandlers = require('./controllers/stageHandler');
 
 // 1. Connect to Database
 connectDB();
@@ -254,6 +255,9 @@ io.on('connection', (socket) => {
 
   // --- Chat: receive message from client, persist, and broadcast ---
   registerChatHandlers(io, socket);
+
+  // --- Stage: handle co-host invites, accepts, leaves via real-time socket ---
+  registerStageHandlers(io, socket);
 
   // --- Request to join ---
   socket.on('request-to-join', async ({ roomId, requester }) => {
