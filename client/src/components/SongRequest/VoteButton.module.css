@@ -1,0 +1,51 @@
+.button {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    color: #555;
+    outline: none;
+}
+
+.button:hover {
+    border-color: #1976d2;
+    color: #1976d2;
+    background: #f5faff;
+}
+
+.button:active {
+    transform: scale(0.98);
+}
+
+.voted {
+    background: #1976d2;
+    color: white;
+    border-color: #1976d2;
+}
+
+.voted:hover {
+    background: #1565c0;
+    border-color: #1565c0;
+    color: white;
+}
+
+.button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.icon {
+    font-size: 1rem;
+}
+
+.count {
+    font-weight: 600;
+}

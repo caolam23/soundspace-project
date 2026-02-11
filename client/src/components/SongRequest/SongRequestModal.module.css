@@ -1,0 +1,272 @@
+/* --- Variables & Reset --- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  /* Hiệu ứng kính mờ hiện đại */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* --- Main Container --- */
+.container {
+  background-color: #1a1a1a;
+  /* 60% - Nền chính */
+  color: #ffffff;
+  /* 30% - Text */
+  width: 90%;
+  max-width: 550px;
+  max-height: 85vh;
+  border-radius: 16px;
+  /* Bo góc lớn hiện đại */
+  border: 1px solid #333;
+  /* Viền nhẹ để tách nền */
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* --- Header --- */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #333;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.closeBtn:hover {
+  background-color: #333;
+  color: #fff;
+}
+
+/* --- Segmented Tabs (UX mới) --- */
+.tabsContainer {
+  padding: 20px 24px 0;
+}
+
+.tabs {
+  display: flex;
+  background-color: #2a2a2a;
+  /* Nền thanh tab */
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: #888;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tab:hover {
+  color: #ccc;
+}
+
+.tab.active {
+  background-color: #333;
+  /* Tab được chọn sáng hơn chút */
+  color: #8638e9;
+  /* 10% - Màu Brand Accent */
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Body & Form --- */
+.body {
+  padding: 24px;
+  overflow-y: auto;
+
+  /* Custom Scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #444 #1a1a1a;
+}
+
+.body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.body::-webkit-scrollbar-thumb {
+  background-color: #444;
+  border-radius: 4px;
+}
+
+.formGroup {
+  margin-bottom: 24px;
+}
+
+.formGroup label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ccc;
+  letter-spacing: 0.02em;
+}
+
+/* --- Inputs --- */
+.input {
+  width: 100%;
+  padding: 14px 16px;
+  background-color: #2a2a2a;
+  /* Input nền tối */
+  border: 1px solid #444;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.input::placeholder {
+  color: #666;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #8638e9;
+  /* Focus màu Brand */
+  background-color: #2f2f2f;
+  box-shadow: 0 0 0 4px rgba(134, 56, 233, 0.15);
+}
+
+/* --- Chips / Tags (UX: Dễ bấm) --- */
+.tagButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tagBtn {
+  padding: 8px 16px;
+  background-color: transparent;
+  border: 1px solid #444;
+  border-radius: 100px;
+  /* Hình viên thuốc */
+  color: #aaa;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tagBtn:hover {
+  border-color: #666;
+  color: #fff;
+}
+
+/* Active State cho Tag */
+.tagBtn.tagActive {
+  background-color: rgba(134, 56, 233, 0.15);
+  /* Nền tím nhạt */
+  border-color: #8638e9;
+  color: #8638e9;
+  font-weight: 600;
+}
+
+/* --- Footer & Actions --- */
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #333;
+}
+
+/* Nút Hủy (Ghost Button) */
+.footer button[type="button"] {
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  color: #888;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 0.2s;
+}
+
+.footer button[type="button"]:hover {
+  color: #fff;
+  background-color: #2a2a2a;
+}
+
+/* Nút Submit (Primary CTA) - 10% Accent */
+.primary {
+  padding: 12px 32px;
+  background-color: #8638e9 !important;
+  color: #fff !important;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(134, 56, 233, 0.4);
+  /* Glow effect */
+}
+
+.primary:hover {
+  background-color: #9d5bf5 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(134, 56, 233, 0.5);
+}
+
+.primary:disabled {
+  background-color: #444 !important;
+  color: #888 !important;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}

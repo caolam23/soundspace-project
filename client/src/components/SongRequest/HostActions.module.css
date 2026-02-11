@@ -1,0 +1,48 @@
+.container {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+    /* Push to right if in flex container */
+}
+
+.button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: white;
+}
+
+.button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.approve {
+    background: #4caf50;
+}
+
+.approve:hover {
+    background: #43a047;
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+}
+
+.reject {
+    background: #f44336;
+}
+
+.reject:hover {
+    background: #e53935;
+    box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+}
+
+.icon {
+    font-size: 1rem;
+    line-height: 1;
+}

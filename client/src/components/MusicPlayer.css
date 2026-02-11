@@ -1,48 +1,56 @@
 /* Container chính */
 .music-player-container {
-    display: flex;
-    height: 100vh; /* Chiếm toàn bộ chiều cao màn hình */
-    background-color: #121212; /* Nền tối hơn */
-    color: white;
+  display: flex;
+  height: 650px;
+  /* ✅ Gán cứng chiều cao để tránh scrollbar */
+  min-height: 650px;
+  background-color: #121212;
+  color: white;
+  overflow: hidden;
+  /* ✅ Ẩn mọi thanh cuộn của container */
+  box-sizing: border-box;
 }
 
 /* 1. Phần danh sách phát (Bên trái) */
-/* 1. Phần danh sách phát (Bên trái) - ĐÃ CẬP NHẬT */
 .roompage-left {
-    width: 350px;
-    padding: 20px;
-    background-color: #1a1a1a;
-    border-right: 1px solid #333;
+  /* Giữ nguyên style cơ bản cũ */
+  width: 350px;
+  padding: 20px;
+  background-color: #1a1a1a;
+  border-right: 1px solid #333;
+  box-sizing: border-box;
 
-    /* -- BẮT BUỘC -- */
-    height: 100vh; /* Chiếm đúng 100% chiều cao màn hình */
-    box-sizing: border-box; /* Đảm bảo padding không làm tăng chiều cao */
-    display: flex;
-    flex-direction: column; /* Sắp xếp các mục con theo chiều dọc */
-    overflow: hidden; /* Quan trọng: Ngăn chính nó tự cuộn */
+  /* --- SETUP FLEXBOX (QUAN TRỌNG) --- */
+  /* Gán cứng chiều cao để không bị vỡ layout tổng */
+  height: 650px;
+  display: flex;
+  flex-direction: column;
+  /* Xếp dọc các phần tử con */
+  overflow: hidden;
+  /* Cắt bỏ mọi thứ thừa thãi lòi ra ngoài */
 }
-/* Thêm class này để xử lý cuộn cho danh sách */
-/* Tìm đến class này */
+
+/* ✅ FIXED: Queue section takes 40% of sidebar height */
 .roompage-queue {
-    flex-grow: 1;
-    overflow-y: auto;
-    min-height: 0;
-
-    /* Giới hạn chiều cao để scrollbar ngắn hơn */
-    max-height: calc(100vh - 180px); /* 180px = tổng chiều cao header + nút upload + margin */
+  flex-shrink: 0;
+  max-height: 35%;
+  min-height: 120px;
+  overflow-y: auto;
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
 }
-
 
 .roompage-left h2 {
-    font-size: 18px;
-    margin-bottom: 20px;
-    color: #f0f0f0;
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #f0f0f0;
 }
 
 .roompage-queue-list {
-    list-style: none;
-    padding: 0;
-    padding-bottom: 100px;
+  list-style: none;
+  padding: 0;
+  padding-bottom: 100px;
 }
 
 /* Item trong danh sách phát */
@@ -56,7 +64,8 @@
   padding: 8px 10px;
   border-radius: 8px;
   transition: background-color 0.2s ease;
-  margin-bottom: 15px; /* ✅ tăng khoảng cách dọc giữa các item */
+  margin-bottom: 15px;
+  /* ✅ tăng khoảng cách dọc giữa các item */
 }
 
 
@@ -64,8 +73,10 @@
 .track-info-wrapper {
   display: flex;
   align-items: center;
-  flex-grow: 1; /* Cho phép nó giãn ra để chiếm không gian */
-  min-width: 0; /* Cần thiết để text-overflow hoạt động */
+  flex-grow: 1;
+  /* Cho phép nó giãn ra để chiếm không gian */
+  min-width: 0;
+  /* Cần thiết để text-overflow hoạt động */
   gap: 12px;
 }
 
@@ -89,171 +100,192 @@
 .roompage-queue-item:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
+
 .roompage-queue-item:hover {
-    background-color: #2a2a2a;
+  background-color: #2a2a2a;
 }
 
 /* Item đang phát */
 .roompage-now-playing {
-    background-color: #3b204d; /* Màu tím đậm hơn cho bài đang phát */
-    font-weight: bold;
+  background-color: #3b204d;
+  /* Màu tím đậm hơn cho bài đang phát */
+  font-weight: bold;
 }
 
 .roompage-album-thumb {
-    width: 40px;
-    height: 40px;
-    background-color: #4b4b4b; /* Mô phỏng thẻ 'art' */
-    border-radius: 4px;
-    margin-right: 10px;
-    display: flex;
-    align-items: center;
+  width: 40px;
+  height: 40px;
+  background-color: #4b4b4b;
+  /* Mô phỏng thẻ 'art' */
+  border-radius: 4px;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
 }
 
 .art-label {
-    color: #ccc;
-    font-size: 12px;
-    font-style: italic;
+  color: #ccc;
+  font-size: 12px;
+  font-style: italic;
 }
 
 .hidden-img {
-    display: none; /* Ẩn ảnh thực tế, chỉ dùng thẻ 'art' */
+  display: none;
+  /* Ẩn ảnh thực tế, chỉ dùng thẻ 'art' */
 }
 
 .roompage-queue-info h3 {
-    font-size: 14px;
-    margin: 0;
-    color: white;
-    /* Xử lý tràn */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  font-size: 14px;
+  margin: 0;
+  color: white;
+  /* Xử lý tràn */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .roompage-queue-info p {
-    font-size: 12px;
-    margin: 0;
-    color: #a9a9b3;
+  font-size: 12px;
+  margin: 0;
+  color: #a9a9b3;
 }
 
 .empty-queue {
-    text-align: center;
-    color: #7a7a8e;
-    padding: 20px;
+  text-align: center;
+  color: #7a7a8e;
+  padding: 20px;
 }
 
 
 /* 2. Phần trình phát nhạc chính (Bên phải) */
 .music-player-main-content {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-    position: relative;   /* Quan trọng để làm gốc cho ảnh nền */
-    overflow: hidden;     /* Quan trọng để cắt ảnh nền bị tràn */
-    width: 53vw; 
-    max-width: none;
+  flex-grow: 1;
+  /* Tự động chiếm hết khoảng trống còn lại bên phải sidebar */
+  width: auto;
+  height: 100%;
+  /* ✅ Chiếm hết chiều cao container */
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
+  /* ✅ Đảm bảo không có scrollbar */
 }
 
-.roompage-song-info-main {  
-    order: 2;
-    text-align: center;
-    width: 100%;
-    margin-bottom: 24px;
-    font-family: "Inter", "Poppins", "Roboto", sans-serif;
-    line-height: 1.4;
+.roompage-song-info-main {
+  order: 2;
+  text-align: center;
+  width: 100%;
+  margin-bottom: 24px;
+  font-family: "Inter", "Poppins", "Roboto", sans-serif;
+  line-height: 1.4;
 }
 
 /* Tên bài hát */
 .roompage-song-info-main h1 {
-    font-size: 19px;
-    font-weight: 700;
-    margin-bottom: 6px;
-    color: #ffffff;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-    background: linear-gradient(90deg, #fff, #d1d1d1);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+  font-size: 19px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(90deg, #fff, #d1d1d1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 
-    transition: color 0.3s ease, text-shadow 0.3s ease;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
 }
 
 /* Tên nghệ sĩ */
 .roompage-song-info-main p {
-    font-size: 15px;
-    font-weight: 400;
-    margin: 0;
-    color: #d1d1d1;
-    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+  font-size: 15px;
+  font-weight: 400;
+  margin: 0;
+  color: #d1d1d1;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
 }
 
 
 /* Thanh tiến trình */
 .roompage-progress-bar-container {
-    order: 3; /* Hiển thị dưới thông tin bài hát */
-    width: 100%;
-    height: 8px; /* Làm thanh tiến trình dày hơn một chút */
-    background-color: #3a3a3a;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    cursor: pointer; /* Thêm con trỏ để gợi ý có thể tương tác */
+  order: 3;
+  /* Hiển thị dưới thông tin bài hát */
+  width: 100%;
+  height: 8px;
+  /* Làm thanh tiến trình dày hơn một chút */
+  background-color: #3a3a3a;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  /* Thêm con trỏ để gợi ý có thể tương tác */
 }
 
 .roompage-progress-bar {
-    height: 100%;
-    background-color: #9b59b6; /* Đổi màu tím nhẹ nhàng hơn */
-    border-radius: 4px;
-    transition: width 0.1s linear;
+  height: 100%;
+  background-color: #9b59b6;
+  /* Đổi màu tím nhẹ nhàng hơn */
+  border-radius: 4px;
+  transition: width 0.1s linear;
 }
+
 /* Hiển thị thời gian */
 .roompage-time-info {
-    order: 4; /* Hiển thị ngay dưới thanh tiến trình */
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: #a9a9b3;
-    margin-bottom: 24px;
+  order: 4;
+  /* Hiển thị ngay dưới thanh tiến trình */
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #a9a9b3;
+  margin-bottom: 24px;
 }
 
 /* Nút điều khiển */
 /* NÚT ĐIỀU KHIỂN - LỚN VÀ RÕ RÀNG HƠN */
 .roompage-player-controls-main {
-    order: 5; /* Hiển thị cuối cùng */
-    display: flex;
-    align-items: center;
-    gap: 40px; /* Tăng khoảng cách giữa các nút */
+  order: 5;
+  /* Hiển thị cuối cùng */
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  /* Tăng khoảng cách giữa các nút */
 }
 
-.MusicPlayer-NextMusic{
-    background-color: #ffffff;
-    width: 50px; /* Tăng kích thước nút Next/Previous */
-    height: 50px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    transition: transform 0.2s ease;
+.MusicPlayer-NextMusic {
+  background-color: #ffffff;
+  width: 50px;
+  /* Tăng kích thước nút Next/Previous */
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.2s ease;
 }
 
 .roompage-btn-play-main {
-    background-color: #ffffff;
-    width: 70px; /* Tăng kích thước nút Play/Pause */
-    height: 70px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    transition: transform 0.2s ease;
+  background-color: #ffffff;
+  width: 70px;
+  /* Tăng kích thước nút Play/Pause */
+  height: 70px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.2s ease;
 }
 
 
 .roompage-btn-play-main:hover {
-    transform: scale(1.08); /* Hiệu ứng phóng to khi hover */
+  transform: scale(1.08);
+  /* Hiệu ứng phóng to khi hover */
 }
+
 /* Styles cho phần thêm nhạc (được giữ lại từ code gốc) */
 .add-music-section {
   padding: 8px 12px;
@@ -352,63 +384,63 @@
 }
 
 /* ẢNH thumbnail - ĐƯA LÊN LÀM TRUNG TÂM */
-.roompage-thumbnail-center { 
-    order: 1;
-    margin-bottom: 32px;
+.roompage-thumbnail-center {
+  order: 1;
+  margin-bottom: 32px;
 
-    display: flex;
-    justify-content: center;
+  display: flex;
+  justify-content: center;
 }
 
 /* Ảnh thumbnail & placeholder chung style */
 .roompage-thumbnail-img,
 .roompage-thumbnail-placeholder {
-    width: 300px;
-    height: 300px;
-    border-radius: 20px;
-    object-fit: cover;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-    transition: transform 0.2s ease-out, box-shadow 0.3s ease-out;
+  width: 300px;
+  height: 300px;
+  border-radius: 20px;
+  object-fit: cover;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  transition: transform 0.2s ease-out, box-shadow 0.3s ease-out;
 }
 
 /* Khi hover vào thì nổi bật hơn */
 .roompage-thumbnail-img:hover,
 .roompage-thumbnail-placeholder:hover {
-    transform: scale(1.05);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  transform: scale(1.05);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
 
 /* Placeholder khi chưa có ảnh */
 .roompage-thumbnail-placeholder {
-    background: linear-gradient(135deg, #3a3a3a, #1e1e1e);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 56px;
-    color: #fff;
-    font-weight: 600;
-    letter-spacing: 2px;
+  background: linear-gradient(135deg, #3a3a3a, #1e1e1e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56px;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 2px;
 }
 
-.roompage-blur-bg { 
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-size: cover;
-    background-position: center;
+.roompage-blur-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
 
-    /* Mờ rõ ràng hơn nhiều */
-    filter: blur(12px) brightness(0.9) contrast(1.1) saturate(1.1);
+  /* Mờ rõ ràng hơn nhiều */
+  filter: blur(12px) brightness(0.9) contrast(1.1) saturate(1.1);
 
-    /* Overlay dày hơn chút để tăng chiều sâu */
-    background-color: rgba(0, 0, 0, 0.25);
-    background-blend-mode: darken;
+  /* Overlay dày hơn chút để tăng chiều sâu */
+  background-color: rgba(0, 0, 0, 0.25);
+  background-blend-mode: darken;
 
-    transform: scale(1.02);
-    opacity: 0.96;
-    transition: background-image 0.5s ease-in-out, filter 0.3s ease-in-out;
+  transform: scale(1.02);
+  opacity: 0.96;
+  transition: background-image 0.5s ease-in-out, filter 0.3s ease-in-out;
 }
 
 /* Đảm bảo nội dung chính nằm trên lớp ảnh mờ */
@@ -417,9 +449,11 @@
 .roompage-time-info,
 .roompage-thumbnail-center,
 .roompage-player-controls-main {
-    position: relative;
-    z-index: 1; /* Đặt z-index > 0 để luôn nổi lên trên */
+  position: relative;
+  z-index: 1;
+  /* Đặt z-index > 0 để luôn nổi lên trên */
 }
+
 /* Thêm vào file MusicPlayer.css */
 /* =====================================================
    Nút upload chuyên nghiệp, nhỏ gọn, hiện đại
@@ -438,35 +472,40 @@
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .upload-trigger-button:hover {
   background: linear-gradient(135deg, #5a5ab0, #4a4a72);
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
 .upload-trigger-button:active {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .upload-trigger-button svg {
-  margin-right: 6px; /* Nếu dùng icon trong button */
+  margin-right: 6px;
+  /* Nếu dùng icon trong button */
   width: 16px;
   height: 16px;
   fill: #fff;
 }
+
 /* Thêm vào cuối file MusicPlayer.css của bạn */
 
 @keyframes beat-animation {
   0% {
-    transform: scale(1.05); /* Kích thước ban đầu khi có nhịp */
+    transform: scale(1.05);
+    /* Kích thước ban đầu khi có nhịp */
     filter: brightness(1.1);
   }
+
   100% {
-    transform: scale(1); /* Trở về kích thước bình thường */
+    transform: scale(1);
+    /* Trở về kích thước bình thường */
     filter: brightness(1);
   }
 }
@@ -481,6 +520,7 @@
    */
   animation: beat-animation 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
+
 .roompage-btn-icon svg {
   color: #121212;
   width: 35px;
@@ -490,4 +530,61 @@
 .roompage-btn-play-main svg {
   width: 28px;
   height: 28px;
+}
+
+/* --- BUTTON ĐỀ XUẤT (Phiên bản Tối giản - Flat) --- */
+.MusicPlayer-suggestBtn {
+  /* Layout & Kích thước chuẩn UX */
+  width: 100%;
+  min-height: 48px;
+  /* Đủ lớn để dễ bấm */
+  margin-bottom: 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  /* Màu sắc chủ đạo (Brand Color) */
+  background-color: #8638e9;
+  color: #ffffff;
+
+  /* Style cơ bản */
+  border: none;
+  border-radius: 6px;
+  /* Bo góc nhẹ, gọn gàng hơn */
+
+  /* Typography */
+  font-family: 'Inter', 'Roboto', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+
+  /* Chỉ transition màu nền (Bỏ hết hiệu ứng chuyển động) */
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* --- TƯƠNG TÁC (Chỉ đổi màu) --- */
+
+/* 1. Hover: Sáng hơn chút để biết là bấm được */
+.MusicPlayer-suggestBtn:hover {
+  background-color: #9d5bf5;
+}
+
+/* 2. Active: Tối lại chút để có cảm giác đã bấm */
+.MusicPlayer-suggestBtn:active {
+  background-color: #6e2ac2;
+}
+
+/* 3. Disabled: Xám đi khi không khả dụng */
+.MusicPlayer-suggestBtn:disabled {
+  background-color: #333333;
+  color: #888888;
+  cursor: not-allowed;
+}
+
+/* Icon chỉnh lại cho cân đối */
+.MusicPlayer-suggestBtn span {
+  font-size: 1.1rem;
+  line-height: 1;
 }

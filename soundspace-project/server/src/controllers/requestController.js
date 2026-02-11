@@ -110,18 +110,22 @@ const addRequestFromYouTube = async (req, res) => {
 
         console.log('[REQUEST_YT] ✅ Request created successfully');
 
-        // 10. Emit socket event
+        // 10. Populate user data for the new request
+        await room.populate('songRequests.requestedBy', 'username avatar');
+        const populatedRequest = room.songRequests[room.songRequests.length - 1];
+
+        // 11. Emit socket event with populated data
         const io = req.app.get('io');
         if (io) {
             io.to(roomId).emit('new-song-request', {
-                request: newRequest,
+                request: populatedRequest,
                 roomId: roomId
             });
         }
 
         return res.status(201).json({
             msg: 'Đã gửi đề xuất cho Host!',
-            request: newRequest,
+            request: populatedRequest,
             points: 5
         });
 
@@ -234,18 +238,22 @@ const addRequestFromUpload = async (req, res) => {
 
         console.log('[REQUEST_UPLOAD] ✅ Request created successfully');
 
-        // 10. Emit socket event
+        // 10. Populate user data for the new request
+        await room.populate('songRequests.requestedBy', 'username avatar');
+        const populatedRequest = room.songRequests[room.songRequests.length - 1];
+
+        // 11. Emit socket event with populated data
         const io = req.app.get('io');
         if (io) {
             io.to(roomId).emit('new-song-request', {
-                request: newRequest,
+                request: populatedRequest,
                 roomId: roomId
             });
         }
 
         return res.status(201).json({
             msg: 'Đã gửi đề xuất cho Host!',
-            request: newRequest,
+            request: populatedRequest,
             points: 7
         });
 
@@ -298,7 +306,8 @@ const voteRequest = async (req, res) => {
         if (io) {
             io.to(roomId).emit('request-vote-updated', {
                 requestId: requestId,
-                votes: request.votes.length
+                votes: request.votes.length,
+                votesList: request.votes // ✅ Send full votes array for instant UI update
             });
         }
 

@@ -10,12 +10,14 @@ import {
   BackwardIcon,
   ForwardIcon,
   MusicalNoteIcon,
+  PlusCircleIcon,
 } from '@heroicons/react/24/solid';
 import 'react-toastify/dist/ReactToastify.css';
 import './MusicPlayer.css';
 import { toastConfig } from '../services/toastConfig';
 import UploadModal from './UploadModal';
 import TrackOptions from './TrackOptions';
+import RequestsList from './SongRequest/RequestsList';
 
 // ====================================================================
 // ⚙️ CÁC HẰNG SỐ ĐỒNG BỘ
@@ -46,7 +48,7 @@ const parseJwt = (token) => {
 // ====================================================================
 // 🎵 COMPONENT CHÍNH
 // ====================================================================
-const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
+const MusicPlayer = ({ roomData, isHost, roomId, socket, currentUserId, onRequestOpen }) => {
   // --- STATE CHÍNH ---
   const [playlist, setPlaylist] = useState([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
@@ -81,7 +83,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
     const analyser = analyserRef.current;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
-    
+
     // Constants for the algorithm
     const BEAT_MIN_THRESHOLD = 0.15; // Minimum energy to be considered a beat
     const BEAT_DECAY_RATE = 0.97; // Decay rate for the smooth pulse effect
@@ -89,54 +91,54 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
 
     // Initialize/Reset energy history
     energyHistoryRef.current = new Array(ENERGY_HISTORY_LENGTH).fill(0);
-    
+
     let lastPulse = 0; // Temporary variable for smooth pulsing
 
     const animate = () => {
-        animationFrameIdRef.current = requestAnimationFrame(animate);
-        analyser.getByteFrequencyData(dataArray);
+      animationFrameIdRef.current = requestAnimationFrame(animate);
+      analyser.getByteFrequencyData(dataArray);
 
-        // --- CALCULATE CURRENT ENERGY ---
-        // Focus on bass and mid-bass frequencies (where beats usually are)
-        let currentEnergy = 0;
-        for (let i = 0; i < bufferLength / 2; i++) {
-            currentEnergy += dataArray[i];
-        }
-        currentEnergy /= (bufferLength / 2) * 255; // Normalize to a range of [0, 1]
+      // --- CALCULATE CURRENT ENERGY ---
+      // Focus on bass and mid-bass frequencies (where beats usually are)
+      let currentEnergy = 0;
+      for (let i = 0; i < bufferLength / 2; i++) {
+        currentEnergy += dataArray[i];
+      }
+      currentEnergy /= (bufferLength / 2) * 255; // Normalize to a range of [0, 1]
 
-        // --- CALCULATE AVERAGE HISTORICAL ENERGY ---
-        let averageEnergy = 0;
-        for (const energy of energyHistoryRef.current) {
-            averageEnergy += energy;
-        }
-        averageEnergy /= ENERGY_HISTORY_LENGTH;
+      // --- CALCULATE AVERAGE HISTORICAL ENERGY ---
+      let averageEnergy = 0;
+      for (const energy of energyHistoryRef.current) {
+        averageEnergy += energy;
+      }
+      averageEnergy /= ENERGY_HISTORY_LENGTH;
 
-        // --- BEAT DETECTION ALGORITHM ---
-        // A "beat" occurs when the current energy is significantly higher than the average
-        const beatThreshold = averageEnergy * 1.2; // Adjustable threshold (e.g., 1.1 -> 1.5)
-        if (currentEnergy > beatThreshold && currentEnergy > BEAT_MIN_THRESHOLD) {
-            // Beat detected!
-            setIsBeat(true);
-            lastPulse = 1.0; // Reset the pulse strength
+      // --- BEAT DETECTION ALGORITHM ---
+      // A "beat" occurs when the current energy is significantly higher than the average
+      const beatThreshold = averageEnergy * 1.2; // Adjustable threshold (e.g., 1.1 -> 1.5)
+      if (currentEnergy > beatThreshold && currentEnergy > BEAT_MIN_THRESHOLD) {
+        // Beat detected!
+        setIsBeat(true);
+        lastPulse = 1.0; // Reset the pulse strength
 
-            // Use a timeout to remove the CSS class after a short duration
-            clearTimeout(beatTimeoutRef.current);
-            beatTimeoutRef.current = setTimeout(() => {
-                setIsBeat(false);
-            }, 150); // Duration of the beat effect (ms)
-        }
-        
-        // Update energy history
-        energyHistoryRef.current.push(currentEnergy);
-        if (energyHistoryRef.current.length > ENERGY_HISTORY_LENGTH) {
-            energyHistoryRef.current.shift();
-        }
-        
-        // Update state for the smooth pulsing effect
-        lastPulse *= BEAT_DECAY_RATE;
-        setThumbnailPulse(lastPulse);
+        // Use a timeout to remove the CSS class after a short duration
+        clearTimeout(beatTimeoutRef.current);
+        beatTimeoutRef.current = setTimeout(() => {
+          setIsBeat(false);
+        }, 150); // Duration of the beat effect (ms)
+      }
+
+      // Update energy history
+      energyHistoryRef.current.push(currentEnergy);
+      if (energyHistoryRef.current.length > ENERGY_HISTORY_LENGTH) {
+        energyHistoryRef.current.shift();
+      }
+
+      // Update state for the smooth pulsing effect
+      lastPulse *= BEAT_DECAY_RATE;
+      setThumbnailPulse(lastPulse);
     };
-    
+
     animate();
   };
 
@@ -155,7 +157,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
     }
 
     if (sourceNodeRef.current) {
-      try { sourceNodeRef.current.disconnect(); } catch {}
+      try { sourceNodeRef.current.disconnect(); } catch { }
     }
 
     const source = audioContextRef.current.createMediaElementSource(audioEl);
@@ -184,7 +186,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
       setCurrentTrackIndex(roomData.currentTrackIndex ?? -1);
     if ((roomData.isPlaying ?? false) !== isPlaying)
       setIsPlaying(roomData.isPlaying ?? false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomData]);
 
   // ====================================================================
@@ -195,7 +197,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
       setPlayerUrl(null);
       return;
     }
-    
+
     if (currentTrack.source === 'upload') {
       setPlayerUrl(currentTrack.url);
     } else if (currentTrack.sourceId) {
@@ -261,7 +263,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
       }
     };
     const handlePlaybackChange = (newState) => {
-        console.debug('[MusicPlayer] playback-state-changed', newState);
+      console.debug('[MusicPlayer] playback-state-changed', newState);
       if (Array.isArray(newState?.playlist)) {
         if (newState.playlist.length === 0 && (playlist && playlist.length > 0)) {
           console.warn('[MusicPlayer] Ignoring empty playback-state.playlist because local playlist is not empty');
@@ -379,7 +381,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
   const sendControlAction = (type, payload = {}) => {
     if (!socket || !isHost) return;
     socket.emit('music-control', { roomId, action: { type, payload } });
-    
+
     // Optimistic UI updates
     if (type === 'PLAY') {
       const idx = typeof payload.trackIndex !== 'undefined' ? payload.trackIndex : (currentTrackIndex === -1 ? 0 : currentTrackIndex);
@@ -481,9 +483,20 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
       </div>
 
       {isUploadModalOpen && <UploadModal roomId={roomId} onClose={() => setIsUploadModalOpen(false)} />}
-      
+
       <aside className="roompage-left">
         <h2>Danh sách phát</h2>
+        {!isHost && (
+          <button
+            onClick={onRequestOpen}
+            className="MusicPlayer-suggestBtn" // Class CSS bạn đã tạo
+          >
+            {/* 👇 Thay thế icon nốt nhạc bằng Icon Heroicons */}
+            <PlusCircleIcon style={{ width: '24px', height: '24px' }} />
+            Đề xuất bài hát
+          </button>
+        )}
+
         {isHost && (
           <div className="add-music-section">
             <div className="add-music-tabs">
@@ -515,13 +528,13 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
         <div className="roompage-queue">
           <ul className="roompage-queue-list">
             {playlist.length === 0 && <li className="empty-queue">Danh sách phát trống</li>}
-            
+
             {playlist.map((track, index) => (
               <li
                 key={track._id || track.sourceId || index}
                 className={`roompage-queue-item ${index === currentTrackIndex ? "roompage-now-playing" : ""}`}
               >
-                <div 
+                <div
                   className="track-info-wrapper"
                   onClick={() => handleSelectTrack(index)}
                   style={{ cursor: isHost ? 'pointer' : 'default' }}
@@ -536,18 +549,26 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
                 </div>
 
                 {isHost && (
-                  <TrackOptions 
-                    onDelete={() => handleDeleteTrack(track._id)} 
+                  <TrackOptions
+                    onDelete={() => handleDeleteTrack(track._id)}
                   />
                 )}
               </li>
             ))}
           </ul>
         </div>
+
+        {/* ✅ REQUESTS LIST (NẰM DƯỚI DANH SÁCH BÊN TRÁI) */}
+        <RequestsList
+          roomId={roomId}
+          isHost={isHost}
+          currentUserId={currentUserId}
+          socket={socket}
+        />
       </aside>
 
       <section className="music-player-main-content">
-        {currentTrack?.thumbnail && ( <div className="roompage-blur-bg" style={{ backgroundImage: `url(${currentTrack.thumbnail})` }}></div> )}
+        {currentTrack?.thumbnail && (<div className="roompage-blur-bg" style={{ backgroundImage: `url(${currentTrack.thumbnail})` }}></div>)}
         <div className="roompage-song-info-main">
           <h1>{currentTrack?.title || "Chưa có bài hát"}</h1>
           <p>{currentTrack?.artist || "Hãy thêm một bài hát vào danh sách"}</p>
@@ -567,10 +588,10 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
 
         <div className="roompage-thumbnail-center">
           {currentTrack?.thumbnail ? (
-            <img 
-              src={currentTrack.thumbnail} 
-              alt={currentTrack.title} 
-              className={`roompage-thumbnail-img ${isBeat ? 'beat' : ''}`} 
+            <img
+              src={currentTrack.thumbnail}
+              alt={currentTrack.title}
+              className={`roompage-thumbnail-img ${isBeat ? 'beat' : ''}`}
               onError={(e) => e.target.style.display = 'none'}
               style={{
                 transform: `scale(${1 + thumbnailPulse * 0.05})`,
@@ -578,7 +599,7 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket }) => {
               }}
             />
           ) : (
-            <div 
+            <div
               className={`roompage-thumbnail-placeholder ${isBeat ? 'beat' : ''}`}
               style={{
                 transform: `scale(${1 + thumbnailPulse * 0.05})`,
