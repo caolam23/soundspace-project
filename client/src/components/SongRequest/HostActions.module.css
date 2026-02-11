@@ -1,48 +1,79 @@
 .container {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 12px;
     margin-left: auto;
-    /* Push to right if in flex container */
+    /* Font chữ hiện đại, ưu tiên các font hệ thống mượt mà nhất */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 .button {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 500;
-    transition: all 0.2s;
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
-    color: white;
+    padding: 6px 12px;
+    /* Reduced from 8px 18px */
+    border-radius: 8px;
+    /* Bo góc hiện đại, vừa phải */
+    font-size: 0.8rem;
+    /* Reduced from 0.875rem */
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    /* Hiệu ứng mượt mà theo chuẩn easing của Material/Apple */
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .button:disabled {
-    opacity: 0.5;
+    opacity: 0.6;
     cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
 }
 
+.iconSvg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s ease;
+}
+
+/* --- TONE MÀU 10%: TÍM NỔI BẬT DÀNH CHO ACTION CHÍNH --- */
 .approve {
-    background: #4caf50;
+    background-color: #a855f7;
+    color: #ffffff;
+    border: 1px solid #a855f7;
 }
 
-.approve:hover {
-    background: #43a047;
-    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+.approve:hover:not(:disabled) {
+    background-color: #9333ea;
+    /* Tím đậm hơn một chút khi hover */
+    border-color: #9333ea;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.25);
 }
 
+.approve:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* --- TONE MÀU 60-30: ĐEN / TRẮNG DÀNH CHO ACTION PHỤ --- */
 .reject {
-    background: #f44336;
+    background-color: #ffffff;
+    /* 30% Trắng */
+    color: #0f0f0f;
+    /* 60% Đen */
+    border: 1px solid #e5e5e5;
 }
 
-.reject:hover {
-    background: #e53935;
-    box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+.reject:hover:not(:disabled) {
+    background-color: #0f0f0f;
+    color: #ffffff;
+    border-color: #0f0f0f;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
-.icon {
-    font-size: 1rem;
-    line-height: 1;
+.reject:active:not(:disabled) {
+    transform: translateY(0);
 }

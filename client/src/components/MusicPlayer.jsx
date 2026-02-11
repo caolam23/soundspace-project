@@ -190,6 +190,42 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket, currentUserId, onReques
   }, [roomData]);
 
   // ====================================================================
+  // SOCKET LISTENER: REALTIME PLAYLIST & PLAYBACK SYNC
+  // ====================================================================
+  useEffect(() => {
+    if (!socket) return;
+
+    const handlePlaybackStateChanged = ({ playlist: newPlaylist, currentTrackIndex: newIndex, isPlaying: newIsPlaying }) => {
+      console.log('[MusicPlayer] Playback state updated from server:', {
+        playlistLength: newPlaylist?.length,
+        currentTrackIndex: newIndex,
+        isPlaying: newIsPlaying
+      });
+
+      // Update playlist if changed
+      if (newPlaylist) {
+        setPlaylist(newPlaylist);
+      }
+
+      // Update current track index if changed
+      if (newIndex !== undefined && newIndex !== currentTrackIndex) {
+        setCurrentTrackIndex(newIndex);
+      }
+
+      // Update playing state if changed
+      if (newIsPlaying !== undefined && newIsPlaying !== isPlaying) {
+        setIsPlaying(newIsPlaying);
+      }
+    };
+
+    socket.on('playback-state-changed', handlePlaybackStateChanged);
+
+    return () => {
+      socket.off('playback-state-changed', handlePlaybackStateChanged);
+    };
+  }, [socket, currentTrackIndex, isPlaying]);
+
+  // ====================================================================
   // CẬP NHẬT STREAM URL KHI BÀI NHẠC THAY ĐỔI
   // ====================================================================
   useEffect(() => {

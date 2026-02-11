@@ -121,7 +121,7 @@ const RequestsList = ({ roomId, isHost, currentUserId, socket }) => {
         return (
             <div className={styles.empty}>
                 <LuListMusic size={32} opacity={0.5} />
-                <p>Chưa có bài nào. Mở bát đi! 🎵</p>
+                <p>Chưa đề xuất nào. Mở bát đi!</p>
             </div>
         );
     }
@@ -188,14 +188,15 @@ const RequestsList = ({ roomId, isHost, currentUserId, socket }) => {
 
                             {/* Nút bấm (Vote/Host) */}
                             <div className={styles.actions}>
-                                <VoteButton
-                                    roomId={roomId}
-                                    requestId={request._id}
-                                    votes={request.votes || []}
-                                    currentUserId={currentUserId}
-                                    onVoted={reloadRequests}
-                                />
-
+                                {!isHost && (
+                                    <VoteButton
+                                        roomId={roomId}
+                                        requestId={request._id}
+                                        votes={request.votes || []}
+                                        currentUserId={currentUserId}
+                                        onVoted={reloadRequests}
+                                    />
+                                )}
                                 {isHost && (
                                     <HostActions
                                         roomId={roomId}
