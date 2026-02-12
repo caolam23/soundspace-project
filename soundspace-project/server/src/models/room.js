@@ -273,6 +273,23 @@ const roomSchema = new mongoose.Schema(
     },
 
     // =============================================
+    // Request Settings (Auto-approve mode)
+    // =============================================
+    requestSettings: {
+      approvalMode: {
+        type: String,
+        enum: ['manual', 'auto'],
+        default: 'manual'
+      },
+      autoApproveThreshold: {
+        type: Number,
+        default: 30,  // 30% of members
+        min: 10,
+        max: 80
+      }
+    },
+
+    // =============================================
     // Chat messages (realtime + persisted)
     // =============================================
     chat: {

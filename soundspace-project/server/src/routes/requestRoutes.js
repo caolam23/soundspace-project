@@ -71,4 +71,11 @@ router.get(
     requestController.getRequests
 );
 
+// 7. Host cập nhật cài đặt request
+router.put(
+    '/:roomId/request-settings',
+    auth,
+    requestController.updateRequestSettings
+);
+
 module.exports = router;

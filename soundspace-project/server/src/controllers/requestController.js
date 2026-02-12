@@ -520,6 +520,73 @@ const getRequests = async (req, res) => {
     }
 };
 
+// ========================================
+// ⚙️ UPDATE REQUEST SETTINGS (Host only)
+// ========================================
+const updateRequestSettings = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const { approvalMode, autoApproveThreshold } = req.body;
+        const userId = req.user?.id || req.user?._id;
+
+        console.log('[UPDATE_SETTINGS] Request:', { roomId, userId, approvalMode, autoApproveThreshold });
+
+        // 1. Find room
+        const room = await Room.findById(roomId);
+        if (!room) {
+            return res.status(404).json({ msg: 'Không tìm thấy phòng' });
+        }
+
+        // 2. Check if user is Host
+        if (room.owner.toString() !== userId.toString()) {
+            return res.status(403).json({ msg: 'Chỉ Host mới có thể thay đổi cài đặt' });
+        }
+
+        // 3. Validate approvalMode
+        if (approvalMode && !['manual', 'auto'].includes(approvalMode)) {
+            return res.status(400).json({ msg: 'approvalMode phải là "manual" hoặc "auto"' });
+        }
+
+        // 4. Validate autoApproveThreshold
+        if (autoApproveThreshold !== undefined) {
+            if (typeof autoApproveThreshold !== 'number' || autoApproveThreshold < 10 || autoApproveThreshold > 80) {
+                return res.status(400).json({ msg: 'autoApproveThreshold phải từ 10 đến 80' });
+            }
+        }
+
+        // 5. Update settings
+        if (approvalMode) {
+            room.requestSettings.approvalMode = approvalMode;
+        }
+        if (autoApproveThreshold !== undefined) {
+            room.requestSettings.autoApproveThreshold = autoApproveThreshold;
+        }
+
+        await room.save();
+
+        console.log('[UPDATE_SETTINGS] ✅ Settings updated:', room.requestSettings);
+
+        // 6. Broadcast to room
+        const io = req.app.get('io');
+        if (io) {
+            io.to(roomId).emit('request-settings-changed', {
+                approvalMode: room.requestSettings.approvalMode,
+                autoApproveThreshold: room.requestSettings.autoApproveThreshold
+            });
+        }
+
+        return res.status(200).json({
+            msg: 'Đã cập nhật cài đặt',
+            settings: room.requestSettings
+        });
+
+    } catch (error) {
+        console.error('[UPDATE_SETTINGS] Error:', error);
+        return res.status(500).json({ msg: 'Lỗi máy chủ' });
+    }
+};
+
+
 // Debug logging
 console.log('[REQUEST_CONTROLLER] Exporting functions:', {
     addRequestFromYouTube: typeof addRequestFromYouTube,
@@ -527,7 +594,8 @@ console.log('[REQUEST_CONTROLLER] Exporting functions:', {
     voteRequest: typeof voteRequest,
     approveRequest: typeof approveRequest,
     rejectRequest: typeof rejectRequest,
-    getRequests: typeof getRequests
+    getRequests: typeof getRequests,
+    updateRequestSettings: typeof updateRequestSettings
 });
 
 module.exports = {
@@ -536,5 +604,6 @@ module.exports = {
     voteRequest,
     approveRequest,
     rejectRequest,
-    getRequests
+    getRequests,
+    updateRequestSettings
 };

@@ -1,7 +1,7 @@
 const Room = require('../models/room.js');
 const RoomReport = require('../models/RoomReport'); // ✅ THÊM DÒNG NÀY
 const { customAlphabet } = require('nanoid');
-const cleanupPlayerScripts = require('../utils/cleanupPlayerScripts'); 
+const cleanupPlayerScripts = require('../utils/cleanupPlayerScripts');
 const { scheduleRoomCleanup } = require('../services/cleanupService');
 const User = require('../models/User');
 // Helper: Populate owner + members
@@ -16,34 +16,34 @@ const populateRoom = async (roomId) => {
 // POST /api/rooms/:roomId/report
 // ==========================
 exports.reportRoom = async (req, res) => {
-    try {
-        const { roomId } = req.params;
-        const { category, details } = req.body;
-        if (!category) return res.status(400).json({ msg: 'Vui lòng chọn lý do báo cáo.' });
+  try {
+    const { roomId } = req.params;
+    const { category, details } = req.body;
+    if (!category) return res.status(400).json({ msg: 'Vui lòng chọn lý do báo cáo.' });
 
-        const room = await Room.findById(roomId);
-        if (!room) return res.status(404).json({ msg: 'Không tìm thấy phòng.' });
+    const room = await Room.findById(roomId);
+    if (!room) return res.status(404).json({ msg: 'Không tìm thấy phòng.' });
 
-        const reporterId = req.user?.id || null;
+    const reporterId = req.user?.id || null;
 
-        const report = new RoomReport({ room: room._id, reporter: reporterId, category, details });
-        await report.save();
+    const report = new RoomReport({ room: room._id, reporter: reporterId, category, details });
+    await report.save();
 
-        // Tăng số lượng báo cáo trên phòng
-        room.reportCount = (room.reportCount || 0) + 1;
-        await room.save();
+    // Tăng số lượng báo cáo trên phòng
+    room.reportCount = (room.reportCount || 0) + 1;
+    await room.save();
 
-        // Socket event for admins
-        const io = req.app.get('io');
-        if (io) {
-            io.emit('room-reported', { roomId: room._id.toString(), reportId: report._id.toString(), category });
-        }
-
-        return res.status(201).json({ msg: 'Báo cáo đã được gửi. Cảm ơn bạn.' });
-    } catch (err) {
-        console.error('❌ Lỗi reportRoom:', err);
-        return res.status(500).json({ msg: 'Lỗi server khi gửi báo cáo.', error: err.message });
+    // Socket event for admins
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('room-reported', { roomId: room._id.toString(), reportId: report._id.toString(), category });
     }
+
+    return res.status(201).json({ msg: 'Báo cáo đã được gửi. Cảm ơn bạn.' });
+  } catch (err) {
+    console.error('❌ Lỗi reportRoom:', err);
+    return res.status(500).json({ msg: 'Lỗi server khi gửi báo cáo.', error: err.message });
+  }
 };
 
 // ==========================
@@ -74,7 +74,10 @@ exports.createRoom = async (req, res) => {
     }
 
     if (!req.file) {
-      return res.status(400).json({ msg: 'Vui lòng tải lên ảnh bìa.' });
+      // ✅ Fallback: Accept URL string from body (for API testing)
+      if (!req.body.coverImage || typeof req.body.coverImage !== 'string') {
+        return res.status(400).json({ msg: 'Vui lòng tải lên ảnh bìa hoặc cung cấp URL.' });
+      }
     }
 
     // Validate privacy value
@@ -86,7 +89,7 @@ exports.createRoom = async (req, res) => {
       name: name.trim(),
       description: description?.trim() || '',
       privacy,
-      coverImage: req.file.path, // URL từ Cloudinary
+      coverImage: req.file ? req.file.path : req.body.coverImage, // ✅ Use file path OR URL string
       owner: ownerId,
       members: [ownerId], // Owner tự động là member
       status: 'waiting',
@@ -129,9 +132,9 @@ exports.createRoom = async (req, res) => {
       console.warn('⚠️ Socket.IO instance not found on app');
     }
 
-    res.status(201).json({ 
-      msg: 'Tạo phòng thành công!', 
-      room: newRoom 
+    res.status(201).json({
+      msg: 'Tạo phòng thành công!',
+      room: newRoom
     });
 
   } catch (err) {
@@ -139,25 +142,25 @@ exports.createRoom = async (req, res) => {
     console.error("Error name:", err.name);
     console.error("Error message:", err.message);
     console.error("Error stack:", err.stack);
-    
+
     // Xử lý lỗi cụ thể
     if (err.name === 'ValidationError') {
       const errors = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({ 
-        msg: 'Dữ liệu không hợp lệ', 
-        errors 
+      return res.status(400).json({
+        msg: 'Dữ liệu không hợp lệ',
+        errors
       });
     }
 
     if (err.code === 11000) {
-      return res.status(400).json({ 
-        msg: 'Mã phòng đã tồn tại, vui lòng thử lại.' 
+      return res.status(400).json({
+        msg: 'Mã phòng đã tồn tại, vui lòng thử lại.'
       });
     }
 
-    res.status(500).json({ 
-      msg: 'Lỗi server khi tạo phòng', 
-      error: err.message 
+    res.status(500).json({
+      msg: 'Lỗi server khi tạo phòng',
+      error: err.message
     });
   }
 };
@@ -233,7 +236,7 @@ exports.endSession = async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       const roomSockets = await io.in(roomId).fetchSockets();
-      
+
       roomSockets.forEach((socket) => {
         const socketUserId = socket.userId || socket.user?.id;
         if (socketUserId !== req.user.id) {
@@ -246,7 +249,7 @@ exports.endSession = async (req, res) => {
       });
 
       io.emit("room-ended-homepage", { roomId, reason: 'host-ended' });
-      
+
       try {
         io.emit("room-members-changed", {
           roomId: String(roomId),
@@ -411,7 +414,7 @@ exports.requestJoinRoom = async (req, res) => {
 
     const io = req.app.get('io');
     const userSockets = req.app.get('userSockets');
-    
+
     const payload = {
       requester: {
         _id: req.user.id,
@@ -420,9 +423,9 @@ exports.requestJoinRoom = async (req, res) => {
       },
       roomId: room._id.toString(),
     };
-    
+
     console.log('📤 Sending join request:', payload);
-    
+
     const hostSockets = userSockets.get(room.owner.toString());
     if (hostSockets && hostSockets.size > 0) {
       const firstSocketId = hostSockets.values().next().value;
@@ -456,7 +459,7 @@ exports.getRoomDetails = async (req, res) => {
     // =============================================================
     // ▼▼▼ THAY ĐỔI: BỔ SUNG isHost VÀO DỮ LIỆU ▼▼▼
     // =============================================================
-    
+
     // 1. Thêm `isHost` vào danh sách thành viên (members)
     if (roomObject.members && roomObject.members.length > 0) {
       roomObject.members = roomObject.members.map(member => ({
@@ -473,7 +476,7 @@ exports.getRoomDetails = async (req, res) => {
         isHost: roomObject.owner._id.equals(message.userId)
       }));
     }
-    
+
     // 3. Trả về object đã được chỉnh sửa
     res.json(roomObject);
 
@@ -493,7 +496,7 @@ exports.searchRoomByCode = async (req, res) => {
       return res.status(400).json({ msg: 'Mã phòng không hợp lệ.' });
     }
 
-    const room = await Room.findOne({ 
+    const room = await Room.findOne({
       roomCode: roomCode.toUpperCase(),
       status: { $in: ['waiting', 'live'] }
     }).populate('owner', 'username avatar');
@@ -502,8 +505,8 @@ exports.searchRoomByCode = async (req, res) => {
       return res.status(404).json({ msg: 'Không tìm thấy phòng với mã này.' });
     }
 
-    res.status(200).json({ 
-      msg: 'Tìm thấy phòng!', 
+    res.status(200).json({
+      msg: 'Tìm thấy phòng!',
       room: {
         _id: room._id,
         name: room.name,
