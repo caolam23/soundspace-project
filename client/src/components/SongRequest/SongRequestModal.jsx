@@ -12,12 +12,17 @@ import {
 } from "react-icons/lu";
 
 // ✅ FIXED: Match backend enum (lowercase)
+// ✅ FIXED: Match backend enum (lowercase)
 const GENRE_TAGS = [
-    'vpop', 'indie', 'ballad', 'pop', 'rock', 'edm',
-    'hiphop', 'rnb', 'lofi', 'acoustic', 'dance', 'kpop'
+    'vpop', 'kpop', 'us-uk', 'c-pop',
+    'rap', 'hiphop', 'rnb', 'edm', 'remix',
+    'indie', 'ballad', 'pop', 'rock', 'lofi', 'acoustic', 'jazz', 'dance'
 ];
 
-const MOOD_TAGS = ['happy', 'sad', 'romantic', 'energetic', 'chill', 'focus'];
+const MOOD_TAGS = [
+    'happy', 'sad', 'chill', 'energetic',
+    'romantic', 'focus', 'gaming', 'sleep', 'coffee', 'travel'
+];
 
 const SongRequestModal = ({ isOpen, onClose, roomId }) => {
     const dispatch = useDispatch();

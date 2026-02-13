@@ -4,12 +4,14 @@ const mongoose = require("mongoose");
 // Tags cho Song Request System + AI Learning
 // =============================================
 const GENRE_TAGS = [
-  'vpop', 'indie', 'ballad', 'pop', 'rock', 'edm',
-  'hiphop', 'rnb', 'lofi', 'acoustic', 'dance', 'kpop'
+  'vpop', 'kpop', 'us-uk', 'c-pop',
+  'rap', 'hiphop', 'rnb', 'edm', 'remix',
+  'indie', 'ballad', 'pop', 'rock', 'lofi', 'acoustic', 'jazz', 'dance'
 ];
 
 const MOOD_TAGS = [
-  'happy', 'sad', 'romantic', 'energetic', 'chill', 'focus'
+  'happy', 'sad', 'chill', 'energetic',
+  'romantic', 'focus', 'gaming', 'sleep', 'coffee', 'travel'
 ];
 
 // =============================================

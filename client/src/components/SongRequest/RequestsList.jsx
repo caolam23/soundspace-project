@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchRequests, setRequests, updateRequestVotes } from '../../store/requestSlice';
 import VoteButton from './VoteButton';
 import HostActions from './HostActions';
+import TimeAgo from '../Common/TimeAgo'; // Import TimeAgo component
 import styles from './RequestsList.module.css';
 
 // Import Icons hiện đại
@@ -79,23 +80,6 @@ const RequestsList = ({ roomId, isHost, currentUserId, socket }) => {
 
     const reloadRequests = () => {
         dispatch(fetchRequests(roomId));
-    };
-
-    const formatTimeAgo = (dateStr) => {
-        if (!dateStr) return 'Vừa xong';
-
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return 'Vừa xong';
-
-        const seconds = Math.floor((new Date() - date) / 1000);
-
-        if (seconds < 60) return 'Vừa xong';
-        const minutes = Math.floor(seconds / 60);
-        if (minutes < 60) return `${minutes}p trước`;
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h trước`;
-        const days = Math.floor(hours / 24);
-        return `${days} ngày trước`;
     };
 
     const getUserName = (req) => {
@@ -182,7 +166,7 @@ const RequestsList = ({ roomId, isHost, currentUserId, socket }) => {
                                     </div>
                                     <div className={styles.metaItem}>
                                         <LuClock size={14} />
-                                        <span>{formatTimeAgo(request.createdAt)}</span>
+                                        <TimeAgo timestamp={request.createdAt} />
                                     </div>
                                 </div>
 
@@ -203,15 +187,16 @@ const RequestsList = ({ roomId, isHost, currentUserId, socket }) => {
 
                             {/* Nút bấm (Vote/Host) */}
                             <div className={styles.actions}>
-                                {!isHost && (
-                                    <VoteButton
-                                        roomId={roomId}
-                                        requestId={request._id}
-                                        votes={request.votes || []}
-                                        currentUserId={currentUserId}
-                                        onVoted={reloadRequests}
-                                    />
-                                )}
+                                {/* Ai cũng được vote (kể cả Host) */}
+                                <VoteButton
+                                    roomId={roomId}
+                                    requestId={request._id}
+                                    votes={request.votes || []}
+                                    currentUserId={currentUserId}
+                                    onVoted={reloadRequests}
+                                />
+
+                                {/* Chỉ Host mới có quyền quản lý */}
                                 {isHost && (
                                     <HostActions
                                         roomId={roomId}

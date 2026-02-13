@@ -21,6 +21,7 @@ import { toastConfig } from "../services/toastConfig";
 import { reportRoom } from "../services/api";
 import RequestsList from "../components/SongRequest/RequestsList";
 import SongRequestModal from "../components/SongRequest/SongRequestModal";
+import useRoomNotifications from "../hooks/useRoomNotifications.jsx"; // ✅ Phase 4 Hook (Renamed to .jsx)
 
 function RoomPage() {
   // ============================================
@@ -39,6 +40,9 @@ function RoomPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, socket } = useContext(AuthContext);
+
+  // ✅ Phase 4: Room Notifications
+  useRoomNotifications(socket);
 
   // ============================================
   // STATES
