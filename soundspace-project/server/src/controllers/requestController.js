@@ -264,6 +264,32 @@ const addRequestFromUpload = async (req, res) => {
 };
 
 // ========================================
+// 🔧 HELPER: Tạo track từ request (DRY - dùng chung cho approve + auto-approve)
+// ========================================
+const _createTrackFromRequest = (request) => {
+    return {
+        title: request.title,
+        artist: request.artist,
+        thumbnail: request.thumbnail,
+        duration: request.duration,
+        source: request.source,
+        ...(request.source === 'youtube' && {
+            url: request.url,
+            sourceId: request.youtube_id
+        }),
+        ...(request.source === 'upload' && {
+            url: request.cloudinary_url,
+            sourceId: request.cloudinary_public_id
+        }),
+        tags: request.tags,
+        mood: request.mood,
+        addedBy: request.requestedBy,
+        addedVia: 'request',
+        requestVotes: request.votes.length
+    };
+};
+
+// ========================================
 // 👍 VOTE CHO ĐỀ XUẤT
 // ========================================
 const voteRequest = async (req, res) => {
@@ -311,9 +337,63 @@ const voteRequest = async (req, res) => {
             });
         }
 
+        // ========================================
+        // 🤖 PHASE 2: AUTO-APPROVE CHECK
+        // ========================================
+        let autoApproved = false;
+        if (
+            voteIndex === -1 && // Chỉ check khi THÊM vote (không phải bỏ vote)
+            room.requestSettings?.approvalMode === 'auto' &&
+            request.status === 'pending'
+        ) {
+            const memberCount = room.members.length;
+            const threshold = room.requestSettings.autoApproveThreshold || 30;
+            const requiredVotes = Math.ceil(memberCount * threshold / 100);
+
+            console.log(`[AUTO_APPROVE] Check: ${request.votes.length}/${requiredVotes} votes needed (${threshold}% of ${memberCount} members)`);
+
+            if (request.votes.length >= requiredVotes) {
+                // ✅ Auto-approve: tạo track và thêm vào playlist
+                const newTrack = _createTrackFromRequest(request);
+                room.playlist.push(newTrack);
+                request.status = 'approved';
+                request.reviewedAt = new Date();
+                request.reviewedBy = null; // null = auto-approved by community
+
+                await room.save();
+
+                // Cộng điểm cho người đề xuất
+                await User.updateOne(
+                    { _id: request.requestedBy },
+                    { $inc: { contributionPoints: 10, approvedRequests: 1 } }
+                );
+
+                autoApproved = true;
+                console.log(`[AUTO_APPROVE] ✅ Request "${request.title}" auto-approved with ${request.votes.length} votes`);
+
+                if (io) {
+                    io.to(roomId).emit('request-auto-approved', {
+                        requestId: requestId,
+                        track: newTrack,
+                        songTitle: request.title,
+                        votes: request.votes.length,
+                        requiredVotes: requiredVotes,
+                        approvedBy: 'community'
+                    });
+
+                    io.to(roomId).emit('playback-state-changed', {
+                        playlist: room.playlist,
+                        currentTrackIndex: room.currentTrackIndex,
+                        isPlaying: room.isPlaying
+                    });
+                }
+            }
+        }
+
         return res.status(200).json({
-            msg: voteIndex > -1 ? 'Đã bỏ vote' : 'Đã vote',
-            votes: request.votes.length
+            msg: voteIndex > -1 ? 'Đã bỏ vote' : (autoApproved ? 'Đã vote - Bài hát được tự động duyệt!' : 'Đã vote'),
+            votes: request.votes.length,
+            autoApproved
         });
 
     } catch (error) {
@@ -348,27 +428,8 @@ const approveRequest = async (req, res) => {
             return res.status(400).json({ msg: 'Đề xuất này đã được duyệt/từ chối' });
         }
 
-        // Create track from request
-        const newTrack = {
-            title: request.title,
-            artist: request.artist,
-            thumbnail: request.thumbnail,
-            duration: request.duration,
-            source: request.source,
-            ...(request.source === 'youtube' && {
-                url: request.url,
-                sourceId: request.youtube_id
-            }),
-            ...(request.source === 'upload' && {
-                url: request.cloudinary_url,
-                sourceId: request.cloudinary_public_id
-            }),
-            tags: request.tags,
-            mood: request.mood,
-            addedBy: request.requestedBy,
-            addedVia: 'request',
-            requestVotes: request.votes.length
-        };
+        // Create track from request (dùng helper DRY)
+        const newTrack = _createTrackFromRequest(request);
 
         room.playlist.push(newTrack);
         request.status = 'approved';
@@ -554,12 +615,58 @@ const updateRequestSettings = async (req, res) => {
             }
         }
 
+        // ========================================
+        // 🤖 PHASE 2: BATCH APPROVE ON MODE SWITCH
+        // ========================================
+        const previousMode = room.requestSettings.approvalMode;
+        const switchingToAuto = approvalMode === 'auto' && previousMode === 'manual';
+
         // 5. Update settings
         if (approvalMode) {
             room.requestSettings.approvalMode = approvalMode;
         }
         if (autoApproveThreshold !== undefined) {
             room.requestSettings.autoApproveThreshold = autoApproveThreshold;
+        }
+
+        let batchApproved = [];
+
+        if (switchingToAuto) {
+            const threshold = room.requestSettings.autoApproveThreshold;
+            const memberCount = room.members.length;
+            const requiredVotes = Math.ceil(memberCount * threshold / 100);
+
+            console.log(`[BATCH_APPROVE] Switching to Auto mode. Required votes: ${requiredVotes} (${threshold}% of ${memberCount} members)`);
+
+            // Lấy pending requests đủ vote, sort theo votes cao nhất
+            const eligibleRequests = room.songRequests
+                .filter(r => r.status === 'pending' && r.votes.length >= requiredVotes)
+                .sort((a, b) => b.votes.length - a.votes.length)
+                .slice(0, 5); // Max 5 per batch
+
+            console.log(`[BATCH_APPROVE] Found ${eligibleRequests.length} eligible requests`);
+
+            for (const request of eligibleRequests) {
+                const newTrack = _createTrackFromRequest(request);
+                room.playlist.push(newTrack);
+                request.status = 'approved';
+                request.reviewedAt = new Date();
+                request.reviewedBy = null; // null = auto-approved
+
+                // Cộng điểm cho người đề xuất
+                await User.updateOne(
+                    { _id: request.requestedBy },
+                    { $inc: { contributionPoints: 10, approvedRequests: 1 } }
+                );
+
+                batchApproved.push({
+                    requestId: request._id,
+                    songTitle: request.title,
+                    votes: request.votes.length
+                });
+
+                console.log(`[BATCH_APPROVE] ✅ Auto-approved: "${request.title}" (${request.votes.length} votes)`);
+            }
         }
 
         await room.save();
@@ -573,11 +680,29 @@ const updateRequestSettings = async (req, res) => {
                 approvalMode: room.requestSettings.approvalMode,
                 autoApproveThreshold: room.requestSettings.autoApproveThreshold
             });
+
+            // Emit batch auto-approved events
+            if (batchApproved.length > 0) {
+                io.to(roomId).emit('request-batch-auto-approved', {
+                    approvedRequests: batchApproved,
+                    totalApproved: batchApproved.length,
+                    approvedBy: 'community'
+                });
+
+                io.to(roomId).emit('playback-state-changed', {
+                    playlist: room.playlist,
+                    currentTrackIndex: room.currentTrackIndex,
+                    isPlaying: room.isPlaying
+                });
+            }
         }
 
         return res.status(200).json({
-            msg: 'Đã cập nhật cài đặt',
-            settings: room.requestSettings
+            msg: batchApproved.length > 0
+                ? `Đã cập nhật cài đặt và tự động duyệt ${batchApproved.length} bài hát`
+                : 'Đã cập nhật cài đặt',
+            settings: room.requestSettings,
+            batchApproved: batchApproved.length > 0 ? batchApproved : undefined
         });
 
     } catch (error) {

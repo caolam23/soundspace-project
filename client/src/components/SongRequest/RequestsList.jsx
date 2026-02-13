@@ -49,16 +49,31 @@ const RequestsList = ({ roomId, isHost, currentUserId, socket }) => {
             dispatch(updateRequestVotes({ requestId, votes }));
         };
 
+        // ✅ Phase 2+3: Auto-approved listeners
+        const handleAutoApproved = ({ requestId }) => {
+            console.log('[RequestsList] Request auto-approved, reloading...', requestId);
+            dispatch(fetchRequests(roomId));
+        };
+
+        const handleBatchAutoApproved = ({ totalApproved }) => {
+            console.log('[RequestsList] Batch auto-approved:', totalApproved, 'requests');
+            dispatch(fetchRequests(roomId));
+        };
+
         socket.on('new-song-request', handleNewRequest);
         socket.on('request-approved', handleRequestApproved);
         socket.on('request-rejected', handleRequestRejected);
         socket.on('request-vote-updated', handleVoteUpdated);
+        socket.on('request-auto-approved', handleAutoApproved);
+        socket.on('request-batch-auto-approved', handleBatchAutoApproved);
 
         return () => {
             socket.off('new-song-request', handleNewRequest);
             socket.off('request-approved', handleRequestApproved);
             socket.off('request-rejected', handleRequestRejected);
             socket.off('request-vote-updated', handleVoteUpdated);
+            socket.off('request-auto-approved', handleAutoApproved);
+            socket.off('request-batch-auto-approved', handleBatchAutoApproved);
         };
     }, [socket, roomId, dispatch]);
 

@@ -9,10 +9,10 @@ const getAuthHeaders = () => {
 };
 
 export const requestApi = {
-    // Get list of requests for a room
+    // Get list of requests for a room (sorted by votes - hot)
     getRequests: async (roomId) => {
         const response = await axios.get(
-            `${API_URL}/rooms/${roomId}/requests?status=pending`,
+            `${API_URL}/rooms/${roomId}/requests?status=pending&sortBy=hot`,
             getAuthHeaders()
         );
         return response.data;

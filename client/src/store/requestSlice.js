@@ -50,6 +50,16 @@ export const voteRequest = createAsyncThunk(
     }
 );
 
+// 🔧 Helper: Sort requests by votes (desc), then by createdAt (asc) for same vote count
+const sortByVotes = (items) => {
+    return [...items].sort((a, b) => {
+        const votesA = Array.isArray(a.votes) ? a.votes.length : (a.votes || 0);
+        const votesB = Array.isArray(b.votes) ? b.votes.length : (b.votes || 0);
+        if (votesB !== votesA) return votesB - votesA; // Votes cao trước
+        return new Date(a.createdAt) - new Date(b.createdAt); // Cùng votes: cũ trước
+    });
+};
+
 // Slice
 const requestSlice = createSlice({
     name: 'requests',
@@ -76,6 +86,8 @@ const requestSlice = createSlice({
             if (index !== -1) {
                 // Cập nhật ngay lập tức mảng votes mới
                 state.items[index].votes = votes;
+                // ✅ Phase 3: Re-sort sau khi vote thay đổi
+                state.items = sortByVotes(state.items);
             }
         },
         // Action to update a single request (e.g. vote update from socket)
@@ -102,8 +114,9 @@ const requestSlice = createSlice({
         });
         builder.addCase(fetchRequests.fulfilled, (state, action) => {
             state.loading = false;
-            // Assuming API returns object with 'requests' array or 'songRequests'
-            state.items = action.payload.requests || action.payload.songRequests || [];
+            // ✅ Phase 3: Sort by votes sau khi fetch
+            const rawItems = action.payload.requests || action.payload.songRequests || [];
+            state.items = sortByVotes(rawItems);
         });
         builder.addCase(fetchRequests.rejected, (state, action) => {
             state.loading = false;
