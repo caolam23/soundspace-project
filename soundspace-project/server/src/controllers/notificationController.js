@@ -85,8 +85,57 @@ const markAllAsRead = async (req, res) => {
     }
 };
 
+// ========================================
+// DELETE SINGLE NOTIFICATION
+// ========================================
+const deleteNotification = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.id || req.user?._id;
+
+        const notification = await Notification.findOneAndDelete({ _id: id, userId });
+
+        if (!notification) {
+            return res.status(404).json({ msg: 'Không tìm thấy thông báo' });
+        }
+
+        const unreadCount = await Notification.countDocuments({ userId, isRead: false });
+
+        return res.status(200).json({
+            msg: 'Đã xóa thông báo',
+            unreadCount
+        });
+
+    } catch (error) {
+        console.error('[DELETE_NOTIFICATION] Error:', error);
+        return res.status(500).json({ msg: 'Lỗi máy chủ' });
+    }
+};
+
+// ========================================
+// DELETE ALL READ NOTIFICATIONS
+// ========================================
+const deleteAllRead = async (req, res) => {
+    try {
+        const userId = req.user?.id || req.user?._id;
+
+        const result = await Notification.deleteMany({ userId, isRead: true });
+
+        return res.status(200).json({
+            msg: 'Đã xóa tất cả thông báo đã đọc',
+            deletedCount: result.deletedCount
+        });
+
+    } catch (error) {
+        console.error('[DELETE_ALL_READ] Error:', error);
+        return res.status(500).json({ msg: 'Lỗi máy chủ' });
+    }
+};
+
 module.exports = {
     getNotifications,
     markAsRead,
-    markAllAsRead
+    markAllAsRead,
+    deleteNotification,
+    deleteAllRead
 };

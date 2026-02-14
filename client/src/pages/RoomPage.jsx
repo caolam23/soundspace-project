@@ -822,6 +822,7 @@ function RoomPage() {
             socket={socket}
             currentUserId={user?._id}
             onRequestOpen={() => setIsRequestModalOpen(true)}
+            memberCount={members.length}
           />
 
           {/* ✅ FEATURE: SONG REQUESTS MODAL (Button & List now in MusicPlayer) */}

@@ -79,25 +79,71 @@
     color: #fff;
 }
 
-.markAllBtn {
+.headerActions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.headerBtn {
     background: none;
     border: none;
     color: #1DB954;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     padding: 4px 8px;
     border-radius: 4px;
     transition: background 0.2s ease;
+    white-space: nowrap;
 }
 
-.markAllBtn:hover {
+.headerBtn:hover {
     background: rgba(29, 185, 84, 0.1);
 }
 
+.deleteBtn {
+    color: #ff6b6b;
+}
+
+.deleteBtn:hover {
+    background: rgba(255, 107, 107, 0.1);
+}
+
+/* Filter Tabs */
+.tabs {
+    display: flex;
+    padding: 8px 16px;
+    gap: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tab {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab:hover {
+    color: #ccc;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tabActive {
+    color: #fff;
+    background: rgba(29, 185, 84, 0.15);
+}
+
 .list {
-    max-height: 400px;
+    max-height: 370px;
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .list::-webkit-scrollbar {
@@ -153,8 +199,11 @@
     padding: 14px 16px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: all 0.3s ease;
     position: relative;
+    opacity: 1;
+    max-height: 200px;
+    overflow: hidden;
 }
 
 .item:hover {
@@ -163,6 +212,17 @@
 
 .item.unread {
     background: rgba(29, 185, 84, 0.05);
+}
+
+/* Fade-out animation khi xóa */
+.item.deleting {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin: 0;
+    border: none;
+    transform: translateX(30px);
 }
 
 .content {
@@ -201,9 +261,51 @@
     margin-top: 6px;
 }
 
+/* Delete button - ẩn mặc định, hiện khi hover */
+.deleteItemBtn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: #888;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s ease;
+    z-index: 5;
+}
+
+.item:hover .deleteItemBtn {
+    opacity: 1;
+}
+
+.deleteItemBtn:hover {
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff4444;
+    transform: scale(1.1);
+}
+
+/* Empty state */
 .empty {
     padding: 40px 20px;
     text-align: center;
     color: #888;
     font-size: 14px;
+}
+
+.emptyIcon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.empty p {
+    margin: 0;
+    color: #666;
 }

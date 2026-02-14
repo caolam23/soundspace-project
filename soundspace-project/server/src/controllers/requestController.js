@@ -387,6 +387,29 @@ const voteRequest = async (req, res) => {
                         currentTrackIndex: room.currentTrackIndex,
                         isPlaying: room.isPlaying
                     });
+
+                    // 🔔 Personal notification for auto-approve
+                    const autoNotification = new Notification({
+                        userId: request.requestedBy,
+                        type: 'song_auto_approved',
+                        payload: {
+                            songTitle: request.title,
+                            roomName: room.name,
+                            roomId: roomId,
+                            requestId: requestId,
+                            votes: request.votes.length,
+                            message: `Bài "${request.title}" đã đạt đủ ${request.votes.length} votes và tự động vào playlist!`
+                        }
+                    });
+                    await autoNotification.save();
+
+                    const userSockets = req.app.get('userSockets');
+                    const requesterSocketSet = userSockets?.get(request.requestedBy.toString());
+                    if (requesterSocketSet && requesterSocketSet.size > 0) {
+                        const socketId = Array.from(requesterSocketSet)[0];
+                        const unreadCount = await Notification.countDocuments({ userId: request.requestedBy, isRead: false });
+                        io.to(socketId).emit('personal-notification', { notification: autoNotification, unreadCount });
+                    }
                 }
             }
         }
@@ -718,6 +741,30 @@ const updateRequestSettings = async (req, res) => {
                     songTitle: request.title,
                     votes: request.votes.length
                 });
+
+                // 🔔 Personal notification for batch-approve
+                const batchNotification = new Notification({
+                    userId: request.requestedBy,
+                    type: 'song_batch_approved',
+                    payload: {
+                        songTitle: request.title,
+                        roomName: room.name,
+                        roomId: roomId,
+                        requestId: request._id,
+                        votes: request.votes.length,
+                        message: `Bài "${request.title}" đủ điều kiện và đã được duyệt tự động!`
+                    }
+                });
+                await batchNotification.save();
+
+                const io2 = req.app.get('io');
+                const userSockets2 = req.app.get('userSockets');
+                const batchSocketSet = userSockets2?.get(request.requestedBy.toString());
+                if (io2 && batchSocketSet && batchSocketSet.size > 0) {
+                    const socketId = Array.from(batchSocketSet)[0];
+                    const unreadCount = await Notification.countDocuments({ userId: request.requestedBy, isRead: false });
+                    io2.to(socketId).emit('personal-notification', { notification: batchNotification, unreadCount });
+                }
 
                 console.log(`[BATCH_APPROVE] ✅ Auto-approved: "${request.title}" (${request.votes.length} votes)`);
             }

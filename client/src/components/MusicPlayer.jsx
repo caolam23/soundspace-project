@@ -48,7 +48,7 @@ const parseJwt = (token) => {
 // ====================================================================
 // 🎵 COMPONENT CHÍNH
 // ====================================================================
-const MusicPlayer = ({ roomData, isHost, roomId, socket, currentUserId, onRequestOpen }) => {
+const MusicPlayer = ({ roomData, isHost, roomId, socket, currentUserId, onRequestOpen, memberCount }) => {
   // --- STATE CHÍNH ---
   const [playlist, setPlaylist] = useState([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
@@ -600,6 +600,8 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket, currentUserId, onReques
           isHost={isHost}
           currentUserId={currentUserId}
           socket={socket}
+          roomData={roomData}
+          memberCount={memberCount}
         />
       </aside>
 

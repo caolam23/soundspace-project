@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { FaBell } from 'react-icons/fa';
+import { FaBell, FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../../contexts/AuthContext';
 import { notificationApi } from '../../services/notificationApi';
 import styles from './NotificationCenter.module.css';
@@ -10,6 +10,8 @@ const NotificationCenter = () => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [filter, setFilter] = useState('all'); // 'all' | 'unread'
+    const [deletingIds, setDeletingIds] = useState([]); // IDs đang trong animation xóa
     const dropdownRef = useRef(null);
 
     // Fetch notifications
@@ -99,6 +101,52 @@ const NotificationCenter = () => {
         }
     };
 
+    // Delete single notification
+    const handleDelete = async (e, notificationId) => {
+        e.stopPropagation(); // Không trigger markAsRead
+
+        // Animation fade-out
+        setDeletingIds(prev => [...prev, notificationId]);
+
+        setTimeout(async () => {
+            try {
+                const data = await notificationApi.deleteNotification(notificationId);
+                setNotifications(prev => prev.filter(n => n._id !== notificationId));
+                setUnreadCount(data.unreadCount ?? unreadCount);
+            } catch (error) {
+                console.error('[NotificationCenter] Error deleting notification:', error);
+                // Rollback animation nếu lỗi
+                setDeletingIds(prev => prev.filter(id => id !== notificationId));
+            }
+        }, 300); // Đợi animation xong rồi xóa
+    };
+
+    // Delete all read notifications
+    const handleDeleteAllRead = async () => {
+        const readNotifs = notifications.filter(n => n.isRead);
+        if (readNotifs.length === 0) return;
+
+        const confirmed = window.confirm(
+            `Xóa ${readNotifs.length} thông báo đã đọc? Hành động này không thể hoàn tác.`
+        );
+        if (!confirmed) return;
+
+        // Animation fade-out cho tất cả đã đọc
+        const readIds = readNotifs.map(n => n._id);
+        setDeletingIds(prev => [...prev, ...readIds]);
+
+        setTimeout(async () => {
+            try {
+                await notificationApi.deleteAllRead();
+                setNotifications(prev => prev.filter(n => !n.isRead));
+                setDeletingIds([]);
+            } catch (error) {
+                console.error('[NotificationCenter] Error deleting all read:', error);
+                setDeletingIds([]);
+            }
+        }, 300);
+    };
+
     // Format time ago
     const formatTimeAgo = (createdAt) => {
         const now = new Date();
@@ -113,6 +161,14 @@ const NotificationCenter = () => {
         if (diffMins > 0) return `${diffMins}m trước`;
         return 'Vừa xong';
     };
+
+    // Filtered notifications
+    const filteredNotifications = filter === 'unread'
+        ? notifications.filter(n => !n.isRead)
+        : notifications;
+
+    // Check if there are any read notifications
+    const hasReadNotifications = notifications.some(n => n.isRead);
 
     return (
         <div className={styles.center} ref={dropdownRef}>
@@ -131,25 +187,56 @@ const NotificationCenter = () => {
                 <div className={styles.dropdown}>
                     <div className={styles.header}>
                         <h3>Thông báo</h3>
-                        {unreadCount > 0 && (
-                            <button
-                                className={styles.markAllBtn}
-                                onClick={handleMarkAllAsRead}
-                            >
-                                Đánh dấu tất cả
-                            </button>
-                        )}
+                        <div className={styles.headerActions}>
+                            {unreadCount > 0 && (
+                                <button
+                                    className={styles.headerBtn}
+                                    onClick={handleMarkAllAsRead}
+                                    title="Đánh dấu tất cả đã đọc"
+                                >
+                                    Đọc tất cả
+                                </button>
+                            )}
+                            {hasReadNotifications && (
+                                <button
+                                    className={`${styles.headerBtn} ${styles.deleteBtn}`}
+                                    onClick={handleDeleteAllRead}
+                                    title="Xóa tất cả thông báo đã đọc"
+                                >
+                                    Xóa đã đọc
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Filter Tabs */}
+                    <div className={styles.tabs}>
+                        <button
+                            className={`${styles.tab} ${filter === 'all' ? styles.tabActive : ''}`}
+                            onClick={() => setFilter('all')}
+                        >
+                            Tất cả
+                        </button>
+                        <button
+                            className={`${styles.tab} ${filter === 'unread' ? styles.tabActive : ''}`}
+                            onClick={() => setFilter('unread')}
+                        >
+                            Chưa đọc {unreadCount > 0 && `(${unreadCount})`}
+                        </button>
                     </div>
 
                     <div className={styles.list}>
                         {loading ? (
                             <div className={styles.empty}>Đang tải...</div>
-                        ) : notifications.length === 0 ? (
-                            <div className={styles.empty}>Chưa có thông báo nào</div>
+                        ) : filteredNotifications.length === 0 ? (
+                            <div className={styles.empty}>
+                                <div className={styles.emptyIcon}>🔔</div>
+                                <p>{filter === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo nào'}</p>
+                            </div>
                         ) : (
                             (() => {
                                 // Group notifications by room
-                                const groupedByRoom = notifications.reduce((acc, notif) => {
+                                const groupedByRoom = filteredNotifications.reduce((acc, notif) => {
                                     const roomName = notif.payload?.roomName || 'Khác';
                                     if (!acc[roomName]) acc[roomName] = [];
                                     acc[roomName].push(notif);
@@ -169,7 +256,7 @@ const NotificationCenter = () => {
                                         {notifs.map(notif => (
                                             <div
                                                 key={notif._id}
-                                                className={`${styles.item} ${!notif.isRead ? styles.unread : ''}`}
+                                                className={`${styles.item} ${!notif.isRead ? styles.unread : ''} ${deletingIds.includes(notif._id) ? styles.deleting : ''}`}
                                                 onClick={() => !notif.isRead && handleMarkAsRead(notif._id)}
                                             >
                                                 <div className={styles.content}>
@@ -186,6 +273,13 @@ const NotificationCenter = () => {
                                                     </div>
                                                 </div>
                                                 {!notif.isRead && <div className={styles.dot}></div>}
+                                                <button
+                                                    className={styles.deleteItemBtn}
+                                                    onClick={(e) => handleDelete(e, notif._id)}
+                                                    title="Xóa thông báo"
+                                                >
+                                                    <FaTimes size={12} />
+                                                </button>
                                             </div>
                                         ))}
                                     </div>

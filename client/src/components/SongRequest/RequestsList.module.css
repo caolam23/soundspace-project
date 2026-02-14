@@ -61,6 +61,45 @@
     font-weight: 600;
 }
 
+/* ✅ Phase 6: Header Actions */
+.headerActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.settingsBtn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    transition: all 0.15s ease;
+}
+
+.settingsBtn:hover {
+    color: #a855f7;
+    background: rgba(168, 85, 247, 0.1);
+}
+
+.modeBadge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+}
+
+.autoMode {
+    background: rgba(168, 85, 247, 0.12);
+    color: #a855f7;
+}
+
 /* --- Card --- */
 .card {
     background-color: var(--bg-card);

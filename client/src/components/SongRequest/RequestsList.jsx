@@ -1,24 +1,51 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchRequests, setRequests, updateRequestVotes } from '../../store/requestSlice';
 import VoteButton from './VoteButton';
 import HostActions from './HostActions';
-import TimeAgo from '../Common/TimeAgo'; // Import TimeAgo component
+import TimeAgo from '../Common/TimeAgo';
+import RequestSettingsModal from './RequestSettingsModal';
 import styles from './RequestsList.module.css';
 
-// Import Icons hiện đại
+// Import Icons
 import {
     LuMusic,
     LuUser,
     LuClock,
     LuTag,
     LuSmile,
-    LuListMusic
+    LuListMusic,
+    LuSettings2
 } from "react-icons/lu";
 
-const RequestsList = ({ roomId, isHost, currentUserId, socket }) => {
+const RequestsList = ({ roomId, isHost, currentUserId, socket, roomData, memberCount }) => {
     const dispatch = useDispatch();
     const { items: requests, loading, error } = useSelector(state => state.requests);
+
+    // ✅ Phase 6: Settings state
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [currentSettings, setCurrentSettings] = useState({
+        approvalMode: 'manual',
+        autoApproveThreshold: 30
+    });
+
+    // Sync settings từ roomData
+    useEffect(() => {
+        if (roomData?.requestSettings) {
+            setCurrentSettings(roomData.requestSettings);
+        }
+    }, [roomData?.requestSettings]);
+
+    // Lắng nghe socket real-time khi Host đổi settings
+    useEffect(() => {
+        if (!socket) return;
+        const handleSettingsChanged = (newSettings) => {
+            setCurrentSettings(newSettings);
+        };
+        socket.on('request-settings-changed', handleSettingsChanged);
+        return () => socket.off('request-settings-changed', handleSettingsChanged);
+    }, [socket]);
+
 
     useEffect(() => {
         if (roomId) {
@@ -130,11 +157,36 @@ const RequestsList = ({ roomId, isHost, currentUserId, socket }) => {
             {/* 1. Header (Đứng yên) */}
             <div className={styles.header}>
                 <h3>
-                    <LuListMusic color="#8638e9" />
+                    <LuListMusic color="#a855f7" />
                     Danh sách chờ
                 </h3>
-                <span className={styles.countBadge}>{requests.length}</span>
+                <div className={styles.headerActions}>
+                    {/* Badge chế độ hiện tại */}
+                    <span className={`${styles.modeBadge} ${currentSettings.approvalMode === 'auto' ? styles.autoMode : ''}`}>
+                        {currentSettings.approvalMode === 'auto' ? '🤖 Tự động' : '✋ Thủ công'}
+                    </span>
+                    <span className={styles.countBadge}>{requests.length}</span>
+                    {/* Gear icon - Host only */}
+                    {isHost && (
+                        <button
+                            className={styles.settingsBtn}
+                            onClick={() => setIsSettingsOpen(true)}
+                            title="Cài đặt duyệt bài"
+                        >
+                            <LuSettings2 size={16} />
+                        </button>
+                    )}
+                </div>
             </div>
+
+            {/* ✅ Phase 6: Settings Modal */}
+            <RequestSettingsModal
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                roomId={roomId}
+                currentSettings={currentSettings}
+                memberCount={memberCount}
+            />
 
             {/* 2. Danh sách bài hát (Cuộn ở đây) */}
             <div className={styles.listWrapper}>

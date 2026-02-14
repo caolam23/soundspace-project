@@ -40,5 +40,23 @@ export const notificationApi = {
             { headers: getAuthHeaders() }
         );
         return response.data;
+    },
+
+    // Delete single notification
+    deleteNotification: async (notificationId) => {
+        const response = await axios.delete(
+            `${API_URL}/notifications/${notificationId}`,
+            { headers: getAuthHeaders() }
+        );
+        return response.data;
+    },
+
+    // Delete all read notifications
+    deleteAllRead: async () => {
+        const response = await axios.delete(
+            `${API_URL}/notifications/read`,
+            { headers: getAuthHeaders() }
+        );
+        return response.data;
     }
 };

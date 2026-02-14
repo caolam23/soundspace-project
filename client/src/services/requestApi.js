@@ -71,5 +71,24 @@ export const requestApi = {
             getAuthHeaders()
         );
         return response.data;
+    },
+
+    // Update request settings (Host only)
+    updateSettings: async (roomId, settings) => {
+        const response = await axios.put(
+            `${API_URL}/rooms/${roomId}/request-settings`,
+            settings,
+            getAuthHeaders()
+        );
+        return response.data;
+    },
+
+    // Get current request settings
+    getSettings: async (roomId) => {
+        const response = await axios.get(
+            `${API_URL}/rooms/${roomId}`,
+            getAuthHeaders()
+        );
+        return response.data?.room?.requestSettings || { approvalMode: 'manual', autoApproveThreshold: 30 };
     }
 };

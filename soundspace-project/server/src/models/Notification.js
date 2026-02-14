@@ -10,7 +10,7 @@ const NotificationSchema = new mongoose.Schema({
     type: {
         type: String,
         required: true,
-        enum: ['song_approved', 'song_rejected', 'vote_milestone', 'mention', 'other']
+        enum: ['song_approved', 'song_auto_approved', 'song_batch_approved', 'song_rejected', 'vote_milestone', 'mention', 'other']
     },
     payload: {
         songTitle: String,
@@ -18,6 +18,7 @@ const NotificationSchema = new mongoose.Schema({
         roomId: mongoose.Schema.Types.ObjectId,
         requestId: mongoose.Schema.Types.ObjectId,
         voteCount: Number,
+        votes: Number,
         message: String,
         // Flexible for future notification types
         metadata: mongoose.Schema.Types.Mixed
