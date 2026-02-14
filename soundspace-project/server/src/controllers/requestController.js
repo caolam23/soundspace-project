@@ -1,5 +1,6 @@
 const Room = require('../models/room');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const ytdl = require('@distube/ytdl-core');
 const { cloudinary } = require('../config/uploadConfig');
 const { getAudioDurationInSeconds } = require('get-audio-duration');
@@ -450,7 +451,30 @@ const approveRequest = async (req, res) => {
 
         console.log('[APPROVE_REQUEST] ✅ Request approved');
 
+        // ========================================
+        // 🔔 PHASE 5: CREATE PERSONAL NOTIFICATION
+        // ========================================
+        console.log('[PHASE 5] Creating notification for user:', request.requestedBy.toString());
+
+        const notification = new Notification({
+            userId: request.requestedBy,
+            type: 'song_approved',
+            payload: {
+                songTitle: request.title,
+                roomName: room.name,
+                roomId: roomId,
+                requestId: requestId,
+                message: `Bài "${request.title}" của bạn đã được duyệt!`
+            }
+        });
+        await notification.save();
+        console.log('[PHASE 5] Notification saved to DB:', notification._id);
+
         const io = req.app.get('io');
+        const userSockets = req.app.get('userSockets');
+        console.log('[PHASE 5] userSockets Map size:', userSockets?.size);
+        console.log('[PHASE 5] All connected users:', Array.from(userSockets?.keys() || []));
+
         if (io) {
             io.to(roomId).emit('request-approved', {
                 requestId: requestId,
@@ -462,6 +486,36 @@ const approveRequest = async (req, res) => {
                 currentTrackIndex: room.currentTrackIndex,
                 isPlaying: room.isPlaying
             });
+
+            // Emit personal notification to requester
+            const requesterUserId = request.requestedBy.toString();
+            const requesterSocketSet = userSockets?.get(requesterUserId);
+
+            console.log('[PHASE 5] Looking for socket for user:', requesterUserId);
+            console.log('[PHASE 5] Found socket Set:', requesterSocketSet);
+
+            if (requesterSocketSet && requesterSocketSet.size > 0) {
+                // Convert Set to Array and get first socket ID
+                const socketId = Array.from(requesterSocketSet)[0];
+                console.log('[PHASE 5] Extracted socket ID:', socketId);
+
+                const unreadCount = await Notification.countDocuments({
+                    userId: request.requestedBy,
+                    isRead: false
+                });
+
+                console.log('[PHASE 5] Emitting personal-notification to socket:', socketId);
+                console.log('[PHASE 5] Unread count:', unreadCount);
+
+                io.to(socketId).emit('personal-notification', {
+                    notification: notification.toObject(),
+                    unreadCount
+                });
+
+                console.log('[PHASE 5] ✅ Personal notification emitted successfully');
+            } else {
+                console.log('[PHASE 5] ❌ User socket not found! User might be disconnected or userSockets not tracking correctly');
+            }
         }
 
         return res.status(200).json({

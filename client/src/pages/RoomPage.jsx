@@ -22,6 +22,7 @@ import { reportRoom } from "../services/api";
 import RequestsList from "../components/SongRequest/RequestsList";
 import SongRequestModal from "../components/SongRequest/SongRequestModal";
 import useRoomNotifications from "../hooks/useRoomNotifications.jsx"; // ✅ Phase 4 Hook (Renamed to .jsx)
+import NotificationCenter from "../components/Notifications/NotificationCenter"; // ✅ Phase 5
 
 function RoomPage() {
   // ============================================
@@ -750,6 +751,10 @@ function RoomPage() {
                   <span>Báo cáo</span>
                 </button>
               )}
+
+              {/* ✅ PHASE 5: NOTIFICATION CENTER */}
+              {!isGhostMode && <NotificationCenter />}
+
               <button
                 className={`btn-leave-room ${isGhostMode ? 'ghost-mode-btn' : ''}`}
                 onClick={handleLeaveRoom}

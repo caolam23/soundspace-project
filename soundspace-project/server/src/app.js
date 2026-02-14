@@ -18,6 +18,7 @@ const streamRoutes = require('./routes/stream.routes');
 const quanLyPhongRoutes = require('./routes/quanLyPhong.routes')
 const statsRoutes = require('./routes/stats');
 const requestRoutes = require('./routes/requestRoutes'); // NEW: Song Request System
+const notificationRoutes = require('./routes/notificationRoutes'); // NEW: Phase 5 Notifications
 const session = require('express-session');
 const trackVisit = require('./middleware/trackVisit');
 console.log('✅ Loaded quanLyPhongRoutes:', typeof quanLyPhongRoutes);
@@ -109,6 +110,10 @@ function createApp() {
   // NEW: Song Requests
   console.log('🟡 Mounting: /api/rooms -> requestRoutes (Song Request System)');
   app.use('/api/rooms', requestRoutes);
+
+  // NEW: Notifications (Phase 5)
+  console.log('🟡 Mounting: /api/notifications -> notificationRoutes');
+  app.use('/api/notifications', notificationRoutes);
 
   // Stream
   console.log('🟡 Mounting: /api/stream -> streamRoutes');
