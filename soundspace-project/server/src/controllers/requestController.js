@@ -596,13 +596,47 @@ const rejectRequest = async (req, res) => {
 
         console.log('[REJECT_REQUEST] ✅ Request rejected');
 
+        // ========================================
+        // 🔔 CREATE PERSONAL NOTIFICATION
+        // ========================================
+        const rejectReason = reason || 'Không phù hợp với phòng lúc này';
+        const notification = new Notification({
+            userId: request.requestedBy,
+            type: 'song_rejected',
+            payload: {
+                songTitle: request.title,
+                roomName: room.name,
+                roomId: roomId,
+                requestId: requestId,
+                message: `Bài "${request.title}" đã bị từ chối. Lý do: ${rejectReason}`
+            }
+        });
+        await notification.save();
+        console.log('[REJECT_REQUEST] Notification saved to DB:', notification._id);
+
         const io = req.app.get('io');
+        const userSockets = req.app.get('userSockets');
         if (io) {
             io.to(roomId).emit('request-rejected', {
                 requestId: requestId,
                 title: request.title,
-                reason: reason || 'Không phù hợp với phòng lúc này'
+                reason: rejectReason
             });
+
+            // Emit personal notification to requester
+            const requesterSocketSet = userSockets?.get(request.requestedBy.toString());
+            if (requesterSocketSet && requesterSocketSet.size > 0) {
+                const socketId = Array.from(requesterSocketSet)[0];
+                const unreadCount = await Notification.countDocuments({
+                    userId: request.requestedBy,
+                    isRead: false
+                });
+                io.to(socketId).emit('personal-notification', {
+                    notification: notification.toObject(),
+                    unreadCount
+                });
+                console.log('[REJECT_REQUEST] ✅ Personal notification emitted to:', socketId);
+            }
         }
 
         return res.status(200).json({

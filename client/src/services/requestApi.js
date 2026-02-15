@@ -64,10 +64,10 @@ export const requestApi = {
     },
 
     // Reject a request (Host only)
-    reject: async (roomId, requestId) => {
+    reject: async (roomId, requestId, reason) => {
         const response = await axios.post(
             `${API_URL}/rooms/${roomId}/requests/${requestId}/reject`,
-            {},
+            { reason: reason || '' },
             getAuthHeaders()
         );
         return response.data;

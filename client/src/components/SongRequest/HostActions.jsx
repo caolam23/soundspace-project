@@ -36,11 +36,15 @@ const HostActions = ({ roomId, requestId, status, onAction }) => {
     };
 
     const handleReject = async () => {
-        if (!window.confirm('Bạn có chắc muốn từ chối bài này không?')) return;
+        const reason = window.prompt(
+            'Lý do từ chối (để trống nếu không cần):',
+            ''
+        );
+        if (reason === null) return; // User bấm Cancel
 
         setLoading(true);
         try {
-            await requestApi.reject(roomId, requestId);
+            await requestApi.reject(roomId, requestId, reason);
             toast.success('Đã từ chối yêu cầu');
             if (onAction) onAction();
         } catch (err) {

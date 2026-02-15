@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchRequests, setRequests, updateRequestVotes } from '../../store/requestSlice';
 import VoteButton from './VoteButton';
 import HostActions from './HostActions';
+import AudioPreview from './AudioPreview';
 import TimeAgo from '../Common/TimeAgo';
 import RequestSettingsModal from './RequestSettingsModal';
 import styles from './RequestsList.module.css';
@@ -236,6 +237,20 @@ const RequestsList = ({ roomId, isHost, currentUserId, socket, roomData, memberC
                                     ))}
                                 </div>
                             </div>
+
+                            {/* 🎧 Audio Preview (Host only) */}
+                            {isHost && (
+                                <div className={styles.previewSection}>
+                                    <AudioPreview
+                                        source={request.source}
+                                        audioUrl={request.cloudinary_url}
+                                        youtubeId={request.youtube_id}
+                                        youtubeUrl={request.url}
+                                        duration={request.duration}
+                                        requestId={request._id}
+                                    />
+                                </div>
+                            )}
 
                             {/* Nút bấm (Vote/Host) */}
                             <div className={styles.actions}>

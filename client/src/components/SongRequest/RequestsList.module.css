@@ -269,6 +269,13 @@
     border: 1px solid rgba(255, 159, 67, 0.3);
 }
 
+/* --- Audio Preview Section (Host only) --- */
+.previewSection {
+    margin-top: 12px;
+    padding: 4px 0;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
 /* --- Actions Area --- */
 .actions {
     margin-top: 16px;
