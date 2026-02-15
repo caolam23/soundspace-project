@@ -155,6 +155,9 @@ const addRequestFromUpload = async (req, res) => {
         if (!req.files || !req.files.audio) {
             return res.status(400).json({ msg: 'Thiếu file nhạc' });
         }
+        if (!req.files.thumbnail) {
+            return res.status(400).json({ msg: 'Vui lòng chọn ảnh bìa cho bài hát' });
+        }
 
         // 2. Validate tags
         if (!parsedTags || parsedTags.length === 0) {
@@ -187,11 +190,9 @@ const addRequestFromUpload = async (req, res) => {
         // 6. Upload to Cloudinary
         console.log('[REQUEST_UPLOAD] Uploading to Cloudinary...');
 
-        const thumbnailUpload = req.files.thumbnail
-            ? await cloudinary.uploader.upload(req.files.thumbnail[0].path, {
-                folder: 'soundspace-requests'
-            })
-            : { secure_url: '/images/default-cover.png' };
+        const thumbnailUpload = await cloudinary.uploader.upload(req.files.thumbnail[0].path, {
+            folder: 'soundspace-requests'
+        });
 
         const audioUpload = await cloudinary.uploader.upload(
             req.files.audio[0].path,

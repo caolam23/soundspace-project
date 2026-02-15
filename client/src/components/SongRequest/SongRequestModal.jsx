@@ -6,10 +6,13 @@ import styles from './SongRequestModal.module.css';
 import {
     LuX,
     LuYoutube,
-    LuUpload, // ✅ ĐÃ SỬA: Dùng LuUpload thay cho LuUploadCloud
+    LuUpload,
     LuMusic,
-    LuSend
+    LuSend,
+    LuImage,
+    LuTrash2
 } from "react-icons/lu";
+import { useRef } from 'react';
 
 // ✅ FIXED: Match backend enum (lowercase)
 // ✅ FIXED: Match backend enum (lowercase)
@@ -37,6 +40,9 @@ const SongRequestModal = ({ isOpen, onClose, roomId }) => {
     const [file, setFile] = useState(null);
     const [title, setTitle] = useState('');
     const [artist, setArtist] = useState('');
+    const [thumbnailFile, setThumbnailFile] = useState(null);
+    const [thumbnailPreview, setThumbnailPreview] = useState(null);
+    const thumbnailInputRef = useRef(null);
 
     // Common
     const [selectedGenres, setSelectedGenres] = useState([]);
@@ -60,11 +66,36 @@ const SongRequestModal = ({ isOpen, onClose, roomId }) => {
         }
     };
 
+    const handleThumbnailChange = (e) => {
+        const imgFile = e.target.files[0];
+        if (!imgFile) return;
+        if (!imgFile.type.startsWith('image/')) {
+            toast.error('Vui lòng chọn file ảnh hợp lệ (JPG, PNG...)');
+            return;
+        }
+        if (imgFile.size > 5 * 1024 * 1024) {
+            toast.error('Ảnh bìa không được vượt quá 5MB');
+            return;
+        }
+        setThumbnailFile(imgFile);
+        const reader = new FileReader();
+        reader.onloadend = () => setThumbnailPreview(reader.result);
+        reader.readAsDataURL(imgFile);
+    };
+
+    const removeThumbnail = () => {
+        setThumbnailFile(null);
+        setThumbnailPreview(null);
+        if (thumbnailInputRef.current) thumbnailInputRef.current.value = '';
+    };
+
     const resetForm = () => {
         setYoutubeUrl('');
         setFile(null);
         setTitle('');
         setArtist('');
+        setThumbnailFile(null);
+        setThumbnailPreview(null);
         setSelectedGenres([]);
         setSelectedMoods([]);
         setActiveTab('youtube');
@@ -102,6 +133,10 @@ const SongRequestModal = ({ isOpen, onClose, roomId }) => {
             toast.error('Vui lòng điền đủ thông tin');
             return;
         }
+        if (!thumbnailFile) {
+            toast.error('Vui lòng chọn ảnh bìa cho bài hát');
+            return;
+        }
         if (selectedGenres.length === 0) {
             toast.error('Vui lòng chọn ít nhất 1 thể loại');
             return;
@@ -109,6 +144,7 @@ const SongRequestModal = ({ isOpen, onClose, roomId }) => {
         try {
             const formData = new FormData();
             formData.append('audio', file);
+            formData.append('thumbnail', thumbnailFile);
             formData.append('title', title);
             formData.append('artist', artist);
             formData.append('tags', JSON.stringify(selectedGenres));
@@ -211,30 +247,71 @@ const SongRequestModal = ({ isOpen, onClose, roomId }) => {
                                 />
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                <div className={styles.formGroup}>
-                                    <label>Tên bài hát</label>
-                                    <input
-                                        type="text"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        className={styles.input}
-                                        required
-                                        disabled={submitLoading}
-                                        placeholder="Ví dụ: Em của ngày hôm qua"
-                                    />
+                            {/* Thumbnail + Song Info Row */}
+                            <div className={styles.thumbnailSection}>
+                                {/* Thumbnail Upload */}
+                                <div className={styles.thumbnailUploadWrapper}>
+                                    <label>Ảnh bìa <span className={styles.requiredMark}>*</span></label>
+                                    <div
+                                        className={`${styles.thumbnailUpload} ${thumbnailPreview ? styles.hasThumbnail : ''}`}
+                                        onClick={() => !submitLoading && thumbnailInputRef.current?.click()}
+                                    >
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            ref={thumbnailInputRef}
+                                            onChange={handleThumbnailChange}
+                                            style={{ display: 'none' }}
+                                            disabled={submitLoading}
+                                        />
+                                        {thumbnailPreview ? (
+                                            <>
+                                                <img src={thumbnailPreview} alt="Cover preview" className={styles.thumbnailPreview} />
+                                                <button
+                                                    type="button"
+                                                    className={styles.thumbnailRemove}
+                                                    onClick={(e) => { e.stopPropagation(); removeThumbnail(); }}
+                                                    disabled={submitLoading}
+                                                    title="Xóa ảnh bìa"
+                                                >
+                                                    <LuTrash2 size={14} />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <div className={styles.thumbnailPlaceholder}>
+                                                <LuImage size={24} />
+                                                <span>Chọn ảnh</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className={styles.formGroup}>
-                                    <label>Ca sĩ</label>
-                                    <input
-                                        type="text"
-                                        value={artist}
-                                        onChange={(e) => setArtist(e.target.value)}
-                                        className={styles.input}
-                                        required
-                                        disabled={submitLoading}
-                                        placeholder="Ví dụ: Sơn Tùng M-TP"
-                                    />
+
+                                {/* Song Info Fields */}
+                                <div className={styles.songInfoFields}>
+                                    <div className={styles.formGroup}>
+                                        <label>Tên bài hát</label>
+                                        <input
+                                            type="text"
+                                            value={title}
+                                            onChange={(e) => setTitle(e.target.value)}
+                                            className={styles.input}
+                                            required
+                                            disabled={submitLoading}
+                                            placeholder="Ví dụ: Em của ngày hôm qua"
+                                        />
+                                    </div>
+                                    <div className={styles.formGroup}>
+                                        <label>Ca sĩ</label>
+                                        <input
+                                            type="text"
+                                            value={artist}
+                                            onChange={(e) => setArtist(e.target.value)}
+                                            className={styles.input}
+                                            required
+                                            disabled={submitLoading}
+                                            placeholder="Ví dụ: Sơn Tùng M-TP"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
