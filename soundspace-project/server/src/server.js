@@ -158,6 +158,7 @@ io.on('connection', (socket) => {
 
       // If this socket is authenticated and user is not yet recorded as member in DB,
       // add them and increment statistics.totalJoins (counts unique joins)
+      let memberUpdated = false;
       try {
         const uid = socket.userId || null;
         if (uid && !room.members.some(m => String(m._id || m) === String(uid)) && room.status !== 'ended') {
@@ -166,6 +167,9 @@ io.on('connection', (socket) => {
             $push: { members: uid },
             $inc: { 'statistics.totalJoins': 1 }
           });
+          memberUpdated = true;
+          console.log(`[JOIN-ROOM] ✅ Added user ${uid} to members`);
+          
           // update peakMembers if needed
           try {
             const fresh = await Room.findById(roomId).select('statistics members').lean();
@@ -179,6 +183,18 @@ io.on('connection', (socket) => {
         }
       } catch (e) {
         console.warn('[JOIN-ROOM] Auto-join stats update failed:', e.message);
+      }
+
+      // Re-fetch room with populated members if we just added a new member
+      if (memberUpdated) {
+        console.log(`[JOIN-ROOM] 🔄 Re-fetching room with updated members...`);
+        const refreshedRoom = await Room.findById(roomId)
+          .populate('owner', 'username avatar')
+          .populate('members', 'username avatar');
+        if (refreshedRoom) {
+          room = refreshedRoom;
+          console.log(`[JOIN-ROOM] ✨ Room refreshed with ${room.members.length} members`);
+        }
       }
 
       // Send initial playback state to the new socket
@@ -197,41 +213,11 @@ io.on('connection', (socket) => {
       const otherMembers = room.members.filter(m => String(m._id) !== ownerId);
       const sortedMembers = ownerMember ? [ownerMember, ...otherMembers] : room.members;
       
+      console.log(`[JOIN-ROOM] 📢 Broadcasting update-members to room ${roomId}:`, sortedMembers.map(m => m.username));
       io.to(roomId).emit('update-members', sortedMembers);
-        // Emit room-members-changed for admin pages so member count updates realtime
-        try {
-          const roomObj = await Room.findById(roomId).select('statistics members').lean();
-          if (roomObj) {
-            const payload = {
-              roomId: String(roomId),
-              membersCount: roomObj.members?.length || 0,
-              totalJoins: roomObj.statistics?.totalJoins || 0,
-              peakMembers: roomObj.statistics?.peakMembers || 0,
-            };
-            io.emit('room-members-changed', payload);
-            console.log('[LEAVE-ROOM] Emitted room-members-changed', payload);
-          }
-        } catch (e) {
-          console.warn('[LEAVE-ROOM] Could not emit room-members-changed:', e.message);
-        }
-      console.log(`[JOIN-ROOM] Emitted update-members with ${sortedMembers.length} members`);
-      // Emit room-members-changed so admin pages update
-      try {
-        const roomObj = await Room.findById(roomId).select('statistics members').lean();
-        if (roomObj) {
-          const payload = {
-            roomId: String(roomId),
-            membersCount: roomObj.members?.length || 0,
-            totalJoins: roomObj.statistics?.totalJoins || 0,
-            peakMembers: roomObj.statistics?.peakMembers || 0,
-          };
-          io.emit('room-members-changed', payload);
-          console.log('[JOIN-ROOM] Emitted room-members-changed', payload);
-        }
-      } catch (e) {
-        console.warn('[JOIN-ROOM] Could not emit room-members-changed:', e.message);
-      }
-      // Emit global member stats for admin pages
+      console.log(`[JOIN-ROOM] ✅ Emitted update-members with ${sortedMembers.length} members`);
+      
+      // Emit room-members-changed for admin pages
       try {
         const roomObj = await Room.findById(roomId).select('statistics members').lean();
         if (roomObj) {
@@ -239,10 +225,10 @@ io.on('connection', (socket) => {
             roomId: String(roomId),
             membersCount: sortedMembers.length,
             totalJoins: roomObj.statistics?.totalJoins || 0,
-            peakMembers: roomObj.statistics?.peakMembers || sortedMembers.length,
+            peakMembers: roomObj.statistics?.peakMembers || 0,
           };
           io.emit('room-members-changed', payload);
-          console.log('[JOIN-ROOM] Emitted room-members-changed', payload);
+          console.log('[JOIN-ROOM] Emitted room-members-changed:', payload);
         }
       } catch (e) {
         console.warn('[JOIN-ROOM] Could not emit room-members-changed:', e.message);
@@ -257,7 +243,7 @@ io.on('connection', (socket) => {
   registerChatHandlers(io, socket);
 
   // --- Stage: handle co-host invites, accepts, leaves via real-time socket ---
-  registerStageHandlers(io, socket);
+  registerStageHandlers(io, socket, userSockets);
 
   // --- Request to join ---
   socket.on('request-to-join', async ({ roomId, requester }) => {

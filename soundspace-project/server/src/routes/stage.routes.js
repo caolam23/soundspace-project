@@ -1,28 +1,52 @@
 // server/src/routes/stage.routes.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const stageController = require("../controllers/stageController");
-const { verifyToken } = require("../middleware/auth");
+const stageController = require('../controllers/stageController');
+const { verifyToken } = require('../middleware/auth');
 
 /**
  * ========================================
- * STAGE ROUTES
+ * STAGE ROUTES - Live Co-host Management
  * ========================================
  */
 
-// POST /api/stage/invite - Host mời user lên stage
-router.post("/invite", verifyToken, stageController.inviteToStage);
+// POST /api/stage/invite
+// Host mời người lên sân khấu
+router.post(
+  '/invite',
+  verifyToken,
+  stageController.inviteToStage
+);
 
-// PUT /api/stage/:roomId/accept - User chấp nhận lời mời
-router.put("/:roomId/accept", verifyToken, stageController.acceptStageInvite);
+// PUT /api/stage/:roomId/accept
+// Guest chấp nhận lời mời lên sân khấu
+router.put(
+  '/:roomId/accept',
+  verifyToken,
+  stageController.acceptStageInvite
+);
 
-// DELETE /api/stage/:roomId/leave - User rời khỏi stage
-router.delete("/:roomId/leave", verifyToken, stageController.leaveStage);
+// DELETE /api/stage/:roomId/leave
+// Co-host rời khỏi sân khấu
+router.delete(
+  '/:roomId/leave',
+  verifyToken,
+  stageController.leaveStage
+);
 
-// DELETE /api/stage/:roomId/remove - Host kick user khỏi stage
-router.delete("/:roomId/remove", verifyToken, stageController.removeFromStage);
+// DELETE /api/stage/:roomId/remove
+// Host xóa co-host khỏi sân khấu
+router.delete(
+  '/:roomId/remove',
+  verifyToken,
+  stageController.removeFromStage
+);
 
-// GET /api/stage/:roomId - Lấy thông tin stage
-router.get("/:roomId", stageController.getStageInfo);
+// GET /api/stage/:roomId
+// Lấy thông tin sân khấu của phòng
+router.get(
+  '/:roomId',
+  stageController.getStageInfo
+);
 
 module.exports = router;

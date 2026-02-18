@@ -20,6 +20,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import MusicPlayer from "../components/MusicPlayer";
 import RoomChat from "../components/RoomChat";
+import Stage from "../components/Stage";
 import { toastConfig } from "../services/toastConfig"; // hoặc đường dẫn bạn lưu file config
 
 function RoomPage() {
@@ -35,6 +36,7 @@ function RoomPage() {
   const [room, setRoom] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [members, setMembers] = useState([]);
+  const [coHosts, setCoHosts] = useState([]);
   const [joinNotification, setJoinNotification] = useState(null);
   const [joinRequests, setJoinRequests] = useState([]);
   const [leaveNotification, setLeaveNotification] = useState(null);
@@ -246,6 +248,7 @@ function RoomPage() {
           return { ...prev, ...fetchedRoom };
         });
         setChatMessages(fetchedRoom.chat || []);
+        setCoHosts(fetchedRoom.coHosts || []);
 
         const owner = fetchedRoom.owner ? [fetchedRoom.owner] : [];
         const otherMembers = (fetchedRoom.members || []).filter(
@@ -282,9 +285,14 @@ function RoomPage() {
 
     // Socket event handlers
     const handleUpdateMembers = (data) => {
+      console.log('[DEBUG] update-members received:', data);
       const updatedMembers = data.members || data;
-      if (!updatedMembers || updatedMembers.length === 0) return;
+      if (!updatedMembers || updatedMembers.length === 0) {
+        console.log('[DEBUG] Empty members, returning');
+        return;
+      }
       
+      console.log('[DEBUG] Updating members with:', updatedMembers);
       const currentRoom = roomRef.current;
       if (!currentRoom || !currentRoom.owner) {
         setMembers(updatedMembers);
@@ -321,6 +329,72 @@ function RoomPage() {
     socket.on("user-joined-notification", handleUserJoined);
     socket.on("room-ended", handleRoomEnded);
 
+    // === Stage Socket Listeners ===
+    const handleStageCoHostsUpdated = (data) => {
+      if (data.roomId === roomId) {
+        setCoHosts(data.coHosts || []);
+        if (data.action === "invite") {
+          toast.info(`${data.invitedUser?.username} được mời lên sân khấu`, toastConfig);
+        } else if (data.action === "accept") {
+          toast.success(`${data.acceptedUser?.username} đã chấp nhận lời mời`, toastConfig);
+        } else if (data.action === "leave") {
+          toast.info(`${data.leftUser?.username} đã rời khỏi sân khấu`, toastConfig);
+        }
+      }
+    };
+
+    const handleStageMediaToggled = (data) => {
+      if (data.roomId === roomId) {
+        setCoHosts(data.coHosts || []);
+        const icon = data.mediaType === 'mic' ? '🎤' : '📹';
+        const status = data.enabled ? 'bật' : 'tắt';
+        toast.info(`${data.username} ${status} ${data.mediaType === 'mic' ? 'mic' : 'camera'} ${icon}`, toastConfig);
+      }
+    };
+
+    // Guest receives stage invitation notification
+    const handleStageInvitation = (data) => {
+      console.log('[DEBUG] stage:invitation received:', data);
+      console.log('[DEBUG] Current room:', roomId);
+      console.log('[DEBUG] Is host:', isHost);
+      
+      // Don't check roomId - invitation should show regardless
+      // But don't show if user is the host
+      if (isHost) {
+        console.log('[DEBUG] Ignoring - user is host');
+        return;
+      }
+      
+      console.log('[DEBUG] Showing invitation toast');
+      toast.info(
+        `🎤 ${data.inviterUsername} đã mời bạn lên sân khấu!`,
+        {
+          ...toastConfig,
+          autoClose: 5000,
+          position: 'top-center'
+        }
+      );
+      // Also update coHosts with pending status
+      setCoHosts(data.coHosts || []);
+    };
+
+    // Guest receives removal notification
+    const handleStageRemoved = (data) => {
+      toast.warning(
+        `⚠️ ${data.message || 'Bạn đã bị xóa khỏi sân khấu'}`,
+        {
+          ...toastConfig,
+          autoClose: 3000,
+          position: 'top-center'
+        }
+      );
+    };
+
+    socket.on("stage:coHosts-updated", handleStageCoHostsUpdated);
+    socket.on("stage:media-toggled", handleStageMediaToggled);
+    socket.on("stage:invitation", handleStageInvitation);
+    socket.on("stage:removed", handleStageRemoved);
+
     // Cleanup
     return () => {
       cleanedUp = true;
@@ -340,6 +414,10 @@ function RoomPage() {
       socket.off("update-members", handleUpdateMembers);
       socket.off("user-joined-notification", handleUserJoined);
       socket.off("room-ended", handleRoomEnded);
+      socket.off("stage:coHosts-updated", handleStageCoHostsUpdated);
+      socket.off("stage:media-toggled", handleStageMediaToggled);
+      socket.off("stage:invitation", handleStageInvitation);
+      socket.off("stage:removed", handleStageRemoved);
       socket.off("new-join-request", handleNewJoinRequest);
     };
   }, [roomId, user, socket, navigate, handleNewJoinRequest, endRoomAPI, location.state]);
@@ -378,6 +456,7 @@ function RoomPage() {
           if (!prev) return payload;
           return { ...prev, ...payload, playlist: payload.playlist ?? prev.playlist };
         });
+        setCoHosts(payload.coHosts || []);
         const owner = payload.owner ? [payload.owner] : [];
         const otherMembers = (payload.members || []).filter(
           (m) => String(m._id) !== String(payload.owner?._id)
@@ -603,6 +682,14 @@ function RoomPage() {
             >
               Thành viên ({members.length})
             </div>
+            <div
+              className={`roompage-tab ${
+                activeTab === "stage" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("stage")}
+            >
+              Sân khấu {coHosts.length > 0 && `(${coHosts.length})`}
+            </div>
           </div>
 
           {/* Chat box (realtime) */}
@@ -638,6 +725,20 @@ function RoomPage() {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* 🎤 Stage - Live Co-host Video Grid */}
+          {activeTab === "stage" && (
+            <div className="roompage-stage-tab">
+              <Stage
+                roomId={roomId}
+                coHosts={coHosts}
+                isHost={isHost}
+                members={members}
+                socket={socket}
+                onInviteClick={() => {}}
+              />
             </div>
           )}
 

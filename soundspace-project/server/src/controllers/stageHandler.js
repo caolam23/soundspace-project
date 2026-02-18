@@ -10,7 +10,7 @@ const User = require("../models/User");
  * Namespace: room namespaces (e.g., /room/roomId)
  */
 
-const registerStageHandlers = (io, socket) => {
+const registerStageHandlers = (io, socket, userSockets) => {
   /**
    * ========================================
    * EVENT 1: stage:invite
@@ -94,6 +94,25 @@ const registerStageHandlers = (io, socket) => {
           avatar: user.avatar,
         },
       });
+
+      // 8. Send invitation notification to invited user (if online)
+      const invitedUserSocketIds = userSockets.get(String(userId));
+      if (invitedUserSocketIds && invitedUserSocketIds.size > 0) {
+        // Get first socket ID of the invited user (user might have multiple connections)
+        const invitedUserSocketId = Array.from(invitedUserSocketIds)[0];
+        const invitedUserSocket = io.of("/").sockets.sockets.get(invitedUserSocketId);
+        if (invitedUserSocket) {
+          const host = await User.findById(hostId);
+          console.log(`[STAGE:INVITE] 📢 Sending invitation to guest ${userId} via socket ${invitedUserSocketId}`);
+          invitedUserSocket.emit("stage:invitation", {
+            roomId: roomId,
+            inviterUsername: host?.username || "Host",
+            invitedUsername: user.username,
+          });
+        }
+      } else {
+        console.log(`[STAGE:INVITE] ⚠️ Guest ${userId} is offline - invitation not sent`);
+      }
 
       console.log(`[STAGE:INVITE] ✅ User ${userId} invited to room ${roomId}`);
     } catch (error) {
@@ -233,7 +252,88 @@ const registerStageHandlers = (io, socket) => {
 
   /**
    * ========================================
-   * EVENT 4: stage:toggle-media
+   * EVENT 4: stage:remove
+   * Host removes Co-host từ stage
+   * ========================================
+   */
+  const handleRemoveFromStage = async (payload) => {
+    try {
+      const { roomId, userId } = payload;
+      const hostId = socket.userId;
+
+      console.log(
+        `[STAGE:REMOVE] Host ${hostId} removing user ${userId} from room ${roomId}`
+      );
+
+      // 1. Check room exists
+      const room = await Room.findById(roomId);
+      if (!room) {
+        socket.emit("stage-error", {
+          message: "Phòng không tồn tại",
+        });
+        return;
+      }
+
+      // 2. Check caller is host
+      if (room.owner.toString() !== hostId) {
+        socket.emit("stage-error", {
+          message: "Chỉ Host mới có quyền xóa Co-host",
+        });
+        return;
+      }
+
+      // 3. Remove co-host
+      const coHostIndex = room.coHosts.findIndex(
+        (ch) => ch.userId.toString() === userId
+      );
+      if (coHostIndex === -1) {
+        socket.emit("stage-error", {
+          message: "Người dùng không phải là Co-host",
+        });
+        return;
+      }
+
+      const removedCoHost = room.coHosts[coHostIndex];
+      room.coHosts.splice(coHostIndex, 1);
+      await room.save();
+
+      // 4. Broadcast to room
+      io.to(roomId).emit("stage:coHosts-updated", {
+        roomId: roomId,
+        coHosts: room.coHosts,
+        action: "remove",
+        removedUser: {
+          userId: removedCoHost.userId,
+          username: removedCoHost.username,
+        },
+      });
+
+      // 5. Notify removed user
+      const removedUserSocketIds = userSockets.get(String(userId));
+      if (removedUserSocketIds && removedUserSocketIds.size > 0) {
+        const removedUserSocketId = Array.from(removedUserSocketIds)[0];
+        const removedUserSocket = io.of("/").sockets.sockets.get(removedUserSocketId);
+        if (removedUserSocket) {
+          removedUserSocket.emit("stage:removed", {
+            roomId: roomId,
+            message: `Host đã xóa bạn khỏi sân khấu`,
+          });
+        }
+      }
+
+      console.log(`[STAGE:REMOVE] ✅ User ${userId} removed from stage`);
+    } catch (error) {
+      console.error("[STAGE:REMOVE] Error:", error);
+      socket.emit("stage-error", {
+        message: "Lỗi khi xóa Co-host",
+        error: error.message,
+      });
+    }
+  };
+
+  /**
+   * ========================================
+   * EVENT 5: stage:toggle-media
    * Toggle Mic/Camera của Co-host
    * ========================================
    */
@@ -356,6 +456,7 @@ const registerStageHandlers = (io, socket) => {
   socket.on("stage:invite", handleStageInvite);
   socket.on("stage:accept", handleStageAccept);
   socket.on("stage:leave", handleStageLeave);
+  socket.on("stage:remove", handleRemoveFromStage);
   socket.on("stage:toggle-media", handleToggleMedia);
 
   // Handle disconnect
