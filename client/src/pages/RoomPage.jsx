@@ -21,8 +21,10 @@ import { toastConfig } from "../services/toastConfig";
 import { reportRoom } from "../services/api";
 import RequestsList from "../components/SongRequest/RequestsList";
 import SongRequestModal from "../components/SongRequest/SongRequestModal";
-import useRoomNotifications from "../hooks/useRoomNotifications.jsx"; // ✅ Phase 4 Hook (Renamed to .jsx)
-import NotificationCenter from "../components/Notifications/NotificationCenter"; // ✅ Phase 5
+import useRoomNotifications from "../hooks/useRoomNotifications.jsx";
+import NotificationCenter from "../components/Notifications/NotificationCenter";
+
+
 
 function RoomPage() {
   // ============================================
@@ -42,7 +44,6 @@ function RoomPage() {
   const location = useLocation();
   const { user, socket } = useContext(AuthContext);
 
-  // ✅ Phase 4: Room Notifications
   useRoomNotifications(socket);
 
   // ============================================
@@ -175,7 +176,7 @@ function RoomPage() {
       setIsGhostMode(true);
       isGhostModeRef.current = true;
     }
-  }, []); // ✅ RUN ONCE
+  }, []);
 
   // ============================================
   // COMMENT DELETED LISTENER
@@ -448,7 +449,7 @@ function RoomPage() {
         }
       }
     };
-  }, [roomId, user, socket, navigate, endRoomAPI, handleNewJoinRequest]); // ✅ FIXED DEPENDENCIES
+  }, [roomId, user, socket, navigate, endRoomAPI, handleNewJoinRequest]);
 
   // ============================================
   // USER LEFT NOTIFICATION + ROOM BANNED
@@ -667,6 +668,8 @@ function RoomPage() {
     }
   }, [isGhostMode, location.state, navigate, socket, roomId, user]);
 
+
+
   // ============================================
   // HANDLE SUBMIT REPORT
   // ============================================
@@ -815,6 +818,8 @@ function RoomPage() {
             </div>
           )}
 
+
+
           <MusicPlayer
             roomData={room}
             isHost={isHost}
@@ -850,6 +855,7 @@ function RoomPage() {
             >
               Thành viên ({members.length})
             </div>
+
           </div>
 
           {activeTab === "chat" && (
@@ -888,6 +894,8 @@ function RoomPage() {
               </ul>
             </div>
           )}
+
+
         </aside>
       </main>
 

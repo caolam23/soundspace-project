@@ -1,12 +1,8 @@
 :root {
     --bg-primary: #121212;
-    /* Màu nền chính tối nhất */
     --bg-secondary: #1E1E1E;
-    /* Màu nền cho các cột */
     --bg-tertiary: #2A2A2A;
-    /* Màu nền cho các item, input */
     --accent: #8A2BE2;
-    /* Màu tím nhấn mạnh */
     --accent-hover: #9945FF;
     --text-primary: #FFFFFF;
     --text-secondary: #A0A0A0;
@@ -51,7 +47,6 @@
     background-color: var(--bg-primary);
     color: var(--text-primary);
     font-family: 'Inter', sans-serif;
-    /* Bạn cần import font này, hoặc thay bằng font bạn thích */
     overflow: hidden;
 }
 
@@ -70,7 +65,6 @@
     flex-grow: 1;
     overflow: hidden;
     width: 100%;
-    /* ✅ Thêm dòng này */
 }
 
 /* ================================== */
@@ -181,7 +175,6 @@
 /* ================================== */
 .roompage-center {
     flex: 1;
-    /* Cho phép cột giữa chiếm hết không gian còn lại */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -272,7 +265,6 @@
 
 .roompage-btn-spotify {
     display: none;
-    /* Ẩn đi nếu không cần thiết, hoặc style nó */
 }
 
 /* ================================== */
@@ -282,7 +274,6 @@
     width: 25%;
     min-width: 300px;
     max-width: 400px;
-    /* ✅ Thêm max-width để không bị quá rộng */
     background-color: var(--bg-secondary);
     border-left: 1px solid var(--border-color);
     display: flex;
@@ -293,23 +284,17 @@
 .roompage-main.new-layout {
     display: flex;
     gap: 0;
-    /* Không có khoảng cách thừa */
     width: 100%;
-    /* ✅ Chiếm full width */
 }
 
 .roompage-left-column {
     flex: 1;
-    /* Chiếm phần còn lại */
     display: flex;
     flex-direction: column;
     min-width: 0;
-    /* ✅ Quan trọng: tránh overflow */
     overflow: hidden;
-    /* ✅ Ẩn thanh cuộn thừa */
 }
 
-/* ✅ Đảm bảo Ghost Mode không làm lệch layout */
 .roompage-container.ghost-mode .roompage-main {
     width: 100%;
 }
@@ -383,8 +368,6 @@
 .roompage-chat-actions {
     display: none;
 }
-
-/* Ẩn đi cho gọn */
 
 /* --- Phần Thành viên --- */
 .roompage-participant-list {
@@ -461,10 +444,8 @@
     right: 28px;
     top: 72px;
     width: 420px;
-    /* tăng độ rộng để hiển thị thông tin đầy đủ */
     max-width: calc(100vw - 56px);
     max-height: 80vh;
-    /* tăng chiều cao tối đa để chứa nhiều yêu cầu hơn */
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
     border: 1px solid rgba(255, 255, 255, 0.04);
     backdrop-filter: blur(6px);
@@ -475,7 +456,7 @@
     z-index: 1000;
 }
 
-/* Responsive: nếu cửa sổ nhỏ, làm box chiếm gần hết chiều ngang */
+/* Responsive */
 @media (max-width: 800px) {
     .join-requests-container {
         right: 16px;
@@ -855,7 +836,6 @@
     bottom: 28px;
     z-index: 1700;
     pointer-events: none;
-    /* Clicks pass through unless we change */
 }
 
 /* Enhanced join toast resembling Google Meet: avatar + name + small subtitle */
@@ -871,7 +851,6 @@
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
     font-weight: 600;
     pointer-events: auto;
-    /* allow hover interactions if necessary */
     min-width: 220px;
     max-width: 320px;
     animation: join-toast-in 300ms cubic-bezier(.2, .9, .2, 1);
@@ -938,7 +917,6 @@
 
 .roompage-ghost-badge {
     display: inline-flex;
-    /* ✅ Đổi từ inline-flex sang inline-flex */
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
@@ -949,9 +927,7 @@
     font-size: 13px;
     font-weight: 600;
     margin-top: 0;
-    /* ✅ Bỏ margin-top */
     flex-shrink: 0;
-    /* ✅ Không cho badge bị co lại */
 }
 
 .roompage-ghost-badge svg {

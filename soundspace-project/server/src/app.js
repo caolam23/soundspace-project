@@ -19,6 +19,7 @@ const quanLyPhongRoutes = require('./routes/quanLyPhong.routes')
 const statsRoutes = require('./routes/stats');
 const requestRoutes = require('./routes/requestRoutes'); // NEW: Song Request System
 const notificationRoutes = require('./routes/notificationRoutes'); // NEW: Phase 5 Notifications
+const recommendationRoutes = require('./routes/recommendationRoutes'); // NEW: AI Music Recommendations
 const session = require('express-session');
 const trackVisit = require('./middleware/trackVisit');
 console.log('✅ Loaded quanLyPhongRoutes:', typeof quanLyPhongRoutes);
@@ -114,6 +115,10 @@ function createApp() {
   // NEW: Notifications (Phase 5)
   console.log('🟡 Mounting: /api/notifications -> notificationRoutes');
   app.use('/api/notifications', notificationRoutes);
+
+  // NEW: AI Music Recommendations
+  console.log('🟡 Mounting: /api/recommendations -> recommendationRoutes');
+  app.use('/api/recommendations', recommendationRoutes);
 
   // Stream
   console.log('🟡 Mounting: /api/stream -> streamRoutes');

@@ -18,17 +18,12 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-
-    /* ✅ FIXED: Take remaining space in sidebar (60%) */
     flex-grow: 1;
     min-height: 0;
     /* Important for flexbox scrolling */
     overflow-y: auto;
     /* Enable scrolling when content exceeds */
     overflow-x: hidden;
-    /* ✅ CRITICAL: Prevent horizontal scroll */
-    padding-right: 8px;
-    /* Space for scrollbar */
 }
 
 /* --- Header --- */
