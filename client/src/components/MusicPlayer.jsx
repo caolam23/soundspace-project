@@ -61,6 +61,16 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket, currentUserId, onReques
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [showAIDock, setShowAIDock] = useState(false);
 
+  // --- TAG MODAL STATE (Cách 2: YouTube link) ---
+  const GENRE_TAGS = ['vpop', 'kpop', 'us-uk', 'c-pop', 'rap', 'hiphop', 'rnb', 'edm', 'remix', 'indie', 'ballad', 'pop', 'rock', 'lofi', 'acoustic', 'jazz', 'dance'];
+  const MOOD_TAGS = ['happy', 'sad', 'chill', 'energetic', 'romantic', 'focus', 'gaming', 'sleep', 'coffee', 'travel'];
+  const [pendingLink, setPendingLink] = useState(null); // URL chờ xác nhận tags
+  const [linkTags, setLinkTags] = useState([]);
+  const [linkMoods, setLinkMoods] = useState([]);
+  const toggleLinkTag = (tag) => setLinkTags(p => p.includes(tag) ? p.filter(t => t !== tag) : [...p, tag]);
+  const toggleLinkMood = (mood) => setLinkMoods(p => p.includes(mood) ? p.filter(m => m !== mood) : [...p, mood]);
+  const cancelTagModal = () => { setPendingLink(null); setLinkTags([]); setLinkMoods([]); };
+
   // --- STATE & REF CHO HIỆU ỨNG NHỊP ĐẬP ---
   const [thumbnailPulse, setThumbnailPulse] = useState(0); // For smooth pulsing
   const [isBeat, setIsBeat] = useState(false); // Triggers the sharp beat animation
@@ -366,11 +376,18 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket, currentUserId, onReques
   const handleAddFromLink = async (e) => {
     e.preventDefault();
     if (!link.trim()) return;
+    // Mở mini modal để chọn tags thay vì submit thẳng
+    setPendingLink(link);
+    setLink("");
+  };
+
+  const confirmAddLink = async () => {
+    if (!pendingLink) return;
     try {
       const token = localStorage.getItem("token");
       const res = await axios.post(
         `http://localhost:8800/api/rooms/${roomId}/playlist`,
-        { url: link },
+        { url: pendingLink, tags: linkTags, mood: linkMoods },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.data?.playlist) {
@@ -380,10 +397,9 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket, currentUserId, onReques
           setIsPlaying(true);
         }
       }
-      setLink("");
       toast.success("Đã thêm bài hát vào danh sách!", toastConfig);
+      cancelTagModal();
     } catch (err) {
-      console.error("Lỗi khi thêm bài hát:", err);
       const status = err.response?.status;
       const msg = err.response?.data?.msg || "Thêm bài hát thất bại";
       if (status === 409) {
@@ -391,9 +407,9 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket, currentUserId, onReques
       } else {
         toast.error(msg, { ...toastConfig, style: { ...toastConfig.style, backgroundColor: "#dc2626", color: "white" } });
       }
+      cancelTagModal();
     }
   };
-
   // ====================================================================
   // HÀM XỬ LÝ XÓA BÀI HÁT
   // ====================================================================
@@ -427,6 +443,8 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket, currentUserId, onReques
           source: track.source || 'youtube',
           thumbnail: track.thumbnail,
           duration: track.duration,
+          tags: track.tags || [],   // ✅ Pass tags từ AI recommendation
+          mood: track.mood || [],   // ✅ Pass mood từ AI recommendation
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -556,6 +574,45 @@ const MusicPlayer = ({ roomData, isHost, roomId, socket, currentUserId, onReques
       </div>
 
       {isUploadModalOpen && <UploadModal roomId={roomId} onClose={() => setIsUploadModalOpen(false)} />}
+
+      {/* 🏷️ MINI TAG MODAL - Hiện khi host thêm YouTube link */}
+      {pendingLink && (
+        <div className="tag-modal-overlay" onClick={cancelTagModal}>
+          <div className="tag-modal" onClick={e => e.stopPropagation()}>
+            <div className="tag-modal-header">
+              <span>🏷️ Gắn tag cho bài hát</span>
+              <span className="tag-modal-sub">Không bắt buộc — giúp AI gợi ý chính xác hơn</span>
+            </div>
+            <div className="tag-modal-section">
+              <span className="tag-modal-label">Thể loại</span>
+              <div className="tag-modal-chips">
+                {GENRE_TAGS.map(tag => (
+                  <button key={tag} type="button"
+                    className={`tag-modal-chip ${linkTags.includes(tag) ? 'active' : ''}`}
+                    onClick={() => toggleLinkTag(tag)}
+                  >{tag}</button>
+                ))}
+              </div>
+            </div>
+            <div className="tag-modal-section">
+              <span className="tag-modal-label">Mood</span>
+              <div className="tag-modal-chips">
+                {MOOD_TAGS.map(mood => (
+                  <button key={mood} type="button"
+                    className={`tag-modal-chip ${linkMoods.includes(mood) ? 'active' : ''}`}
+                    onClick={() => toggleLinkMood(mood)}
+                  >{mood}</button>
+                ))}
+              </div>
+            </div>
+            <div className="tag-modal-actions">
+              <button className="tag-modal-btn-cancel" onClick={cancelTagModal}>Huỷ</button>
+              <button className="tag-modal-btn-skip" onClick={confirmAddLink}>Bỏ qua & Thêm</button>
+              <button className="tag-modal-btn-confirm" onClick={confirmAddLink}>✓ Xác nhận</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <aside className="roompage-left">
         <h2>Danh sách phát</h2>

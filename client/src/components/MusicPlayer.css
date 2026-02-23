@@ -61,11 +61,11 @@
 }
 
 
-/* ✅ FIXED: Queue section takes 40% of sidebar height */
+/* ✅ FIXED: Queue section — compact, fixed height so RequestsList gets more room */
 .roompage-queue {
   flex-shrink: 0;
-  max-height: 35%;
-  min-height: 120px;
+  max-height: 220px;
+  min-height: 80px;
   overflow-y: auto;
   margin-bottom: 0;
   border-bottom: none;
@@ -81,7 +81,7 @@
 .roompage-queue-list {
   list-style: none;
   padding: 0;
-  padding-bottom: 100px;
+  padding-bottom: 8px;
 }
 
 /* Item trong danh sách phát */
@@ -585,4 +585,235 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ====================================================
+   TAG PICKER - Form thêm YouTube link (Cách 2)
+==================================================== */
+.link-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.link-tag-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  max-height: 130px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.link-tag-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.link-tag-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.link-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.link-tag-chip {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  color: #ccc;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.6;
+}
+
+.link-tag-chip:hover {
+  border-color: #a78bfa;
+  color: #a78bfa;
+}
+
+.link-tag-chip.active {
+  background: #4c1d95;
+  border-color: #7c3aed;
+  color: #fff;
+}
+
+/* ====================================================
+   MINI TAG MODAL - Popup chọn tag khi host thêm YouTube (Cách 2)
+==================================================== */
+.tag-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeInOverlay 0.2s ease;
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.tag-modal {
+  background: linear-gradient(145deg, #1e1e30, #16162a);
+  border: 1px solid #3a3a5c;
+  border-radius: 16px;
+  padding: 24px;
+  width: 480px;
+  max-width: 92vw;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  animation: slideUpModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+@keyframes slideUpModal {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tag-modal-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tag-modal-header>span:first-child {
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.tag-modal-sub {
+  font-size: 12px;
+  color: #6b6b9a;
+}
+
+.tag-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tag-modal-label {
+  font-size: 11px;
+  color: #8080b0;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+}
+
+.tag-modal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-modal-chip {
+  background: #252540;
+  border: 1px solid #3a3a60;
+  color: #a0a0c8;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tag-modal-chip:hover {
+  border-color: #7c3aed;
+  color: #c4b5fd;
+  background: #2e2250;
+}
+
+.tag-modal-chip.active {
+  background: #4c1d95;
+  border-color: #7c3aed;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(124, 58, 237, 0.4);
+}
+
+.tag-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 4px;
+  border-top: 1px solid #2a2a45;
+}
+
+.tag-modal-btn-cancel {
+  background: transparent;
+  border: 1px solid #3a3a60;
+  color: #7070a0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.tag-modal-btn-cancel:hover {
+  color: #fff;
+  border-color: #6060a0;
+}
+
+.tag-modal-btn-skip {
+  background: transparent;
+  border: 1px solid #444470;
+  color: #9090c0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.tag-modal-btn-skip:hover {
+  background: #252540;
+  color: #fff;
+}
+
+.tag-modal-btn-confirm {
+  background: linear-gradient(135deg, #6d28d9, #4c1d95);
+  border: none;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(109, 40, 217, 0.4);
+}
+
+.tag-modal-btn-confirm:hover {
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  transform: translateY(-1px);
 }

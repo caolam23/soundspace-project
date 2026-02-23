@@ -99,18 +99,15 @@
 .card {
     background-color: var(--bg-card);
     border: 1px solid var(--border-card);
-    border-radius: 12px;
-    padding: 16px;
-    /* ✅ Phase 3: Smooth transition for reorder animation */
+    border-radius: 10px;
+    padding: 10px 12px;
     transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: visible;
-    /* Changed from hidden to show tooltips */
     flex-shrink: 0;
-
-    /* ✅ Ensure minimum width */
-    min-width: 280px;
+    min-width: 0;
     width: 100%;
+    box-sizing: border-box;
 }
 
 /* ✅ Phase 3: Hiệu ứng card vừa nhận vote mới */
@@ -150,22 +147,17 @@
 
 .songTitle {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-main);
-    line-height: 1.4;
-
-    /* ✅ Modern text overflow handling */
+    line-height: 1.35;
     display: -webkit-box;
     -webkit-line-clamp: 2;
-    /* Show max 2 lines */
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
     word-break: break-word;
-    /* Break long words */
-
-    /* ✅ Tooltip on hover */
     cursor: help;
     position: relative;
 }
@@ -216,9 +208,9 @@
 .metaRow {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-top: 8px;
-    font-size: 0.8rem;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 0.75rem;
     color: #777;
 }
 
@@ -237,18 +229,18 @@
 .tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 12px;
+    gap: 5px;
+    margin-top: 6px;
 }
 
 .tag {
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 0.7rem;
     font-weight: 500;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
 }
 
 /* Tag Styles cho Dark Mode */
@@ -266,24 +258,23 @@
 
 /* --- Audio Preview Section (Host only) --- */
 .previewSection {
-    margin-top: 12px;
-    padding: 4px 0;
+    margin-top: 6px;
+    padding: 2px 0;
     border-top: 1px dashed rgba(255, 255, 255, 0.08);
 }
 
 /* --- Actions Area --- */
 .actions {
-    margin-top: 16px;
-    padding-top: 12px;
+    margin-top: 8px;
+    padding-top: 8px;
     border-top: 1px dashed #333;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 6px;
-
-    /* ✅ Keep buttons in one row */
+    gap: 4px;
     flex-wrap: nowrap;
     width: 100%;
+    box-sizing: border-box;
 }
 
 /* --- States --- */
