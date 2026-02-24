@@ -326,6 +326,123 @@
   border-color: rgba(244, 67, 54, 0.5);
 }
 
+/* ========================================
+   GUEST MEDIA CONTROLS SECTION
+   ======================================== */
+
+.guestMediaSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.2rem;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(56, 142, 60, 0.05) 100%);
+  border: 2px solid rgba(76, 175, 80, 0.3);
+  border-radius: 10px;
+  margin-top: 0.5rem;
+}
+
+.guestSectionTitle {
+  margin: 0;
+  color: #4CAF50;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.guestControlsPanel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.mediaControlItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.mediaControlLabel {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  text-align: center;
+}
+
+.mediaToggleBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.mediaToggleBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+}
+
+.mediaToggleBtn:active {
+  transform: translateY(0);
+}
+
+.mediaToggleBtn.enabled {
+  background: rgba(76, 175, 80, 0.15);
+  border-color: rgba(76, 175, 80, 0.4);
+}
+
+.mediaToggleBtn.enabled:hover {
+  background: rgba(76, 175, 80, 0.25);
+  border-color: rgba(76, 175, 80, 0.6);
+}
+
+.mediaToggleBtn.disabled {
+  background: rgba(244, 67, 54, 0.1);
+  border-color: rgba(244, 67, 54, 0.3);
+}
+
+.mediaToggleBtn.disabled:hover {
+  background: rgba(244, 67, 54, 0.15);
+  border-color: rgba(244, 67, 54, 0.4);
+}
+
+.leaveBtn {
+  background: rgba(255, 152, 0, 0.1);
+  border-color: rgba(255, 152, 0, 0.3);
+}
+
+.leaveBtn:hover {
+  background: rgba(255, 152, 0, 0.2);
+  border-color: rgba(255, 152, 0, 0.5);
+}
+
+.mediaIcon {
+  font-size: 1.5rem;
+  display: block;
+}
+
+.mediaStatus {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
 .videoPlaceholder {
   width: 100%;
   height: 100%;

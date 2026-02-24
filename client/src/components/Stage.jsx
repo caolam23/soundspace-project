@@ -156,6 +156,96 @@ const Stage = ({ roomId, coHosts = [], isHost = false, members = [], onInviteCli
         </div>
       )}
 
+      {/* Guest Media Controls - Show when guest is active on stage */}
+      {myActiveCoHost && !isHost && (
+        <div className={styles.guestMediaSection}>
+          <h4 className={styles.guestSectionTitle}>🎬 Your Media Controls</h4>
+          <div className={styles.guestControlsPanel}>
+            {/* Mic Control */}
+            <div className={styles.mediaControlItem}>
+              <div className={styles.mediaControlLabel}>Microphone</div>
+              <button
+                className={`${styles.mediaToggleBtn} ${myActiveCoHost.micEnabled ? styles.enabled : styles.disabled}`}
+                onClick={() => {
+                  if (socket) {
+                    socket.emit('stage:toggle-media', {
+                      roomId,
+                      userId: user._id,
+                      mediaType: 'mic'
+                    });
+                    toast.info(`🎤 ${myActiveCoHost.micEnabled ? 'Mic muted' : 'Mic enabled'}`, {
+                      position: 'top-right',
+                      autoClose: 1500
+                    });
+                  }
+                }}
+                title="Toggle Microphone"
+              >
+                <span className={styles.mediaIcon}>
+                  {myActiveCoHost.micEnabled ? '🎤' : '🔇'}
+                </span>
+                <span className={styles.mediaStatus}>
+                  {myActiveCoHost.micEnabled ? 'ON' : 'OFF'}
+                </span>
+              </button>
+            </div>
+
+            {/* Camera Control */}
+            <div className={styles.mediaControlItem}>
+              <div className={styles.mediaControlLabel}>Camera</div>
+              <button
+                className={`${styles.mediaToggleBtn} ${myActiveCoHost.cameraEnabled ? styles.enabled : styles.disabled}`}
+                onClick={() => {
+                  if (socket) {
+                    socket.emit('stage:toggle-media', {
+                      roomId,
+                      userId: user._id,
+                      mediaType: 'camera'
+                    });
+                    toast.info(`📹 ${myActiveCoHost.cameraEnabled ? 'Camera off' : 'Camera on'}`, {
+                      position: 'top-right',
+                      autoClose: 1500
+                    });
+                  }
+                }}
+                title="Toggle Camera"
+              >
+                <span className={styles.mediaIcon}>
+                  {myActiveCoHost.cameraEnabled ? '📹' : '📴'}
+                </span>
+                <span className={styles.mediaStatus}>
+                  {myActiveCoHost.cameraEnabled ? 'ON' : 'OFF'}
+                </span>
+              </button>
+            </div>
+
+            {/* Leave Stage Button */}
+            <div className={styles.mediaControlItem}>
+              <div className={styles.mediaControlLabel}>Stage</div>
+              <button
+                className={`${styles.mediaToggleBtn} ${styles.leaveBtn}`}
+                onClick={() => {
+                  if (socket) {
+                    socket.emit('stage:leave', {
+                      roomId,
+                      userId: user._id
+                    });
+                    toast.info('👋 You left the stage', {
+                      position: 'top-right',
+                      autoClose: 1500
+                    });
+                  }
+                }}
+                title="Leave Stage"
+              >
+                <span className={styles.mediaIcon}>👋</span>
+                <span className={styles.mediaStatus}>LEAVE</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Video Grid */}
       {activeCoHosts.length === 0 ? (
         <div className={styles.emptyGrid}>
