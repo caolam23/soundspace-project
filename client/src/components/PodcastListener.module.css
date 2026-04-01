@@ -1,0 +1,233 @@
+.postcard {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 24px;
+  padding: 32px;
+  width: 100%;
+  max-width: 540px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: 'Inter', system-ui, sans-serif;
+  backdrop-filter: blur(12px);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.headerIcon {
+  background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+  color: white;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.25);
+}
+
+.headerText h2 {
+  margin: 0 0 4px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.headerText p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #94a3b8;
+}
+
+.visualCard {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 20px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 4px 20px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.offlineIndicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #64748b;
+}
+
+.offlineIcon {
+  opacity: 0.5;
+}
+
+.offlineIndicator p {
+  margin: 0;
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
+.liveIndicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.liveText {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #38bdf8;
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-size: 0.9rem;
+  margin: 0;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.waves {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 48px;
+}
+
+.waves span {
+  display: block;
+  width: 10px;
+  background: linear-gradient(to top, #38bdf8, #818cf8);
+  border-radius: 5px;
+  height: 10px; 
+}
+
+.waves span.animate {
+  animation: equalize 1.2s ease-in-out infinite;
+}
+
+.waves span:nth-child(1) { animation-delay: 0.0s; }
+.waves span:nth-child(2) { animation-delay: 0.2s; }
+.waves span:nth-child(3) { animation-delay: 0.4s; }
+.waves span:nth-child(4) { animation-delay: 0.2s; }
+.waves span:nth-child(5) { animation-delay: 0.0s; }
+
+@keyframes equalize {
+  0%, 100% { height: 10px; }
+  50% { height: 48px; }
+}
+
+.btnForcePlay {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 16px;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnForcePlay:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.volumeCard {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 24px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.volumeHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 20px;
+}
+
+.sliderContainer {
+  padding: 0 8px;
+}
+
+/* Custom Slider Dark Theme */
+.volumeSlider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  outline: none;
+  transition: opacity 0.2s;
+}
+
+.volumeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #8b5cf6;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.4);
+  transition: transform 0.1s;
+}
+
+.volumeSlider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.volumeSlider:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* --- BỔ SUNG UI CHO TRẠNG THÁI TẮT MIC --- */
+.mutedIndicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #f43f5e; /* Màu đỏ nhạt hợp với dark theme */
+}
+
+.mutedIcon {
+  opacity: 0.9;
+  animation: pulseMute 2.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.4));
+}
+
+.mutedText {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.5px;
+  color: #fda4af;
+}
+
+@keyframes pulseMute {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}

@@ -1,5 +1,5 @@
 const Room = require("../models/room");
-const ytdl = require("@distube/ytdl-core");
+const axios = require("axios"); // Đã thay thế ytdl-core bằng axios
 const { cloudinary } = require("../config/uploadConfig");
 const { getAudioDurationInSeconds } = require("get-audio-duration");
 
@@ -9,15 +9,51 @@ const { emitMultipleStatsUpdates } = require('./statsController'); // Import hà
 
 
 // ======================================================
-// ⚙️ HÀM HỖ TRỢ: LẤY THÔNG TIN VIDEO CÓ TIMEOUT AN TOÀN
+// ⚙️ HÀM MỚI: LẤY THÔNG TIN TỪ YOUTUBE API (THAY THẾ YTDL)
 // ======================================================
-const getVideoInfoWithTimeout = (url, timeoutMs = 8000) => {
-    return Promise.race([
-        ytdl.getInfo(url),
-        new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout khi lấy info từ YouTube")), timeoutMs)
-        ),
-    ]);
+const getVideoInfoWithTimeout = async (url) => {
+    try {
+        // 1. Tách lấy ID của video từ Link
+        const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\n]+)/);
+        if (!videoIdMatch) throw new Error("Link YouTube không hợp lệ");
+        const videoId = videoIdMatch[1];
+
+        // 2. Gọi YouTube API
+        const API_KEY = process.env.YOUTUBE_API_KEY; 
+        if (!API_KEY) throw new Error("Thiếu cấu hình YOUTUBE_API_KEY trong file .env");
+
+        const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${API_KEY}`;
+        const response = await axios.get(apiUrl);
+        
+        if (!response.data.items || response.data.items.length === 0) {
+            return null; // Không tìm thấy video
+        }
+
+        const video = response.data.items[0];
+
+        // 3. Xử lý thời lượng (YouTube trả về dạng PT3M20S -> Đổi ra số giây)
+        const durationStr = video.contentDetails.duration;
+        const match = durationStr.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+        const hours = (parseInt(match[1]) || 0);
+        const minutes = (parseInt(match[2]) || 0);
+        const seconds = (parseInt(match[3]) || 0);
+        const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+        // 4. Trả về format Y HỆT code cũ để không bị lỗi đoạn sau
+        return {
+            videoDetails: {
+                videoId: video.id,
+                title: video.snippet.title,
+                ownerChannelName: video.snippet.channelTitle,
+                lengthSeconds: totalSeconds,
+                // Trả về array 1 phần tử để tương thích với at(-1) ở logic cũ
+                thumbnails: [{ url: video.snippet.thumbnails?.high?.url || video.snippet.thumbnails?.default?.url }]
+            }
+        };
+    } catch (error) {
+        console.error("❌ Lỗi khi lấy data YouTube API:", error.message);
+        throw error;
+    }
 };
 
 // ======================================================
@@ -42,7 +78,9 @@ exports.addTrack = async (req, res) => {
     }
 
     console.log('[ADD_TRACK_YT] 🔍 Validating YouTube URL...');
-    const isValid = ytdl.validateURL(url);
+    // ✅ Thay thế ytdl.validateURL bằng Regex chuẩn
+    const ytRegex = /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\n]+)/;
+    const isValid = ytRegex.test(url);
     console.log('[ADD_TRACK_YT] Validation result:', isValid);
 
     if (!isValid) {
@@ -77,9 +115,9 @@ exports.addTrack = async (req, res) => {
         }
 
         console.log('[ADD_TRACK_YT] 📥 Fetching video info from YouTube...');
-        console.log('[ADD_TRACK_YT] Timeout: 8000ms');
 
-        const info = await getVideoInfoWithTimeout(url, 8000).catch(err => {
+        // ✅ Gọi hàm lấy info mới (bỏ phần timeoutMs vì axios đã tự xử lý ổn định)
+        const info = await getVideoInfoWithTimeout(url).catch(err => {
             console.error('[ADD_TRACK_YT] ❌ Failed to get video info:', err.message);
             return null;
         });

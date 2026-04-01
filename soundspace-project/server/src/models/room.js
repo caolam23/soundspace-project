@@ -309,6 +309,13 @@ const roomSchema = new mongoose.Schema(
       ],
       default: [],
     },
+    // =============================================
+    // Podcast / Live Podcast fields
+    // =============================================
+    podcastActive: { type: Boolean, default: false },
+    podcastMode: { type: Boolean, default: false }, // true = this room is a Live Podcast room
+    podcastDuration: { type: Number, default: 0 }, // seconds
+    podcastRecords: [{ type: mongoose.Schema.Types.ObjectId, ref: 'PodcastRecord' }],
   },
   {
     timestamps: true,

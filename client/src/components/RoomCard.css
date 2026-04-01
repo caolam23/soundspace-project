@@ -252,3 +252,44 @@
 .accepted-btn:hover {
   background: #16a34a;
 }
+.room-podcast-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fca5a5;
+  font-weight: 700;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.1);
+  width: fit-content;
+}
+
+.podcast-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fca5a5;
+}
+
+.podcast-icon-anim {
+  animation: pulse-podcast 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.6));
+}
+
+@keyframes pulse-podcast {
+  0%, 100% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.9));
+  }
+}
