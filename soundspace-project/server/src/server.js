@@ -12,6 +12,8 @@ const Room = require('./models/room');
 const User = require('./models/User');
 const registerChatHandlers = require('./controllers/chatHandler');
 const registerReportHandlers = require('./controllers/reportHandler');
+const registerStageHandlers = require('./controllers/stageSocketHandler');    // NEW
+const registerInteractHandlers = require('./controllers/interactSocketHandler'); // NEW
 const { restoreScheduledCleanups } = require('./services/cleanupService');
 const Visit = require('./models/Visit');
 
@@ -267,6 +269,8 @@ io.on('connection', (socket) => {
 
     registerChatHandlers(io, socket);
     registerReportHandlers(io, socket);
+    registerStageHandlers(io, socket);   // Stage Management (Story 1)
+    registerInteractHandlers(io, socket); // Audience Interaction (Story 2)
 
     socket.on('request-to-join', async ({ roomId, requester }) => {
         try {

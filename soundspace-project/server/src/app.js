@@ -20,6 +20,8 @@ const statsRoutes = require('./routes/stats');
 const requestRoutes = require('./routes/requestRoutes'); // NEW: Song Request System
 const notificationRoutes = require('./routes/notificationRoutes'); // NEW: Phase 5 Notifications
 const recommendationRoutes = require('./routes/recommendationRoutes'); // NEW: AI Music Recommendations
+const stageRoutes = require('./routes/stageRoutes');       // NEW: Stage Management (Story 1)
+const interactRoutes = require('./routes/interactRoutes'); // NEW: Audience Interaction (Story 2)
 const session = require('express-session');
 const trackVisit = require('./middleware/trackVisit');
 console.log('✅ Loaded quanLyPhongRoutes:', typeof quanLyPhongRoutes);
@@ -119,6 +121,14 @@ function createApp() {
   // NEW: AI Music Recommendations
   console.log('🟡 Mounting: /api/recommendations -> recommendationRoutes');
   app.use('/api/recommendations', recommendationRoutes);
+
+  // NEW: Stage Management (Story 1)
+  console.log('🟡 Mounting: /api/rooms -> stageRoutes (Stage Management)');
+  app.use('/api/rooms', stageRoutes);
+
+  // NEW: Audience Interaction (Story 2)
+  console.log('🟡 Mounting: /api/interact -> interactRoutes (Audience Interaction)');
+  app.use('/api/interact', interactRoutes);
 
   // Stream
   console.log('🟡 Mounting: /api/stream -> streamRoutes');

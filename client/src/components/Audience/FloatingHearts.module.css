@@ -1,0 +1,40 @@
+/* client/src/components/Audience/FloatingHearts.module.css */
+
+.container {
+  position: fixed;
+  bottom: 100px;
+  left: 0;
+  right: 0;
+  height: 70vh;
+  pointer-events: none;
+  z-index: 500;
+  overflow: hidden;
+}
+
+.heart {
+  position: absolute;
+  bottom: 0;
+  animation: floatUp linear forwards;
+  will-change: transform, opacity;
+  user-select: none;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg) scale(0.6);
+    opacity: 1;
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-15vh) translateX(calc(var(--drift) * 0.3)) rotate(-8deg) scale(1);
+  }
+  60% {
+    opacity: 0.85;
+    transform: translateY(-45vh) translateX(calc(var(--drift) * 0.7)) rotate(6deg) scale(0.95);
+  }
+  100% {
+    transform: translateY(-70vh) translateX(var(--drift)) rotate(-4deg) scale(0.7);
+    opacity: 0;
+  }
+}

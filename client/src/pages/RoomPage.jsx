@@ -24,6 +24,18 @@ import SongRequestModal from "../components/SongRequest/SongRequestModal";
 import useRoomNotifications from "../hooks/useRoomNotifications.jsx";
 import NotificationCenter from "../components/Notifications/NotificationCenter";
 
+// ✅ Stage Management (Story 1)
+import useStage from "../components/Stage/useStage";
+import StageGrid from "../components/Stage/StageGrid";
+import StageControls from "../components/Stage/StageControls";
+import InviteModal from "../components/Stage/InviteModal";
+
+// ✅ Audience Interaction (Story 2)
+import FloatingHearts from "../components/Audience/FloatingHearts";
+import AudienceToolbar from "../components/Audience/AudienceToolbar";
+import GiftPanel from "../components/Audience/GiftPanel";
+import GiftToast from "../components/Audience/GiftToast";
+
 
 
 function RoomPage() {
@@ -62,6 +74,11 @@ function RoomPage() {
   const [reportOpen, setReportOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
 
+  // Story 2 — Audience Interaction state
+  const [giftPanelOpen, setGiftPanelOpen] = useState(false);
+  const [receivedGifts, setReceivedGifts] = useState([]);
+  const heartsRef = useRef(null); // ref to FloatingHearts component
+
   // ============================================
   // SYNC ROOM TO REF
   // ============================================
@@ -76,6 +93,11 @@ function RoomPage() {
   const hasPlaylist = Array.isArray(room?.playlist) && room.playlist.length > 0;
   const isPlayingFlag = !!room?.isPlaying;
   const canReport = room?.status === 'live' && (hasPlaylist || isPlayingFlag);
+
+  // ============================================
+  // STAGE HOOK (Story 1)
+  // ============================================
+  const stage = useStage({ roomId, userId: user?._id, socket, isHost });
 
   // ============================================
   // APPEND CHAT MESSAGE
@@ -452,6 +474,36 @@ function RoomPage() {
   }, [roomId, user, socket, navigate, endRoomAPI, handleNewJoinRequest]);
 
   // ============================================
+  // AUDIENCE INTERACTION SOCKET LISTENERS (Story 2)
+  // ============================================
+  useEffect(() => {
+    if (!socket || isGhostMode) return;
+
+    // Reaction broadcast from others — spawn hearts on our screen
+    const handleReactionBatch = ({ type }) => {
+      heartsRef.current?.spawn(type);
+    };
+
+    // Gift received
+    const handleGiftReceived = (data) => {
+      const id = Date.now() + Math.random();
+      setReceivedGifts(prev => [...prev, { id, ...data }]);
+      // Auto-remove after 5s
+      setTimeout(() => {
+        setReceivedGifts(prev => prev.filter(g => g.id !== id));
+      }, 5000);
+    };
+
+    socket.on('interact:reaction-batch', handleReactionBatch);
+    socket.on('interact:gift-received', handleGiftReceived);
+
+    return () => {
+      socket.off('interact:reaction-batch', handleReactionBatch);
+      socket.off('interact:gift-received', handleGiftReceived);
+    };
+  }, [socket, isGhostMode]);
+
+  // ============================================
   // USER LEFT NOTIFICATION + ROOM BANNED
   // ============================================
   useEffect(() => {
@@ -736,7 +788,7 @@ function RoomPage() {
                 <XCircle size={16} />
                 <span>Kết thúc</span>
               </button>
-              <button className="btn btn-primary">
+              <button className="btn btn-primary" onClick={() => stage.setInviteModalOpen(true)}>
                 <UserPlus size={16} />
                 <span>Mời</span>
               </button>
@@ -772,6 +824,41 @@ function RoomPage() {
 
       <main className="roompage-main new-layout">
         <div className="roompage-left-column">
+          {/* Story 1: Stage Grid */}
+          {!isGhostMode && stage.stageUsers.length > 0 && (
+            <StageGrid
+              stageUsers={stage.stageUsers}
+              currentUserId={user?._id}
+              isHost={isHost}
+              onKick={stage.kickFromStage}
+            />
+          )}
+
+          {/* Story 1: Stage Controls (visible to stage participants only) */}
+          {!isGhostMode && stage.isOnStage && (
+            <StageControls
+              micOn={stage.localMicOn}
+              camOn={stage.localCamOn}
+              onToggleMic={stage.toggleMic}
+              onToggleCam={stage.toggleCam}
+              onLeave={stage.leaveStage}
+            />
+          )}
+
+          {/* Story 1: Pending stage invite prompt */}
+          {!isGhostMode && stage.pendingInvite && (
+            <div className="stage-invite-prompt">
+              <div className="stage-invite-content">
+                <span>🎤 <strong>{stage.pendingInvite.invitedBy?.username}</strong> mời bạn lên sân khấu!</span>
+                <div className="stage-invite-actions">
+                  <button className="btn btn-primary" onClick={stage.acceptInvite}>Chấp nhận</button>
+                  <button className="btn btn-danger-outline" onClick={stage.declineInvite}>Từ chối</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Existing join requests */}
           {isHost && !isGhostMode && joinRequests.length > 0 && (
             <div className="join-requests-container">
               <h3>Yêu cầu tham gia</h3>
@@ -898,6 +985,46 @@ function RoomPage() {
 
         </aside>
       </main>
+
+      {/* Story 2: Floating Hearts (always rendered when in room, not ghost) */}
+      {!isGhostMode && <FloatingHearts ref={heartsRef} />}
+
+      {/* Story 2: Audience Toolbar (visible to non-hosts in room, not ghost) */}
+      {!isGhostMode && !isHost && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 400 }}>
+          <AudienceToolbar
+            socket={socket}
+            roomId={roomId}
+            heartsRef={heartsRef}
+            onOpenGifts={() => setGiftPanelOpen(true)}
+          />
+        </div>
+      )}
+
+      {/* Story 2: Gift Panel */}
+      {!isGhostMode && (
+        <GiftPanel
+          isOpen={giftPanelOpen}
+          onClose={() => setGiftPanelOpen(false)}
+          roomId={roomId}
+        />
+      )}
+
+      {/* Story 2: Gift Toast (bottom-right popups) */}
+      {!isGhostMode && <GiftToast gifts={receivedGifts} />}
+
+      {/* Story 1: Invite Modal */}
+      {!isGhostMode && isHost && (
+        <InviteModal
+          isOpen={stage.inviteModalOpen}
+          onClose={() => stage.setInviteModalOpen(false)}
+          roomId={roomId}
+          members={members}
+          currentUserId={user?._id}
+          ownerId={room?.owner?._id}
+          stageUsers={stage.stageUsers}
+        />
+      )}
 
       {joinNotification && !isGhostMode && (
         <div className="join-toast" role="status" aria-live="polite">

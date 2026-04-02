@@ -1,6 +1,18 @@
 const mongoose = require("mongoose");
 
 // =============================================
+// CoHost Sub-schema (Stage Management)
+// =============================================
+const CoHostSchema = new mongoose.Schema({
+  userId:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  username:   { type: String },
+  avatar:     { type: String },
+  micEnabled: { type: Boolean, default: true },
+  camEnabled: { type: Boolean, default: true },
+  joinedAt:   { type: Date, default: Date.now },
+}, { _id: false });
+
+// =============================================
 // Tags cho Song Request System + AI Learning
 // =============================================
 const GENRE_TAGS = [
@@ -257,6 +269,12 @@ const roomSchema = new mongoose.Schema(
     // Trình phát nhạc
     // =============================================
     playlist: [TrackSchema], // Danh sách bài hát
+
+    // =============================================
+    // Stage Management (Story 1)
+    // =============================================
+    coHosts: { type: [CoHostSchema], default: [] },
+    isLive:  { type: Boolean, default: false },
 
     // =============================================
     // NEW: Song Requests (Feature 1)

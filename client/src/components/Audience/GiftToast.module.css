@@ -1,0 +1,91 @@
+/* client/src/components/Audience/GiftToast.module.css */
+
+.container {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  z-index: 700;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 280px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(20, 20, 35, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 14px;
+  padding: 10px 14px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 0 0 1px rgba(139,92,246,0.12);
+  animation: giftPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+
+@keyframes giftPop {
+  from { transform: scale(0.7) translateX(40px); opacity: 0; }
+  to { transform: scale(1) translateX(0); opacity: 1; }
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(139,92,246,0.5);
+  flex-shrink: 0;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.username {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.giftBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.giftEmoji {
+  font-size: 1.6rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(139,92,246,0.5));
+  animation: giftBounce 0.6s ease 0.2s both;
+}
+
+@keyframes giftBounce {
+  0% { transform: scale(0.5) rotate(-10deg); }
+  60% { transform: scale(1.3) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.giftName {
+  font-size: 9px;
+  color: #a78bfa;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
