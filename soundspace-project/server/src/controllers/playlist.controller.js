@@ -1,7 +1,7 @@
 const Room = require("../models/room");
-const ytdl = require("@distube/ytdl-core");
 const { cloudinary } = require("../config/uploadConfig");
 const { getAudioDurationInSeconds } = require("get-audio-duration");
+const https = require("https");
 
 // ================== IMPORT CẦN THIẾT CHO REAL-TIME ==================
 const { emitMultipleStatsUpdates } = require('./statsController'); // Import hàm kích hoạt
@@ -9,15 +9,68 @@ const { emitMultipleStatsUpdates } = require('./statsController'); // Import hà
 
 
 // ======================================================
-// ⚙️ HÀM HỖ TRỢ: LẤY THÔNG TIN VIDEO CÓ TIMEOUT AN TOÀN
+// ⚙️ HÀM HỖ TRỢ: TRÍCH XUẤT VIDEO ID TỪ YOUTUBE URL
 // ======================================================
-const getVideoInfoWithTimeout = (url, timeoutMs = 8000) => {
-    return Promise.race([
-        ytdl.getInfo(url),
-        new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout khi lấy info từ YouTube")), timeoutMs)
-        ),
-    ]);
+const extractYouTubeVideoId = (url) => {
+    const match = url.match(
+        /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([\w-]{11})/
+    );
+    return match ? match[1] : null;
+};
+
+// ======================================================
+// ⚙️ HÀM HỖ TRỢ: VALIDATE URL YOUTUBE HỢP LỆ
+// ======================================================
+const isValidYouTubeURL = (url) => {
+    return !!extractYouTubeVideoId(url);
+};
+
+// ======================================================
+// ⚙️ HÀM HỖ TRỢ: LẤY THÔNG TIN VIDEO QUA YOUTUBE DATA API v3
+// ======================================================
+const getYouTubeVideoInfo = (videoId) => {
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    console.log('[YT_API] Video ID:', videoId);
+    console.log('[YT_API] API Key loaded:', apiKey ? `${apiKey.substring(0, 8)}...` : '❌ MISSING');
+    const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${apiKey}`;
+
+    return new Promise((resolve, reject) => {
+        https.get(apiUrl, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    const parsed = JSON.parse(data);
+                    console.log('[YT_API] Response status:', res.statusCode);
+                    console.log('[YT_API] Response:', JSON.stringify(parsed).substring(0, 500));
+                    if (!parsed.items || parsed.items.length === 0) {
+                        return reject(new Error(parsed.error?.message || 'Video không tồn tại hoặc bị ẩn'));
+                    }
+                    const item = parsed.items[0];
+                    const snippet = item.snippet;
+                    const contentDetails = item.contentDetails;
+
+                    // Parse ISO 8601 duration (PT1H2M3S) => seconds
+                    const durationStr = contentDetails.duration || 'PT0S';
+                    const durationMatch = durationStr.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+                    const hours = parseInt(durationMatch?.[1] || 0);
+                    const minutes = parseInt(durationMatch?.[2] || 0);
+                    const seconds = parseInt(durationMatch?.[3] || 0);
+                    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+                    resolve({
+                        videoId,
+                        title: snippet.title,
+                        ownerChannelName: snippet.channelTitle,
+                        thumbnails: snippet.thumbnails,
+                        lengthSeconds: totalSeconds,
+                    });
+                } catch (e) {
+                    reject(new Error('Lỗi parse response từ YouTube API'));
+                }
+            });
+        }).on('error', reject);
+    });
 };
 
 // ======================================================
@@ -42,7 +95,7 @@ exports.addTrack = async (req, res) => {
     }
 
     console.log('[ADD_TRACK_YT] 🔍 Validating YouTube URL...');
-    const isValid = ytdl.validateURL(url);
+    const isValid = isValidYouTubeURL(url);
     console.log('[ADD_TRACK_YT] Validation result:', isValid);
 
     if (!isValid) {
@@ -76,22 +129,20 @@ exports.addTrack = async (req, res) => {
             return res.status(400).json({ msg: "Bạn đã đạt giới hạn 8 bài hát YouTube." });
         }
 
-        console.log('[ADD_TRACK_YT] 📥 Fetching video info from YouTube...');
-        console.log('[ADD_TRACK_YT] Timeout: 8000ms');
+        console.log('[ADD_TRACK_YT] 📥 Fetching video info from YouTube Data API v3...');
 
-        const info = await getVideoInfoWithTimeout(url, 8000).catch(err => {
+        const videoId = extractYouTubeVideoId(url);
+        const details = await getYouTubeVideoInfo(videoId).catch(err => {
             console.error('[ADD_TRACK_YT] ❌ Failed to get video info:', err.message);
             return null;
         });
 
-        if (!info) {
+        if (!details) {
             console.error('[ADD_TRACK_YT] ❌ No video info returned');
             return res.status(400).json({ msg: "Không thể lấy thông tin video. Video có thể bị giới hạn hoặc không tồn tại." });
         }
 
         console.log('[ADD_TRACK_YT] ✅ Video info retrieved successfully');
-
-        const details = info.videoDetails;
         console.log('[ADD_TRACK_YT] Video ID:', details.videoId);
         console.log('[ADD_TRACK_YT] Title:', details.title);
         console.log('[ADD_TRACK_YT] Duration:', details.lengthSeconds, 'seconds');
@@ -103,10 +154,17 @@ exports.addTrack = async (req, res) => {
 
         console.log('[ADD_TRACK_YT] ✅ Video not duplicated');
 
+        // Lấy thumbnail độ phân giải cao nhất từ YouTube Data API
+        const thumbnailUrl =
+            details.thumbnails?.maxres?.url ||
+            details.thumbnails?.high?.url ||
+            details.thumbnails?.medium?.url ||
+            details.thumbnails?.default?.url || "";
+
         const newTrack = {
             title: details.title,
             artist: details.ownerChannelName,
-            thumbnail: details.thumbnails?.at(-1)?.url || "",
+            thumbnail: thumbnailUrl,
             duration: parseInt(details.lengthSeconds),
             source: "youtube",
             url,
