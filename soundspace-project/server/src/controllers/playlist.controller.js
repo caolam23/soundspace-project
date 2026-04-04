@@ -2,6 +2,7 @@ const Room = require("../models/room");
 const axios = require("axios"); // Đã thay thế ytdl-core bằng axios
 const { cloudinary } = require("../config/uploadConfig");
 const { getAudioDurationInSeconds } = require("get-audio-duration");
+const https = require("https");
 
 // ================== IMPORT CẦN THIẾT CHO REAL-TIME ==================
 const { emitMultipleStatsUpdates } = require('./statsController'); // Import hàm kích hoạt
@@ -122,14 +123,12 @@ exports.addTrack = async (req, res) => {
             return null;
         });
 
-        if (!info) {
+        if (!details) {
             console.error('[ADD_TRACK_YT] ❌ No video info returned');
             return res.status(400).json({ msg: "Không thể lấy thông tin video. Video có thể bị giới hạn hoặc không tồn tại." });
         }
 
         console.log('[ADD_TRACK_YT] ✅ Video info retrieved successfully');
-
-        const details = info.videoDetails;
         console.log('[ADD_TRACK_YT] Video ID:', details.videoId);
         console.log('[ADD_TRACK_YT] Title:', details.title);
         console.log('[ADD_TRACK_YT] Duration:', details.lengthSeconds, 'seconds');
@@ -141,10 +140,17 @@ exports.addTrack = async (req, res) => {
 
         console.log('[ADD_TRACK_YT] ✅ Video not duplicated');
 
+        // Lấy thumbnail độ phân giải cao nhất từ YouTube Data API
+        const thumbnailUrl =
+            details.thumbnails?.maxres?.url ||
+            details.thumbnails?.high?.url ||
+            details.thumbnails?.medium?.url ||
+            details.thumbnails?.default?.url || "";
+
         const newTrack = {
             title: details.title,
             artist: details.ownerChannelName,
-            thumbnail: details.thumbnails?.at(-1)?.url || "",
+            thumbnail: thumbnailUrl,
             duration: parseInt(details.lengthSeconds),
             source: "youtube",
             url,
