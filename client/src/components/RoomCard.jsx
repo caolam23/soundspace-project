@@ -331,7 +331,14 @@ function RoomCard({ room }) {
 
         <div className="room-card-content">
           <h3>{room.name}</h3>
-
+          {room.podcastMode && (
+            <div className="room-podcast-badge">
+              <span className="podcast-icon-wrapper">
+                <Radio size={12} className="podcast-icon-anim" />
+              </span>
+              <span>Live Podcast</span>
+            </div>
+          )}
           <div className="room-info-bar">
             <span className="info-item">
               <Users size={14} />

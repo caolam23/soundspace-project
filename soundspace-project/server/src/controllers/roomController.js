@@ -56,7 +56,18 @@ exports.createRoom = async (req, res) => {
     console.log('📥 User ID:', req.user?.id);
 
     const { name, description, privacy } = req.body;
+    // Optional podcast fields (from frontend)
+    const podcastMode = req.body.podcastMode === 'true' || req.body.podcastMode === true;
+    const podcastDuration = req.body.podcastDuration ? Number(req.body.podcastDuration) : 0;
     const ownerId = req.user.id;
+
+    // 🔍 DEBUG: Log podcast mode parsing
+    console.log('🎙️ [createRoom] Podcast mode received from frontend:', {
+      raw: req.body.podcastMode,
+      parsed: podcastMode,
+      duration: podcastDuration,
+      type: typeof req.body.podcastMode
+    });
 
     // Defensive: ensure owner exists and is not blocked
     try {
@@ -94,7 +105,10 @@ exports.createRoom = async (req, res) => {
       members: [ownerId], // Owner tự động là member
       status: 'waiting',
       startedAt: null,
-      endedAt: null
+      endedAt: null,
+      // 🎙️ ALWAYS explicitly set podcastMode (either true or false)
+      podcastMode: podcastMode,
+      podcastDuration: podcastMode && podcastDuration && !isNaN(podcastDuration) ? podcastDuration : 0
     };
 
     // Tạo mã phòng cho private room
@@ -105,12 +119,14 @@ exports.createRoom = async (req, res) => {
     }
 
     console.log('💾 Creating room with details:', roomDetails);
+    console.log('🎙️ [createRoom] roomDetails.podcastMode =', roomDetails.podcastMode, 'type:', typeof roomDetails.podcastMode);
 
     let newRoom = new Room(roomDetails);
     try {
       console.log('[createRoom] About to save new room for owner', ownerId);
       await newRoom.save();
       console.log('✅ Room saved to DB:', newRoom._id);
+      console.log('🎙️ [createRoom] After save - podcastMode:', newRoom.podcastMode, 'podcastActive:', newRoom.podcastActive);
     } catch (saveErr) {
       console.error('[createRoom] Error saving new room:', saveErr);
       throw saveErr; // rethrow to be handled by outer catch
@@ -122,6 +138,7 @@ exports.createRoom = async (req, res) => {
       .populate('members', 'username avatar');
 
     console.log('✅ Room populated:', newRoom);
+    console.log('🎙️ [createRoom] Final response podcastMode:', newRoom.podcastMode, 'type:', typeof newRoom.podcastMode);
 
     // Emit socket event
     const io = req.app.get('io');
@@ -456,6 +473,15 @@ exports.getRoomDetails = async (req, res) => {
     // Chuyển sang plain object để có thể chỉnh sửa
     const roomObject = room.toObject();
 
+    // 🔍 DEBUG: Log podcast mode in response
+    console.log('🎙️ [getRoomDetails] Room data to send:', {
+      roomId: roomObject._id,
+      name: roomObject.name,
+      podcastMode: roomObject.podcastMode,
+      podcastActive: roomObject.podcastActive,
+      privacy: roomObject.privacy
+    });
+
     // =============================================================
     // ▼▼▼ THAY ĐỔI: BỔ SUNG isHost VÀO DỮ LIỆU ▼▼▼
     // =============================================================
@@ -477,8 +503,26 @@ exports.getRoomDetails = async (req, res) => {
       }));
     }
 
-    // 3. Trả về object đã được chỉnh sửa
-    res.json(roomObject);
+    // 3. 🎙️ EXPLICITLY include podcast fields in response
+    const responseData = {
+      ...roomObject,
+      // Đảm bảo các field podcast được include
+      podcastMode: roomObject.podcastMode ?? false,
+      podcastActive: roomObject.podcastActive ?? false,
+      podcastDuration: roomObject.podcastDuration ?? 0,
+      podcastRecords: roomObject.podcastRecords ?? []
+    };
+
+    console.log('🎙️ [getRoomDetails] FINAL response:', {
+      name: responseData.name,
+      podcastMode: responseData.podcastMode,
+      podcastActive: responseData.podcastActive,
+      podcastDuration: responseData.podcastDuration,
+      hasRecords: Array.isArray(responseData.podcastRecords) ? responseData.podcastRecords.length : 'N/A'
+    });
+
+    // Trả về object đã được chỉnh sửa
+    res.json(responseData);
 
   } catch (err) {
     console.error("❌ Lỗi getRoomDetails:", err);

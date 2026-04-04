@@ -15,6 +15,7 @@ import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import MusicPlayer from "../components/MusicPlayer";
+import PodcastRoom from "../components/PodcastRoom";
 import RoomChat from "../components/RoomChat";
 import ReportRoomModal from "../components/ReportRoomModal";
 import { toastConfig } from "../services/toastConfig";
@@ -176,6 +177,10 @@ function RoomPage() {
       setIsGhostMode(true);
       isGhostModeRef.current = true;
     }
+    // 🎙️ If navigation includes podcastMode, use it as hint
+    if (location.state?.podcastMode) {
+      console.log('🎙️ [RoomPage] Podcast mode detected from navigation state');
+    }
   }, []);
 
   // ============================================
@@ -283,6 +288,19 @@ function RoomPage() {
         }
 
         hasInitialized.current = true;
+
+        // ============================================
+        // 🔍 DEBUG: LOG PODCAST MODE
+        // ============================================
+        console.log('🎙️ [RoomPage] Fetched room data:', {
+          roomId: fetchedRoom._id,
+          name: fetchedRoom.name,
+          podcastMode: fetchedRoom.podcastMode,
+          podcastActive: fetchedRoom.podcastActive,
+          podcastDuration: fetchedRoom.podcastDuration,
+          status: fetchedRoom.status,
+          privacy: fetchedRoom.privacy
+        });
 
         // ============================================
         // AUTO-JOIN PUBLIC ROOM (SKIP FOR GHOST MODE)
@@ -817,18 +835,24 @@ function RoomPage() {
               </ul>
             </div>
           )}
-
-
-
-          <MusicPlayer
-            roomData={room}
-            isHost={isHost}
-            roomId={roomId}
-            socket={socket}
-            currentUserId={user?._id}
-            onRequestOpen={() => setIsRequestModalOpen(true)}
-            memberCount={members.length}
-          />
+          {room?.podcastMode ? (
+              <PodcastRoom 
+                roomId={roomId} 
+                role={isHost ? 'host' : 'listener'} 
+                currentUser={user} 
+                podcastDuration={room.podcastDuration} 
+              />
+            ) : (
+            <MusicPlayer
+              roomData={room}
+              isHost={isHost}
+              roomId={roomId}
+              socket={socket}
+              currentUserId={user?._id}
+              onRequestOpen={() => setIsRequestModalOpen(true)}
+              memberCount={members.length}
+            />
+          )}
 
           {/* ✅ FEATURE: SONG REQUESTS MODAL (Button & List now in MusicPlayer) */}
           {!isGhostMode && (
