@@ -1,140 +1,17 @@
 const mongoose = require("mongoose");
 
 // =============================================
-// Tags cho Song Request System + AI Learning
+// Import schemas từ các model riêng biệt
 // =============================================
-const GENRE_TAGS = [
-  'vpop', 'kpop', 'us-uk', 'c-pop',
-  'rap', 'hiphop', 'rnb', 'edm', 'remix',
-  'indie', 'ballad', 'pop', 'rock', 'lofi', 'acoustic', 'jazz', 'dance'
-];
+const GenreTag = require("./GenreTag");
+const { TrackSchema } = require("./Track");
+const { SongRequestSchema } = require("./SongRequest");
+const { ChatMessageSchema } = require("./ChatMessage");
+const { RoomActivitySchema } = require("./RoomActivity");
+const { RoomSettingSchema } = require("./RoomSetting");
 
-const MOOD_TAGS = [
-  'happy', 'sad', 'chill', 'energetic',
-  'romantic', 'focus', 'gaming', 'sleep', 'coffee', 'travel'
-];
-
-// =============================================
-// Song Request Sub-schema
-// =============================================
-const SongRequestSchema = new mongoose.Schema({
-  title: { type: String, required: true, trim: true },
-  artist: { type: String, required: true, trim: true },
-  thumbnail: { type: String, required: true },
-  duration: { type: Number, required: true },
-
-  source: {
-    type: String,
-    enum: ['youtube', 'upload'],
-    required: true
-  },
-
-  // YouTube specific
-  youtube_id: { type: String, sparse: true },
-  url: { type: String },
-
-  // Upload specific
-  cloudinary_url: { type: String },
-  cloudinary_public_id: { type: String },
-  fileSize: { type: Number },
-
-  // Tags (BẮT BUỘC - cho AI sau này)
-  tags: {
-    type: [String],
-    required: true,
-    validate: {
-      validator: (tags) => tags.length >= 1 && tags.length <= 3,
-      message: 'Phải chọn từ 1-3 tags'
-    },
-    enum: GENRE_TAGS
-  },
-
-  // Mood (Optional)
-  mood: { type: [String], enum: MOOD_TAGS },
-
-  // Request metadata
-  requestedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  message: { type: String, maxlength: 200 },
-  votes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  status: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'pending'
-  },
-
-  createdAt: { type: Date, default: Date.now },
-  reviewedAt: { type: Date },
-  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
-}, { _id: true });
-
-/**
- * =============================================
- * TrackSchema - Mô tả chi tiết một bài hát trong phòng
- * =============================================
- */
-const TrackSchema = new mongoose.Schema(
-  {
-    title: {
-      type: String,
-      required: [true, "Tên bài hát là bắt buộc"],
-      trim: true,
-      maxlength: [200, "Tên bài hát không được vượt quá 200 ký tự"],
-    },
-    artist: {
-      type: String,
-      trim: true,
-      maxlength: [100, "Tên nghệ sĩ không được vượt quá 100 ký tự"],
-    },
-    thumbnail: {
-      type: String, // URL ảnh bìa bài hát
-      trim: true,
-    },
-    duration: {
-      type: Number, // thời lượng (tính bằng giây)
-    },
-    source: {
-      type: String,
-      enum: ["youtube", "spotify", "soundcloud", "upload"], // ✅ Thêm 'upload'
-      required: [true, "Nguồn bài hát là bắt buộc"],
-    },
-    url: {
-      type: String, // ✅ Nếu là 'upload' thì đây là URL Cloudinary audio
-      required: [true, "URL bài hát là bắt buộc"],
-    },
-    sourceId: {
-      type: String, // ✅ Nếu là 'upload', đây có thể là public_id Cloudinary
-    },
-    addedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-
-    // =============================================
-    // NEW: Tags cho AI learning (Phase 2)
-    // =============================================
-    tags: {
-      type: [String],
-      enum: GENRE_TAGS,
-      default: []
-    },
-    mood: {
-      type: [String],
-      enum: MOOD_TAGS,
-      default: []
-    },
-    addedVia: {
-      type: String,
-      enum: ['host', 'request'],
-      default: 'host'
-    },
-    requestVotes: { type: Number, default: 0 }
-  },
-  { timestamps: true }
-);
+const GENRE_TAGS = GenreTag.GENRE_TAGS;
+const MOOD_TAGS = GenreTag.MOOD_TAGS;
 
 /**
  * =============================================
@@ -219,13 +96,7 @@ const roomSchema = new mongoose.Schema(
     // Lịch sử & nhật ký hoạt động
     // =============================================
     joinHistory: {
-      type: [
-        {
-          userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-          action: { type: String, enum: ["join", "leave"] },
-          timestamp: { type: Date, default: Date.now },
-        },
-      ],
+      type: [RoomActivitySchema],
       default: [],
     },
 
@@ -259,7 +130,7 @@ const roomSchema = new mongoose.Schema(
     playlist: [TrackSchema], // Danh sách bài hát
 
     // =============================================
-    // NEW: Song Requests (Feature 1)
+    // Song Requests
     // =============================================
     songRequests: [SongRequestSchema],
     currentTrackIndex: {
@@ -295,18 +166,7 @@ const roomSchema = new mongoose.Schema(
     // Chat messages (realtime + persisted)
     // =============================================
     chat: {
-      type: [
-        new mongoose.Schema(
-          {
-            userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-            username: { type: String, required: true, trim: true },
-            avatar: { type: String, trim: true },
-            text: { type: String, required: true, trim: true },
-            meta: { type: Object, default: {} }, // optional metadata (e.g., emojis)
-          },
-          { timestamps: true, _id: true }
-        ),
-      ],
+      type: [ChatMessageSchema],
       default: [],
     },
     // =============================================
