@@ -10,5 +10,5 @@ const roomReportSchema = new mongoose.Schema({
   status: { type: String, enum: ['open', 'reviewed', 'dismissed'], default: 'open' },
 }, { timestamps: true });
 
-// Tên biến giờ đã khớp
+// Tên biến giờ đã khớp với tên schema
 module.exports = mongoose.model('RoomReport', roomReportSchema);
