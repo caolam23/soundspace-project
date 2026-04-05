@@ -20,6 +20,7 @@
   color: var(--accent);
 }
 
+
 .ThamGiaPhong-button-header:hover {
   background-color: var(--accent);
   color: #ffffff;
@@ -213,7 +214,9 @@
 }
 
 @keyframes ThamGiaPhong-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* =============================================== */

@@ -15,6 +15,7 @@ export default function ReportRoomModal({ open, onClose, onSubmit, roomName }) {
     { value: 'copyright', label: 'Vi phạm bản quyền' },
     { value: 'spam', label: 'Spam / Quảng cáo' },
     { value: 'other', label: 'Khác' },
+
   ];
 
   const submit = async (e) => {

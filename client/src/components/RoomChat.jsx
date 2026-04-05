@@ -83,7 +83,7 @@ export default function RoomChat({
     const tryJoin = () => {
       try {
         socket.emit('join-room', roomId);
-      } catch (e) {}
+      } catch (e) { }
     };
 
     tryJoin();
@@ -273,7 +273,7 @@ export default function RoomChat({
                   Tôi đã xóa bỏ hoàn toàn khối `m.meta?.replyTo` ở đây
                   để loại bỏ dòng "Replying to @Username"
                   */}
-                  
+
                   <div className="roomchat-text">{renderMessageText(m.text)}</div>
                 </div>
 
@@ -309,6 +309,7 @@ export default function RoomChat({
                       )}
                     </div>
                   )}
+
                 </div>
               </div>
             );
