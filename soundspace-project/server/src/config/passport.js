@@ -8,7 +8,11 @@ passport.use(new GoogleStrategy({
   callbackURL: `${process.env.SERVER_URL || 'http://localhost:8800'}/api/auth/google/callback`
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    const email = profile.emails && profile.emails[0] && profile.emails[0].value;
+    // [THAY ĐỔI NHỎ Ở ĐÂY]: Rút gọn cú pháp bằng Optional Chaining (?.)
+    const email = profile.emails?.[0]?.value;
+
+    // Thêm một dòng log nhỏ để dễ debug sau này (không ảnh hưởng logic)
+    console.log(`[Auth] User trying to login with Google: ${email || 'No email'}`);
 
     // tìm theo googleId trước
     let user = await User.findOne({ googleId: profile.id });
@@ -16,13 +20,13 @@ passport.use(new GoogleStrategy({
     // nếu chưa có, thử tìm bằng email
     // Sửa thành
     if (user) {
-        user.googleId = profile.id;
-        const googleAvatar = profile.photos[0]?.value;
-        // Luôn ưu tiên avatar Google nếu có, hoặc nếu avatar hiện tại là avatar mặc định
-        if (googleAvatar && (user.avatar === '/default-avatar.png' || !user.avatar)) {
-            user.avatar = googleAvatar;
-        }
-        await user.save();
+      user.googleId = profile.id;
+      const googleAvatar = profile.photos[0]?.value;
+      // Luôn ưu tiên avatar Google nếu có, hoặc nếu avatar hiện tại là avatar mặc định
+      if (googleAvatar && (user.avatar === '/default-avatar.png' || !user.avatar)) {
+        user.avatar = googleAvatar;
+      }
+      await user.save();
     }
     // nếu vẫn chưa có user thì tạo mới
     if (!user) {
@@ -36,6 +40,7 @@ passport.use(new GoogleStrategy({
 
     return done(null, user);
   } catch (err) {
+    console.error("[Auth] Google Strategy Error:", err); // Thêm log lỗi cho an toàn
     return done(err, null);
   }
 }));
