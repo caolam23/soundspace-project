@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { AuthContext } from "../contexts/AuthContext"; 
+import { AuthContext } from "../contexts/AuthContext";
 
 // Pages
 import App from "../App";
@@ -11,8 +11,9 @@ import AuthSuccess from "../pages/AuthSuccess";
 import UserHomePage from "../pages/UserHomePage";
 import RoomPage from "../pages/RoomPage";
 
+
 // Admin
-import AdminLayout from "../pages/AdminLayout"; 
+import AdminLayout from "../pages/AdminLayout";
 import Dashboard from "../pages/admin/Dashboard";
 import Users from "../pages/admin/Users";
 import Settings from "../pages/admin/Settings";
@@ -91,7 +92,7 @@ export default function AppRouter() {
         <Route path="content" element={<Content />} />
         <Route path="content/reports" element={<Reports />} />
         <Route path="comments" element={<QuanLyBinhLuan />} />
-        <Route path="analytics" element={<StatisticsPage />} /> 
+        <Route path="analytics" element={<StatisticsPage />} />
       </Route>
 
       {/* Redirect mặc định */}
