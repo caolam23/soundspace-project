@@ -17,6 +17,7 @@ export default function AdminLayout() {
           headers: { Authorization: `Bearer ${token}` },
         });
         setDashboardData(res.data);
+
       } catch (err) {
         console.error('Không thể lấy dữ liệu admin', err.response?.data || err.message);
       }

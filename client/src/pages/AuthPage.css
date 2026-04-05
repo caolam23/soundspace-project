@@ -11,8 +11,10 @@
   height: 100vh;
   display: flex;
   justify-content: center;
+
   align-items: center;
-  background-color: #121212; /* nền đen phủ full */
+  background-color: #121212;
+  /* nền đen phủ full */
   font-family: 'Helvetica Neue', Arial, sans-serif;
   margin: 0;
   padding: 0;
@@ -94,14 +96,16 @@
   border: none;
   padding: 12px 15px;
   margin: 8px 0;
-  width: 100%; /* Sửa lại để input chiếm full width của parent */
+  width: 100%;
+  /* Sửa lại để input chiếm full width của parent */
   border-radius: 8px;
   color: white;
-  box-sizing: border-box; /* Quan trọng để padding không làm tăng width */
+  box-sizing: border-box;
+  /* Quan trọng để padding không làm tăng width */
 }
 
 .auth-page__input::placeholder {
-    color: #888;
+  color: #888;
 }
 
 /* ======================= */
@@ -111,8 +115,8 @@
 .auth-page__container {
   background-color: #1e1e1e;
   border-radius: 10px;
-  box-shadow: 0 14px 28px rgba(0,0,0,0.25), 
-              0 10px 10px rgba(0,0,0,0.22);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25),
+    0 10px 10px rgba(0, 0, 0, 0.22);
   position: relative;
   overflow: hidden;
   width: 900px;
@@ -156,12 +160,15 @@
 }
 
 @keyframes show {
-  0%, 49.99% {
+
+  0%,
+  49.99% {
     opacity: 0;
     z-index: 1;
   }
-  
-  50%, 100% {
+
+  50%,
+  100% {
     opacity: 1;
     z-index: 5;
   }
@@ -268,24 +275,28 @@
 }
 
 .auth-page__social-icon:hover {
-    color: white;
-    border-color: white;
+  color: white;
+  border-color: white;
 }
 
 .auth-page__error-message {
-    color: #ff4d4d;
-    font-size: 14px;
-    margin: 10px 0 0 0; /* Sửa lại margin cho gọn */
-    min-height: 1.2em; /* Giữ khoảng trống để layout không bị giật */
+  color: #ff4d4d;
+  font-size: 14px;
+  margin: 10px 0 0 0;
+  /* Sửa lại margin cho gọn */
+  min-height: 1.2em;
+  /* Giữ khoảng trống để layout không bị giật */
 }
 
 .auth-page__password-wrapper {
   position: relative;
   width: 100%;
-  margin: 8px 0; /* giống input */
+  margin: 8px 0;
+  /* giống input */
   display: flex;
   align-items: center;
-  justify-content: center; /* Căn giữa input bên trong */
+  justify-content: center;
+  /* Căn giữa input bên trong */
 }
 
 .auth-page__password-wrapper .auth-page__input {
@@ -297,7 +308,8 @@
 .auth-page__password-toggle-icon {
   position: absolute;
   top: 50%;
-  right: 15px; /* Điều chỉnh vị trí icon */
+  right: 15px;
+  /* Điều chỉnh vị trí icon */
   transform: translateY(-50%);
   color: #888;
   cursor: pointer;
