@@ -917,6 +917,7 @@ function RoomPage() {
         open={reportOpen}
         onClose={() => setReportOpen(false)}
         onSubmit={handleSubmitReport}
+
         roomName={room?.name}
       />
     </div>

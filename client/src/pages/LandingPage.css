@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap');
+
 /* --- Nền Toàn Trang --- */
 #landing-page::before {
   content: "";
@@ -8,6 +9,7 @@
   left: 0;
   width: 100vw;
   height: 100vh;
+
   background: #121212;
   z-index: -1;
 }
@@ -39,6 +41,7 @@
   background-color: #8A2BE2;
   color: #FFFFFF;
 }
+
 .landing-page .btn-primary:hover {
   background-color: #9945FF;
   transform: translateY(-3px);
@@ -49,6 +52,7 @@
   background-color: #2A2A2A;
   color: #FFFFFF;
 }
+
 .landing-page .btn-secondary:hover {
   background-color: #3a3a3a;
 }
@@ -81,12 +85,16 @@
 
 
 .landing-page .header__logo {
-  font-family: 'Montserrat', sans-serif; /* font hiện đại, chuyên nghiệp */
-  font-size: 1.6rem; 
-  font-weight: 800; /* đậm vừa phải */
-  color: #8A2BE2; 
-  letter-spacing: 1px; /* giãn chữ nhẹ cho sang */
-  text-transform: uppercase; /* viết hoa toàn bộ để tạo cảm giác brand */
+  font-family: 'Montserrat', sans-serif;
+  /* font hiện đại, chuyên nghiệp */
+  font-size: 1.6rem;
+  font-weight: 800;
+  /* đậm vừa phải */
+  color: #8A2BE2;
+  letter-spacing: 1px;
+  /* giãn chữ nhẹ cho sang */
+  text-transform: uppercase;
+  /* viết hoa toàn bộ để tạo cảm giác brand */
 }
 
 
@@ -96,20 +104,24 @@
 .landing-page .header__nav {
   display: flex;
   align-items: center;
-  gap: 20px; /* tăng chút khoảng cách cho thoáng */
-  font-family: 'Inter', sans-serif; /* font chữ hiện đại, chuyên nghiệp */
+  gap: 20px;
+  /* tăng chút khoảng cách cho thoáng */
+  font-family: 'Inter', sans-serif;
+  /* font chữ hiện đại, chuyên nghiệp */
 }
 
 .landing-page .header__nav .btn {
   padding: 8px 22px;
   font-size: 0.95rem;
   font-weight: 600;
-  border-radius: 25px; /* nút trông hiện đại hơn */
+  border-radius: 25px;
+  /* nút trông hiện đại hơn */
   letter-spacing: 0.3px;
 }
 
 .landing-page .header__nav a {
-  color: #666; /* màu xám đậm thay vì xám nhạt */
+  color: #666;
+  /* màu xám đậm thay vì xám nhạt */
   text-decoration: none;
   margin-left: 15px;
   font-weight: 500;
@@ -123,8 +135,10 @@
 }
 
 .landing-page .header__nav a:not(.btn):hover {
-  color: #8A2BE2; /* hover tím đồng bộ logo */
-  transform: translateY(-1px); /* hiệu ứng hover nhẹ */
+  color: #8A2BE2;
+  /* hover tím đồng bộ logo */
+  transform: translateY(-1px);
+  /* hiệu ứng hover nhẹ */
 }
 
 
@@ -134,8 +148,10 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center; /* Căn giữa ngang */
-  justify-content: center; /* Căn giữa dọc */
+  align-items: center;
+  /* Căn giữa ngang */
+  justify-content: center;
+  /* Căn giữa dọc */
   text-align: center;
   /* Giảm padding vì đã có flexbox căn giữa */
   padding: 40px 0;
@@ -155,23 +171,35 @@
 }
 
 .landing-page .hero-section__subtitle {
-  font-family: 'Open Sans', sans-serif; /* Hoặc 'Roboto', 'Nunito' */
-  font-size: 1.05rem; /* giữ gọn gàng hơn một chút */
+  font-family: 'Open Sans', sans-serif;
+  /* Hoặc 'Roboto', 'Nunito' */
+  font-size: 1.05rem;
+  /* giữ gọn gàng hơn một chút */
   font-weight: 400;
-  color: #6f6f6f; /* mềm mại, dễ đọc hơn */
+  color: #6f6f6f;
+  /* mềm mại, dễ đọc hơn */
   max-width: 550px;
-  margin: 20px 0 35px; /* tinh chỉnh spacing */
-  line-height: 1.8; /* thoáng hơn */
-  letter-spacing: 0.2px; /* giãn nhẹ để chuyên nghiệp */
+  margin: 20px 0 35px;
+  /* tinh chỉnh spacing */
+  line-height: 1.8;
+  /* thoáng hơn */
+  letter-spacing: 0.2px;
+  /* giãn nhẹ để chuyên nghiệp */
 }
 
 .landing-page .hero-section__cta {
-  font-family: 'Poppins', sans-serif; /* hiện đại và chuyên nghiệp */
-  font-weight: 600; /* đậm vừa phải */
-  font-size: 1.1rem; /* vừa gọn */
-  letter-spacing: 0.5px; /* giãn nhẹ cho dễ nhìn */
-  text-transform: uppercase; /* CTA hay dùng in hoa */
-  color: #fff; /* giữ màu chữ sáng trên nền màu */
+  font-family: 'Poppins', sans-serif;
+  /* hiện đại và chuyên nghiệp */
+  font-weight: 600;
+  /* đậm vừa phải */
+  font-size: 1.1rem;
+  /* vừa gọn */
+  letter-spacing: 0.5px;
+  /* giãn nhẹ cho dễ nhìn */
+  text-transform: uppercase;
+  /* CTA hay dùng in hoa */
+  color: #fff;
+  /* giữ màu chữ sáng trên nền màu */
 }
 
 
@@ -218,12 +246,16 @@
 
 
 .landing-page .feature-card__description {
-  font-family: 'Open Sans', sans-serif; /* Hoặc 'Roboto' */
+  font-family: 'Open Sans', sans-serif;
+  /* Hoặc 'Roboto' */
   font-size: 1rem;
   font-weight: 400;
-  color: #6e6e6e; /* màu nhẹ hơn #A0A0A0 cho cảm giác tinh tế */
-  line-height: 1.8; /* tăng spacing cho dễ đọc */
-  letter-spacing: 0.3px; /* giãn nhẹ chữ */
+  color: #6e6e6e;
+  /* màu nhẹ hơn #A0A0A0 cho cảm giác tinh tế */
+  line-height: 1.8;
+  /* tăng spacing cho dễ đọc */
+  letter-spacing: 0.3px;
+  /* giãn nhẹ chữ */
 }
 
 /* --- Footer --- */
@@ -232,11 +264,14 @@
   padding: 40px 0;
   border-top: 1px solid #333;
   text-align: center;
-  font-family: 'Raleway', sans-serif; /* font hiện đại, chuyên nghiệp */
+  font-family: 'Raleway', sans-serif;
+  /* font hiện đại, chuyên nghiệp */
   font-size: 0.9rem;
   font-weight: 500;
-  letter-spacing: 0.4px; /* giãn chữ nhẹ cho sang */
-  color: #888; /* màu xám tinh tế hơn */
+  letter-spacing: 0.4px;
+  /* giãn chữ nhẹ cho sang */
+  color: #888;
+  /* màu xám tinh tế hơn */
 }
 
 .landing-page .footer__social-links {
@@ -247,11 +282,14 @@
   color: #888;
   margin: 0 12px;
   text-decoration: none;
-  font-size: 1.1rem; /* icon/link to rõ hơn */
+  font-size: 1.1rem;
+  /* icon/link to rõ hơn */
   transition: all 0.3s ease;
 }
 
 .landing-page .footer__social-links a:hover {
-  color: #8A2BE2; /* đồng bộ brand */
-  transform: translateY(-2px); /* hover có cảm giác nổi lên */
+  color: #8A2BE2;
+  /* đồng bộ brand */
+  transform: translateY(-2px);
+  /* hover có cảm giác nổi lên */
 }

@@ -9,6 +9,7 @@ const LandingPage = () => {
 
   const handleGuestRoom = () => {
     navigate("/guest-room");
+
   };
 
   return (
