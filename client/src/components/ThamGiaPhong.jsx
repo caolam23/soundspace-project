@@ -17,6 +17,7 @@ function ThamGiaPhong() {
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
+
     setRoomCode('');
   };
 
@@ -34,7 +35,7 @@ function ThamGiaPhong() {
 
   const handleJoinRoom = async (e) => {
     e.preventDefault();
-    
+
     if (!roomCode || roomCode.length !== 6) {
       toast.error('Vui lòng nhập đúng 6 ký tự mã phòng!', toastConfig);
       return;
@@ -49,7 +50,7 @@ function ThamGiaPhong() {
 
     try {
       const token = localStorage.getItem('token');
-      
+
       // Tìm phòng theo roomCode
       const searchRes = await axios.get(
         `http://localhost:8800/api/rooms/search-by-code/${roomCode}`,
@@ -80,7 +81,7 @@ function ThamGiaPhong() {
       });
 
       handleCloseModal();
-      
+
       navigate(`/room/${room._id}`, {
         state: { fromJoin: true },
         replace: true
@@ -136,8 +137,8 @@ function ThamGiaPhong() {
                 </div>
               </div>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="ThamGiaPhong-submit-btn"
                 disabled={isLoading || roomCode.length !== 6}
               >
