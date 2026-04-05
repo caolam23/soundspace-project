@@ -10,6 +10,7 @@ const TrackOptions = ({ onOpen, onDelete }) => {
 
   // Đóng menu khi click ra ngoài
   useEffect(() => {
+
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setIsOpen(false);

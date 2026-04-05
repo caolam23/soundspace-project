@@ -10,6 +10,7 @@ export default function AdminPanel() {
       try {
         const res = await axios.get('http://localhost:8800/api/admin/dashboard', {
           headers: {
+
             Authorization: `Bearer ${token}`,
           },
         });
