@@ -8,6 +8,7 @@ import "./RoomCard.css";
 import { AuthContext } from "../contexts/AuthContext";
 import socket from "../services/socket";
 
+
 function RoomCard({ room }) {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);

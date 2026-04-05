@@ -9,6 +9,7 @@ export default function ReportRoomModal({ open, onClose, onSubmit, roomName }) {
 
   if (!open) return null;
 
+
   const categories = [
     { value: 'inappropriate-content', label: 'Nội dung không phù hợp' },
     { value: 'harassment', label: 'Quấy rối / Lăng mạ' },
