@@ -7,7 +7,7 @@ export default function PodcastListener({ roomId }) {
   const socket = useSocket();
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLive, setIsLive] = useState(false);
-  const [isHostMuted, setIsHostMuted] = useState(false); // State quản lý Mic của Host
+  const [isHostMuted, setIsHostMuted] = useState(false); // State quản lý Mic của Host hiện tại
   const [volume, setVolume] = useState(1);
   const [needsUserInteraction, setNeedsUserInteraction] = useState(false);
   
@@ -174,7 +174,7 @@ export default function PodcastListener({ roomId }) {
         </button>
       )}
 
-      {/* Thẻ audio ẩn tuyệt đối để khán giả không thể thao tác */}
+      {/* Thẻ audio ẩn tuyệt đối để khán giả không thể thao tác  */}
       <audio ref={audioElRef} style={{ display: 'none' }} />
 
       <div className={styles.volumeCard}>
