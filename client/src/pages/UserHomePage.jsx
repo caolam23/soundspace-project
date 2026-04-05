@@ -16,6 +16,7 @@ function UserHomePage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [roomData, setRoomData] = useState({
         name: '',
+
         description: '',
         privacy: 'public',
     });
@@ -36,7 +37,7 @@ function UserHomePage() {
     // HANDLE INPUT
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-         // Giới hạn ký tự
+        // Giới hạn ký tự
         if (name === 'name' && value.length > 50) {
             return; // Không cho phép nhập thêm nếu vượt quá 50 ký tự
         }
@@ -101,7 +102,7 @@ function UserHomePage() {
             alert(err.response?.data?.msg || 'Đã có lỗi xảy ra.');
         }
     };
-    
+
     // LOGIC XỬ LÝ LOADING VÀ NAVIGATE GIỮ NGUYÊN
     const handleLoadingComplete = () => {
         if (isApiComplete && createdRoomId) {
@@ -336,21 +337,21 @@ function UserHomePage() {
                                 <label>Quyền riêng tư</label>
                                 <div className="privacy-options">
                                     <label className="privacy-option">
-                                        <input type="radio" name="privacy" value="public" checked={roomData.privacy === 'public'} onChange={handleInputChange}/>
+                                        <input type="radio" name="privacy" value="public" checked={roomData.privacy === 'public'} onChange={handleInputChange} />
                                         <div className="privacy-option-content">
                                             <strong>Công khai</strong>
                                             <span>Bất kỳ ai cũng có thể tham gia.</span>
                                         </div>
                                     </label>
                                     <label className="privacy-option">
-                                        <input type="radio" name="privacy" value="manual" checked={roomData.privacy === 'manual'} onChange={handleInputChange}/>
+                                        <input type="radio" name="privacy" value="manual" checked={roomData.privacy === 'manual'} onChange={handleInputChange} />
                                         <div className="privacy-option-content">
                                             <strong>Cần xét duyệt</strong>
                                             <span>Bạn phải duyệt thủ công từng người.</span>
                                         </div>
                                     </label>
                                     <label className="privacy-option">
-                                        <input type="radio" name="privacy" value="private" checked={roomData.privacy === 'private'} onChange={handleInputChange}/>
+                                        <input type="radio" name="privacy" value="private" checked={roomData.privacy === 'private'} onChange={handleInputChange} />
                                         <div className="privacy-option-content">
                                             <strong>Riêng tư</strong>
                                             <span>Chỉ người có mã phòng mới vào được.</span>

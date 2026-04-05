@@ -23,8 +23,10 @@
 }
 
 .AdminLayout__content {
-  flex: 1; /* Chiếm hết phần còn lại bên phải sidebar */
-  margin-left: 250px; /* Bù cho width của sidebar */
+  flex: 1;
+  /* Chiếm hết phần còn lại bên phải sidebar */
+  margin-left: 250px;
+  /* Bù cho width của sidebar */
   background: #fff;
 }
 
@@ -136,17 +138,17 @@
     height: 70px;
     gap: 10px;
   }
-  
+
   .AdminLayout__searchInput {
     max-width: 200px;
     min-width: 150px;
   }
-  
+
   .AdminLayout__username {
     max-width: 80px;
     font-size: 12px;
   }
-  
+
   .AdminLayout__role {
     font-size: 10px;
   }
@@ -158,26 +160,26 @@
     height: 60px;
     flex-wrap: nowrap;
   }
-  
+
   .AdminLayout__searchInput {
     max-width: 150px;
     min-width: 120px;
     font-size: 13px;
   }
-  
+
   .AdminLayout__userInfo {
     gap: 8px;
   }
-  
+
   .AdminLayout__username {
     max-width: 60px;
     font-size: 11px;
   }
-  
+
   .AdminLayout__role {
     display: none;
   }
-  
+
   .AdminLayout__avatar,
   .AdminLayout__defaultAvatar {
     width: 30px;
