@@ -44,7 +44,7 @@ passport.use(new GoogleStrategy({
     return done(err, null);
   }
 }));
-
+//đã sửa
 // serialize / deserialize (mặc dù mình xài JWT, nhưng cứ để cho chắc)
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
