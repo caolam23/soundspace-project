@@ -12,6 +12,7 @@ const GuestRoom = () => {
         <div className="guest-room__auth-buttons">
           <a href="/auth" className="guest-room__btn guest-room__btn--secondary">
             Đăng nhập
+
           </a>
           <a href="/auth" className="guest-room__btn guest-room__btn--primary">
             Đăng ký

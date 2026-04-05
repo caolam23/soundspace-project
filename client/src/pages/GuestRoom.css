@@ -7,11 +7,14 @@
   --text-secondary: #b3b3b3;
   --border-color: #2c2c2c;
 
-  position: fixed;   /* chiếm toàn bộ viewport */
-  inset: 0;          /* = top:0; right:0; bottom:0; left:0 */
-  
+  position: fixed;
+  /* chiếm toàn bộ viewport */
+  inset: 0;
+  /* = top:0; right:0; bottom:0; left:0 */
+
   display: flex;
   flex-direction: column;
+
   background-color: var(--background-color);
   color: var(--text-primary);
   font-family: 'Inter', sans-serif;
@@ -74,7 +77,8 @@
 /* --- MAIN CONTENT LAYOUT --- */
 .guest-room__main {
   display: grid;
-  grid-template-columns: 320px 1fr 350px; /* Left | Center | Right */
+  grid-template-columns: 320px 1fr 350px;
+  /* Left | Center | Right */
   gap: 1.5rem;
   padding: 1.5rem;
   flex-grow: 1;
@@ -145,7 +149,8 @@
   align-items: center;
   justify-content: center;
   gap: 1.5rem;
-  background-color: transparent; /* Cột giữa không có nền */
+  background-color: transparent;
+  /* Cột giữa không có nền */
   padding: 0;
 }
 
@@ -155,7 +160,8 @@
   aspect-ratio: 1 / 1;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  background-color: var(--surface-color); /* Nền cho ảnh nếu ảnh chưa load */
+  background-color: var(--surface-color);
+  /* Nền cho ảnh nếu ảnh chưa load */
 }
 
 .guest-room__song-info {
@@ -185,7 +191,8 @@
 }
 
 .guest-room__progress {
-  width: 35%; /* ví dụ */
+  width: 35%;
+  /* ví dụ */
   height: 100%;
   background-color: var(--primary-accent);
   border-radius: 3px;
@@ -294,7 +301,6 @@
 }
 
 .guest-room__chat-overlay p {
-    margin: 0 0 1rem 0;
-    font-size: 0.9rem;
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
 }
-

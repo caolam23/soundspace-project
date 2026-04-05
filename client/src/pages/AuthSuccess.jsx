@@ -9,6 +9,7 @@ export default function AuthSuccess() {
     const navigate = useNavigate();
     const { loginSuccess } = useContext(AuthContext); // <-- Quan trọng: Lấy hàm cập nhật state
 
+
     useEffect(() => {
         // Lấy token từ URL search params
         const params = new URLSearchParams(window.location.search);
@@ -26,7 +27,7 @@ export default function AuthSuccess() {
                         Authorization: `Bearer ${jwtToken}`
                     }
                 });
-                
+
                 const user = res.data; // API /profile trả về object user { id, username, email, avatar, role }
 
                 if (user) {
@@ -50,7 +51,7 @@ export default function AuthSuccess() {
                 // Nếu có lỗi, xóa token đã lưu và chuyển về trang đăng nhập
                 localStorage.removeItem('token');
                 localStorage.removeItem('role');
-                navigate('/auth'); 
+                navigate('/auth');
             }
         };
 
@@ -61,7 +62,7 @@ export default function AuthSuccess() {
             navigate('/auth');
         }
 
-    // Thêm `loginSuccess` và `Maps` vào dependency array của useEffect
+        // Thêm `loginSuccess` và `Maps` vào dependency array của useEffect
     }, [navigate, loginSuccess]);
 
     // Hiển thị thông báo loading trong khi xử lý
