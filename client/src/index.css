@@ -1,27 +1,35 @@
 /* Custom Scrollbar - Webkit (Chrome, Edge, Safari) */
 ::-webkit-scrollbar {
-  width: 6px; /* gọn gàng */
+  width: 6px;
+  /* gọn gàng */
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0a; /* nền tối hơn, blend với UI */
+  background: #0a0a0a;
+  /* nền tối hơn, blend với UI */
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #A259FF, #8A2BE2, #6A0DAD); /* tím chuyển tầng sang đậm hơn */
+
+  background: linear-gradient(180deg, #A259FF, #8A2BE2, #6A0DAD);
+  /* tím chuyển tầng sang đậm hơn */
   border-radius: 999px;
-  box-shadow: 0 0 6px rgba(162, 89, 255, 0.6); /* phát sáng nhẹ */
+  box-shadow: 0 0 6px rgba(162, 89, 255, 0.6);
+  /* phát sáng nhẹ */
   transition: all 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #c084ff, #9d4bff, #7a1fff); /* sáng & nổi bật hơn */
-  box-shadow: 0 0 10px rgba(162, 89, 255, 0.9); /* glow mạnh khi hover */
+  background: linear-gradient(180deg, #c084ff, #9d4bff, #7a1fff);
+  /* sáng & nổi bật hơn */
+  box-shadow: 0 0 10px rgba(162, 89, 255, 0.9);
+  /* glow mạnh khi hover */
 }
 
 /* Firefox */
 * {
-  scrollbar-width: thin; 
-  scrollbar-color: #A259FF #0a0a0a; /* thumb tím sáng, track tối */
+  scrollbar-width: thin;
+  scrollbar-color: #A259FF #0a0a0a;
+  /* thumb tím sáng, track tối */
 }

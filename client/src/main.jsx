@@ -11,6 +11,7 @@ import AppRouter from "./routes/AppRouter";
 import { SocketProvider } from "./contexts/SocketContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import "./index.css";
+
 import { Provider } from "react-redux";
 import { store } from "./store/store";
 
