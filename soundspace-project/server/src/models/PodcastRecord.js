@@ -22,9 +22,9 @@ const PodcastRecordSchema = new mongoose.Schema({
   timestamps: true // Tự động sinh ra createdAt và updatedAt
 });
 
-// Tối ưu tốc độ query khi tìm file ghi âm theo Phòng hoặc theo User
+// Tối ưu tốc độ query khi tìm file ghi âm theo Phòng hoặc theo User hoặc khi sort theo thời gian mới nhất
 PodcastRecordSchema.index({ room: 1 });
 PodcastRecordSchema.index({ host: 1 });
-PodcastRecordSchema.index({ createdAt: -1 }); // Index thêm thời gian để sort mới nhất cho lẹ
+PodcastRecordSchema.index({ createdAt: -1 }); // Index thêm thời gian để sort mới nhất cho lẹ 
 
 module.exports = mongoose.model('PodcastRecord', PodcastRecordSchema);
