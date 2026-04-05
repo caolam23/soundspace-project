@@ -15,7 +15,7 @@ const PodcastRecordSchema = new mongoose.Schema({
   
   // Trạng thái và Thống kê (Nâng cấp mở rộng)
   status: { type: String, enum: ['public', 'private', 'archived'], default: 'public' },
-  listens: { type: Number, default: 0 }, // Lượt nghe lại
+  listens: { type: Number, default: 0 }, // Lượt nghe lại của podcast
   
   meta: { type: Object, default: {} }
 }, {
