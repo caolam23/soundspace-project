@@ -16,7 +16,7 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: 'Username, email và password là bắt buộc' });
     }
 
-    // Kiểm tra user đã tồn tại
+    // Kiểm tra user đã tồn tại theo email hoặc username
     const existingUser = await User.findOne({
       $or: [{ email }, { username }]
     });
