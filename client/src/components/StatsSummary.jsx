@@ -1,37 +1,38 @@
 // src/components/StatsSummary.jsx
 import React from "react";
 import { Row, Col, Statistic, Card } from "antd";
-import { 
-  UserOutlined, 
-  CustomerServiceOutlined, 
-  UploadOutlined, 
-  YoutubeOutlined, 
-  BarChartOutlined 
+import {
+  UserOutlined,
+  CustomerServiceOutlined,
+  UploadOutlined,
+  YoutubeOutlined,
+  BarChartOutlined
 } from "@ant-design/icons";
 
-const StatsSummary = ({ 
-  musicSources, 
-  topContributors, 
-  songsAdded, 
+const StatsSummary = ({
+  musicSources,
+  topContributors,
+  songsAdded,
   userGrowth,
   timeRange,
   totalVisits
 }) => {
   // Map timeRange to Vietnamese labels
+  //tui đã sửa nha má
   const timeRangeLabels = {
     '1d': 'hôm nay',
     '7d': '7 ngày qua',
     '1m': '1 tháng qua',
     'all': 'tất cả thời gian'
   };
-  const totalSongs = (musicSources.upload || 0) + (musicSources.youtube || 0) + 
-                      (musicSources.spotify || 0) + (musicSources.soundcloud || 0);
-  
+  const totalSongs = (musicSources.upload || 0) + (musicSources.youtube || 0) +
+    (musicSources.spotify || 0) + (musicSources.soundcloud || 0);
+
   // Get latest user count from user growth data (real-time updated)
-  const totalUsers = userGrowth.length > 0 ? 
+  const totalUsers = userGrowth.length > 0 ?
     Math.max(...userGrowth.map(item => item.userCount || 0)) : 0;
-  
-  const recentSongs = songsAdded.length > 0 ? 
+
+  const recentSongs = songsAdded.length > 0 ?
     songsAdded.reduce((sum, item) => sum + (item.count || 0), 0) : 0;
   const activeContributors = topContributors.length;
   const currentPeriod = timeRangeLabels[timeRange] || 'khoảng thời gian này';
@@ -40,9 +41,9 @@ const StatsSummary = ({
     <Row gutter={[24, 24]} style={{ marginBottom: "32px" }}>
       {/* Tổng số lượt truy cập */}
       <Col xs={24} sm={12} md={6}>
-        <Card 
+        <Card
           hoverable
-          style={{ 
+          style={{
             borderRadius: '16px',
             background: 'linear-gradient(135deg, #5C7CFA 0%, #4C6EF5 100%)',
             border: 'none',
@@ -62,9 +63,9 @@ const StatsSummary = ({
         </Card>
       </Col>
       <Col xs={24} sm={12} md={6}>
-        <Card 
+        <Card
           hoverable
-          style={{ 
+          style={{
             borderRadius: '16px',
             background: 'linear-gradient(135deg, #868F96 0%, #596164 100%)',
             border: 'none',
@@ -81,9 +82,9 @@ const StatsSummary = ({
             prefix={
               <div style={{ display: 'inline-block', animation: 'spin 3s linear infinite' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="10" stroke="#fff" strokeWidth="2" fill="none"/>
-                  <circle cx="12" cy="12" r="3" fill="#fff"/>
-                  <circle cx="12" cy="12" r="6" stroke="#fff" strokeWidth="1" fill="none" opacity="0.5"/>
+                  <circle cx="12" cy="12" r="10" stroke="#fff" strokeWidth="2" fill="none" />
+                  <circle cx="12" cy="12" r="3" fill="#fff" />
+                  <circle cx="12" cy="12" r="6" stroke="#fff" strokeWidth="1" fill="none" opacity="0.5" />
                 </svg>
               </div>
             }
@@ -100,9 +101,9 @@ const StatsSummary = ({
         </Card>
       </Col>
       <Col xs={24} sm={12} md={6}>
-        <Card 
+        <Card
           hoverable
-          style={{ 
+          style={{
             borderRadius: '16px',
             background: 'linear-gradient(135deg, #38BDF8 0%, #0EA5E9 100%)',
             border: 'none',
@@ -125,9 +126,9 @@ const StatsSummary = ({
         </Card>
       </Col>
       <Col xs={24} sm={12} md={6}>
-        <Card 
+        <Card
           hoverable
-          style={{ 
+          style={{
             borderRadius: '16px',
             background: 'linear-gradient(135deg, #34D399 0%, #10B981 100%)',
             border: 'none',
