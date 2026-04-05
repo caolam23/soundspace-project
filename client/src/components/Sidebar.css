@@ -1,7 +1,8 @@
 .Sidebar__wrapper {
   width: 250px;
   height: 100vh;
-  background: #faf5ff; /* tím nhạt */
+  background: #faf5ff;
+  /* tím nhạt */
   border-right: 1px solid #e9d8fd;
   position: fixed;
   top: 0;
@@ -59,7 +60,8 @@
   align-items: center;
   gap: 12px;
   text-decoration: none;
-  color: #4a5568; /* gray-700 */
+  color: #4a5568;
+  /* gray-700 */
   padding: 12px 14px;
   border-radius: 8px;
   transition: background 0.2s, color 0.2s, border-left 0.2s;
@@ -83,15 +85,18 @@
     width: 70px;
     padding: 10px;
   }
+
   .Sidebar__title,
   .Sidebar__subtitle,
   .Sidebar__link span {
     display: none;
   }
 }
+
 /* Logout button */
 .Sidebar__logout {
-  margin-top: auto; /* đẩy nút xuống cuối sidebar */
+  margin-top: auto;
+  /* đẩy nút xuống cuối sidebar */
 }
 
 .Sidebar__logoutBtn {
