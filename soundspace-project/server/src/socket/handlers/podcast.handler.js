@@ -49,7 +49,7 @@ module.exports = function registerPodcastHandlers(io, socket) {
 
   socket.on('podcast:signal', (payload) => {
     if (!payload || !payload.roomId) return;
-    // ✅ BẢO MẬT: Chặn tín hiệu nếu phòng không Live
+    // ✅ BẢO MẬT: Chặn tín hiệu nếu phòng không Live hoặc đã hết thời gian Live
     if (!activePodcasts.has(payload.roomId)) return; 
 
     const roomName = `podcast:${payload.roomId}`;
