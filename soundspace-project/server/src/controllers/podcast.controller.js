@@ -28,7 +28,7 @@ exports.uploadRecording = async (req, res) => {
     }
 
     // ========================================================
-    // ✅ BẢO MẬT: KIỂM TRA GIỚI HẠN TỐI ĐA 5 BẢN GHI / 1 PHÒNG
+    // ✅ BẢO MẬT: KIỂM TRA GIỚI HẠN TỐI ĐA 5 BẢN GHI / 1 PHÒNG 
     // ========================================================
     const recordCount = await PodcastRecord.countDocuments({ room: roomId });
     if (recordCount >= 5) {
@@ -46,7 +46,7 @@ exports.uploadRecording = async (req, res) => {
       chunk_size: 6000000,
     });
 
-    // Create DB entry
+    // Create DB entry for the podcast record
     const record = new PodcastRecord({
       room: roomId,
       host: hostId,
