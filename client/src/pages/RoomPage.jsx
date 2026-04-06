@@ -136,7 +136,7 @@ function RoomPage() {
   );
 
   // ============================================
-  // RESPOND TO JOIN REQUEST
+  // RESPOND TO JOIN REQUEST (HOST)
   // ============================================
   const respondToRequest = useCallback((requesterId, accepted) => {
     socket.emit("respond-to-request", {
@@ -157,7 +157,7 @@ function RoomPage() {
   }, [roomId, socket]);
 
   // ============================================
-  // DETECT RELOAD/CLOSE
+  // DETECT RELOAD/CLOSE (TO PREVENT HOST FROM RELOADING)
   // ============================================
   useEffect(() => {
     const handleBeforeUnload = () => {
