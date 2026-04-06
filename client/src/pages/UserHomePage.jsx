@@ -12,7 +12,7 @@ function UserHomePage() {
     const { user, logout, socket } = useContext(AuthContext);
     const navigate = useNavigate();
 
-    // STATE cho tạo phòng
+    // STATE cho tạo phòng và form modal
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [roomData, setRoomData] = useState({
         name: '',
