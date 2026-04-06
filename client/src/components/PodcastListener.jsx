@@ -68,7 +68,7 @@ export default function PodcastListener({ roomId }) {
 
     socket.on('podcast:audio-chunk', onChunk);
     
-    // Xử lý khi Host tắt/mở mic
+    // Xử lý khi Host tắt/mở mic trong lúc đang live
     socket.on('podcast:host-mute', ({ muted }) => {
       setIsHostMuted(muted);
     });
