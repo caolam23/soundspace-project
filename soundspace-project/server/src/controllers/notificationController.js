@@ -1,7 +1,7 @@
 const Notification = require('../models/Notification');
 
 // ========================================
-// GET USER'S NOTIFICATIONS
+// GET USER'S NOTIFICATIONS WITH PAGINATION AND UNREAD COUNT
 // ========================================
 const getNotifications = async (req, res) => {
     try {
