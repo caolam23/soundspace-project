@@ -43,7 +43,7 @@ const QuickMessageModal = ({ isOpen, onClose, onSendMessage, roomName }) => {
     setIsSending(true);
     try {
       await onSendMessage(selectedMessage.content);
-      // Đợi một chút để animation hiển thị
+      // Đợi một chút để animation hiển thị rồi mới đóng modal
       setTimeout(() => {
         onClose();
         setSelectedMessage(null);
