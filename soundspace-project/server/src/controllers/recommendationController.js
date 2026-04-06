@@ -5,7 +5,7 @@ const Notification = require('../models/Notification');
 // GET TRENDING TRACKS
 // ========================================
 // ========================================
-// GET TRENDING TRACKS (WITH AI CONTEXT)
+// GET TRENDING TRACKS (WITH AI CONTEXT) - PHASE 1 
 // ========================================
 const getTrendingTracks = async (req, res) => {
     try {
@@ -27,7 +27,7 @@ const getTrendingTracks = async (req, res) => {
                 // Analyze last 20 tracks for relevance
                 const recentTracks = room.playlist.slice(-20);
 
-                // Build set of existing track IDs to filter duplicates
+                // Build set of existing track IDs to filter duplicates later
                 room.playlist.forEach(t => {
                     if (t.sourceId) existingTrackIds.add(t.sourceId);
                     if (t.url) existingTrackIds.add(t.url);
