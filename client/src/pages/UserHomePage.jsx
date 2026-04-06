@@ -25,7 +25,7 @@ function UserHomePage() {
     const [coverImagePreview, setCoverImagePreview] = useState('');
     const fileInputRef = useRef(null);
 
-    // STATE cho loading tạo phòng
+    // STATE cho loading tạo phòng và điều hướng
     const [isCreatingRoom, setIsCreatingRoom] = useState(false);
     const [createdRoomId, setCreatedRoomId] = useState(null);
     const [isApiComplete, setIsApiComplete] = useState(false);
