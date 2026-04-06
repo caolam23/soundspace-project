@@ -119,7 +119,7 @@ function RoomPage() {
   }, [roomId]);
 
   // ============================================
-  // HANDLE NEW JOIN REQUEST (HOST)
+  // HANDLE NEW JOIN REQUEST (HOST) - ONLY FOR NORMAL MODE
   // ============================================
   const handleNewJoinRequest = useCallback(
     ({ requester, roomId: requestedRoomId }) => {
