@@ -61,7 +61,7 @@ exports.uploadRecording = async (req, res) => {
 
     await record.save();
 
-    // Optionally attach record id to Room records array (non-invasive)
+    // Optionally attach record id to Room records array (non-invasive) - if Room schema has a podcastRecords field
     try {
       await Room.findByIdAndUpdate(roomId, { $push: { podcastRecords: record._id } });
     } catch (err) {
