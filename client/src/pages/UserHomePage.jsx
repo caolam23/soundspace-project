@@ -33,17 +33,17 @@ function UserHomePage() {
     // STATE cho danh sách phòng
     const [rooms, setRooms] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [visibleRoomsCount, setVisibleRoomsCount] = useState(8); // Tăng lên 8 cho đẹp hơn
+    const [visibleRoomsCount, setVisibleRoomsCount] = useState(8); // Tăng lên 8 cho đẹp hơn 
 
     // HANDLE INPUT
     const handleInputChange = (e) => {
         const { name, value } = e.target;
          // Giới hạn ký tự
         if (name === 'name' && value.length > 50) {
-            return; // Không cho phép nhập thêm nếu vượt quá 50 ký tự
+            return; // Không cho phép nhập thêm nếu vượt quá 50 ký tự và giữ nguyên giá trị hiện tại trong state
         }
         if (name === 'description' && value.length > 130) {
-            return; // Không cho phép nhập thêm nếu vượt quá 130 ký tự
+            return; // Không cho phép nhập thêm nếu vượt quá 130 ký tự 
         }
         setRoomData({ ...roomData, [name]: value });
     };
@@ -67,7 +67,7 @@ function UserHomePage() {
 
     const closeModal = () => {
         setIsModalOpen(false);
-        // 🎙️ Reset ALL room data including podcastMode
+        // 🎙️ Reset ALL room data including podcastMode 
         setRoomData({ 
             name: '', 
             description: '', 
