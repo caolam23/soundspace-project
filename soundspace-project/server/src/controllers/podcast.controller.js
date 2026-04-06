@@ -37,7 +37,7 @@ exports.uploadRecording = async (req, res) => {
       });
     }
 
-    // Convert to data URI and upload to Cloudinary
+    // Convert to data URI and upload to Cloudinary (Cloudinary SDK handles streaming upload from buffer)
     const dataUri = bufferToDataURI(req.file.mimetype, req.file.buffer);
 
     const uploadResult = await cloudinary.uploader.upload(dataUri, {
