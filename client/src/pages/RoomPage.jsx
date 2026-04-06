@@ -184,7 +184,7 @@ function RoomPage() {
   }, []);
 
   // ============================================
-  // COMMENT DELETED LISTENER
+  // COMMENT DELETED LISTENER (REMOVE COMMENT FROM CHAT)
   // ============================================
   useEffect(() => {
     if (!socket) return;
