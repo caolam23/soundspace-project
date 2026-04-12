@@ -1,4 +1,5 @@
 // src/App.jsx
+//A
 import React from "react";
 import { useSocket } from "./contexts/SocketContext";
 
