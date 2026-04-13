@@ -21,6 +21,7 @@ const requestRoutes = require('./routes/requestRoutes'); // NEW: Song Request Sy
 const notificationRoutes = require('./routes/notificationRoutes'); // NEW: Phase 5 Notifications
 const recommendationRoutes = require('./routes/recommendationRoutes'); // NEW: AI Music Recommendations
 const podcastRoutes = require('./routes/podcast.routes'); // NEW: Podcast upload API
+const audienceInteractionRoutes = require('./routes/audienceInteraction'); // NEW: Audience Interaction (Like & Gift)
 const session = require('express-session');
 const trackVisit = require('./middleware/trackVisit');
 console.log('✅ Loaded quanLyPhongRoutes:', typeof quanLyPhongRoutes);
@@ -124,6 +125,10 @@ function createApp() {
   // Podcasts (upload recorded podcast files)
   console.log('🟡 Mounting: /api/podcasts -> podcastRoutes');
   app.use('/api/podcasts', podcastRoutes);
+
+  // NEW: Audience Interaction (Like & Gift)
+  console.log('🟡 Mounting: /api/audience-interactions -> audienceInteractionRoutes');
+  app.use('/api/audience-interactions', audienceInteractionRoutes);
 
   // Stream
   console.log('🟡 Mounting: /api/stream -> streamRoutes');

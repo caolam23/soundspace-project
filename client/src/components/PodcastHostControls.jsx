@@ -42,6 +42,10 @@ export default function PodcastHostControls({ roomId, currentUser, podcastDurati
   // Lắng nghe sự kiện ép dừng từ Server
   useEffect(() => {
     if (!socket) return;
+    
+    // Join the room so host can see audience interactions
+    socket.emit('podcast:join', { roomId, role: 'host' });
+    
     const handleForceStop = ({ roomId: stoppedRoomId }) => {
       if (stoppedRoomId === roomId) {
         showAlert('Đã hết thời lượng phát sóng! Đang tự động đóng luồng...', 'info');

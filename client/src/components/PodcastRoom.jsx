@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import PodcastHostControls from './PodcastHostControls';
 import PodcastListener from './PodcastListener';
+import AudienceInteractionPanel from './Interactions/AudienceInteractionPanel';
+import AudienceInteractionAnimations from './Interactions/AudienceInteractionAnimations';
 import styles from './PodcastRoom.module.css';
 
 export default function PodcastRoom({ roomId, role = 'listener', currentUser, podcastDuration = 900 }) {
@@ -56,6 +58,9 @@ export default function PodcastRoom({ roomId, role = 'listener', currentUser, po
 
   return (
     <div className={styles.container}>
+      {/* Animations overlay */}
+      <AudienceInteractionAnimations roomId={roomId} />
+
       <div className={`${styles.statusBar} ${isLive ? styles.statusLive : ''}`}>
         <div className={styles.statusContent}>
           <div className={styles.statusBadge}>
@@ -86,7 +91,11 @@ export default function PodcastRoom({ roomId, role = 'listener', currentUser, po
             podcastDuration={podcastDuration} 
           />
         ) : (
-          <PodcastListener roomId={roomId} />
+          <>
+            <PodcastListener roomId={roomId} />
+            {/* ✅ Audience interaction panel for listeners only */}
+            <AudienceInteractionPanel roomId={roomId} isHost={false} />
+          </>
         )}
       </div>
     </div>

@@ -1,0 +1,267 @@
+/**
+ * ✅ FEATURE: Audience Interaction Panel - CSS Module
+ * Styles for like and gift buttons with animations
+ * Implementation Date: April 2026
+ */
+
+.container {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(139, 92, 246, 0.15) 50%, rgba(59, 130, 246, 0.1) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  align-self: center;
+  margin-top: 16px;
+  margin-left: 40px;
+  max-width: 320px;
+  position: relative;
+  z-index: 100;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  outline: none;
+  font-weight: 500;
+}
+
+.button:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== LIKE BUTTON ===== */
+.likeButton {
+  border-color: rgba(244, 63, 94, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.likeButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.likeButton:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.likeButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.25) 0%, rgba(244, 63, 94, 0.15) 100%);
+  border-color: rgba(244, 63, 94, 0.6);
+  box-shadow: 0 4px 16px rgba(244, 63, 94, 0.2);
+}
+
+.likeButton.active {
+  animation: likeHeartbeat 0.6s ease;
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.35) 0%, rgba(244, 63, 94, 0.25) 100%);
+  border-color: #FF69B4;
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+}
+
+.likeButton svg {
+  transition: transform 0.3s ease;
+}
+
+.likeButton.active svg {
+  animation: likeScale 0.6s ease;
+  fill: #FF1493;
+  color: #FF1493;
+}
+
+@keyframes likeHeartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.15);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  75% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes likeScale {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.4);
+  }
+}
+
+/* ===== GIFT BUTTON ===== */
+.giftButton {
+  border-color: rgba(250, 204, 21, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.giftButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.giftButton:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.giftButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(250, 204, 21, 0.1) 100%);
+  border-color: rgba(250, 204, 21, 0.6);
+  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.2);
+}
+
+.giftWrapper {
+  position: relative;
+}
+
+/* ===== GIFT MENU ===== */
+.giftMenu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  border-radius: 14px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 180px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 1000;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.giftOption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 14px;
+  border: 1px solid rgba(250, 204, 21, 0.2);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.08) 0%, rgba(250, 204, 21, 0.02) 100%);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.giftOption:hover {
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, rgba(250, 204, 21, 0.08) 100%);
+  border-color: rgba(250, 204, 21, 0.4);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(250, 204, 21, 0.15);
+}
+
+.giftLabel {
+  font-weight: 500;
+  flex: 1;
+  text-align: left;
+  color: #fff;
+}
+
+.giftValue {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  background: rgba(250, 204, 21, 0.15);
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #fcd34d;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+  .container {
+    padding: 12px 16px;
+    gap: 10px;
+    border-radius: 14px;
+    max-width: 280px;
+  }
+
+  .button {
+    padding: 9px 14px;
+    font-size: 0.85rem;
+  }
+
+  .button svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .giftMenu {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 160px;
+    margin-bottom: 12px;
+  }
+
+  .giftOption {
+    padding: 10px 12px;
+    font-size: 0.8rem;
+  }
+
+  .giftLabel {
+    font-size: 0.85rem;
+  }
+
+  .giftValue {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
+}

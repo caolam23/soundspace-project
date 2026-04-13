@@ -23,6 +23,7 @@ const registerMusicHandlers = require('./handlers/music.handler');
 const registerChatHandlers = require('../controllers/chatHandler');
 const registerReportHandlers = require('../controllers/reportHandler');
 const registerPodcastHandlers = require('./handlers/podcast.handler');
+const registerAudienceInteractionHandlers = require('./handlers/audienceInteraction.handler');
 
 const { userSockets, startCleanupInterval, toId } = require('./store');
 const User = require('../models/User');
@@ -119,6 +120,8 @@ const initializeSocket = (server) => {
     registerPodcastHandlers(io, socket);
     registerChatHandlers(io, socket);
     registerReportHandlers(io, socket);
+    // NEW: Audience Interaction (Like & Gift)
+    registerAudienceInteractionHandlers(io, socket);
   });
 
   return io;

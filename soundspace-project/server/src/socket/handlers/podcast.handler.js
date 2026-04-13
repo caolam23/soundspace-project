@@ -21,6 +21,9 @@ module.exports = function registerPodcastHandlers(io, socket) {
     socket.role = role || 'listener';
     socket.podcastRoom = roomId;
     
+    const roomSize = io.sockets.adapter.rooms.get(roomName)?.size || 0;
+    console.log(`🎙️ [PODCAST] ${role || 'listener'} joined room: ${roomName} (total: ${roomSize} users)`);
+    
     if (activePodcasts.has(roomId)) {
       const podcastData = activePodcasts.get(roomId);
       socket.emit('podcast:started', { 
