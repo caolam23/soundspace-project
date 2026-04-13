@@ -1,0 +1,84 @@
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid #e5e5e5;
+    border-radius: 999px;
+    /* Bo tròn dạng Pill - cực kỳ phổ biến cho nút Vote */
+    background-color: #ffffff;
+    /* 30% Trắng */
+    color: #0f0f0f;
+    /* 60% Đen */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    /* Tránh bôi đen text khi click nhanh nhiều lần */
+}
+
+/* Hover mượt mà, viền đen báo hiệu người dùng có thể tương tác */
+.button:hover:not(:disabled) {
+    border-color: #0f0f0f;
+    background-color: #fafafa;
+}
+
+/* Hiệu ứng lún nhẹ khi click */
+.button:active:not(:disabled) {
+    transform: scale(0.96);
+}
+
+/* --- TONE MÀU 10%: TÍM NỔI BẬT DÀNH CHO TRẠNG THÁI ACTIVE (ĐÃ VOTE) --- */
+.voted {
+    background-color: #a855f7;
+    color: #ffffff;
+    border-color: #a855f7;
+}
+
+.voted:hover:not(:disabled) {
+    background-color: #9333ea;
+    /* Tím đậm hơn khi hover */
+    border-color: #9333ea;
+    color: #ffffff;
+}
+
+.button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Thêm animation mờ nhấp nháy nhẹ khi Redux đang tải API */
+.loading {
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+.iconWrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.count {
+    font-weight: 600;
+    margin-left: 2px;
+}
+
+/* Animation loading */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}

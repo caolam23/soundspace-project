@@ -1,6 +1,16 @@
+/**
+ * ✅ FEATURE: Room Management & Strict Duration
+ * User home page with:
+ * - Room creation form with duration selector (2min, 30min, 1hr, 2hrs)
+ * - Room listing & discovery
+ * - Real-time room status updates
+ * - Join/create room management
+ * Implementation Date: April 2026
+ */
+
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-import { Plus, X, LogOut, UploadCloud, ArrowRight } from 'react-feather';
+import { Plus, X, LogOut, UploadCloud, ArrowRight, Radio, Clock } from 'react-feather';
 import axios from 'axios';
 import RoomCard from '../components/RoomCard';
 import ThamGiaPhong from '../components/ThamGiaPhong';
@@ -18,6 +28,8 @@ function UserHomePage() {
         name: '',
         description: '',
         privacy: 'public',
+        podcastMode: false,
+        podcastDuration: 2 * 60,
     });
     const [coverImage, setCoverImage] = useState(null);
     const [coverImagePreview, setCoverImagePreview] = useState('');
@@ -46,6 +58,15 @@ function UserHomePage() {
         setRoomData({ ...roomData, [name]: value });
     };
 
+    const handleCheckboxChange = (e) => {
+        const { name, checked, value } = e.target;
+        if (name === 'podcastMode') {
+            setRoomData({ ...roomData, podcastMode: checked });
+            return;
+        }
+        setRoomData({ ...roomData, [name]: value });
+    };
+
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file && file.type.startsWith('image/')) {
@@ -56,7 +77,14 @@ function UserHomePage() {
 
     const closeModal = () => {
         setIsModalOpen(false);
-        setRoomData({ name: '', description: '', privacy: 'public' });
+        // 🎙️ Reset ALL room data including podcastMode
+        setRoomData({ 
+            name: '', 
+            description: '', 
+            privacy: 'public',
+            podcastMode: false,
+            podcastDuration: 15 * 60
+        });
         setCoverImage(null);
         setCoverImagePreview('');
     };
@@ -70,15 +98,29 @@ function UserHomePage() {
             return;
         }
 
-        closeModal();
-        setIsCreatingRoom(true);
-        setIsApiComplete(false);
-
         const formData = new FormData();
         formData.append('name', roomData.name);
         formData.append('description', roomData.description);
         formData.append('privacy', roomData.privacy);
+        // Podcast fields (optional)
+        formData.append('podcastMode', roomData.podcastMode ? 'true' : 'false');
+        formData.append('podcastDuration', roomData.podcastDuration);
         formData.append('coverImage', coverImage);
+
+        // 🔍 DEBUG: Log formData being sent
+        console.log('📤 [handleCreateRoom] Sending formData:', {
+            name: roomData.name,
+            description: roomData.description,
+            privacy: roomData.privacy,
+            podcastMode: roomData.podcastMode,
+            podcastMode_string: roomData.podcastMode ? 'true' : 'false',
+            podcastDuration: roomData.podcastDuration,
+            hasImage: !!coverImage
+        });
+
+        closeModal();
+        setIsCreatingRoom(true);
+        setIsApiComplete(false);
 
         try {
             const token = localStorage.getItem('token');
@@ -91,6 +133,11 @@ function UserHomePage() {
 
             const newRoom = res.data.room;
             console.log("✅ Phòng đã tạo:", newRoom);
+            console.log("🎙️ Podcast mode từ server:", {
+                podcastMode: newRoom.podcastMode,
+                podcastActive: newRoom.podcastActive,
+                podcastDuration: newRoom.podcastDuration
+            });
             setCreatedRoomId(newRoom._id);
             setIsApiComplete(true);
 
@@ -116,11 +163,11 @@ function UserHomePage() {
     useEffect(() => {
         if (isApiComplete && createdRoomId && !isCreatingRoom) {
             navigate(`/room/${createdRoomId}`, {
-                state: { fromCreate: true },
+                state: { fromCreate: true, podcastMode: roomData.podcastMode },
                 replace: true
             });
         }
-    }, [isApiComplete, createdRoomId, isCreatingRoom, navigate]);
+    }, [isApiComplete, createdRoomId, isCreatingRoom, navigate, roomData.podcastMode]);
 
     // LOAD MORE ROOMS
     const handleLoadMore = () => {
@@ -224,12 +271,11 @@ function UserHomePage() {
             </header>
 
             <main className="user-main-content">
-                {/* HERO SECTION MỚI */}
                 <section className="hero-section">
                     <h1 className="hero-title">Chào mừng trở lại, {user.username}!</h1>
                     <p className="hero-subtitle">Khám phá không gian âm nhạc hoặc tạo phòng của riêng bạn.</p>
                     <div className="hero-actions">
-                        <ThamGiaPhong /> {/* Component này được giữ nguyên */}
+                        <ThamGiaPhong />
                         <button onClick={() => setIsModalOpen(true)} className="btn btn-primary">
                             <Plus size={20} />
                             Tạo phòng mới
@@ -266,7 +312,6 @@ function UserHomePage() {
                 </section>
             </main>
 
-            {/* MODAL TẠO PHÒNG - GIỮ NGUYÊN LOGIC, THAY ĐỔI GIAO DIỆN QUA CSS */}
             {isModalOpen && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -357,6 +402,63 @@ function UserHomePage() {
                                         </div>
                                     </label>
                                 </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Chế độ đặc biệt</label>
+                                <div className="privacy-options">
+                                    <label className="privacy-option" style={{ justifyContent: 'flex-start' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            name="podcastMode" 
+                                            checked={roomData.podcastMode} 
+                                            onChange={handleCheckboxChange} 
+                                        />
+                                        <div className="privacy-option-content podcast-toggle-box">
+                                            <div className="podcast-toggle-header">
+                                                <div className="podcast-icon-wrapper">
+                                                    <Radio size={20} className="podcast-icon" />
+                                                </div>
+                                                <div className="podcast-toggle-text">
+                                                    <strong>Live Podcast</strong>
+                                                    <span>Phòng chuyên dụng phát sóng trực tiếp (Host dùng micro).</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                                
+                                {/* 🎨 UI Chọn thời gian mới dạng Chips (Radio) */}
+                                {roomData.podcastMode && (
+                                    <div className="podcast-duration-selector">
+                                        <label className="duration-label">
+                                            <Clock size={16} /> Chọn thời lượng giới hạn
+                                        </label>
+                                        <div className="duration-chips">
+                                            {[
+                                                { label: '2 Phút', value: 2 * 60 },
+                                                { label: '30 Phút', value: 30 * 60 },
+                                                { label: '1 Giờ', value: 60 * 60 },
+                                                { label: '2 Giờ', value: 120 * 60 }
+                                            ].map((option) => (
+                                                <label 
+                                                    key={option.value} 
+                                                    className={`duration-chip ${roomData.podcastDuration === option.value ? 'active' : ''}`}
+                                                >
+                                                    <input 
+                                                        type="radio" 
+                                                        name="podcastDuration" 
+                                                        value={option.value} 
+                                                        checked={roomData.podcastDuration === option.value}
+                                                        onChange={(e) => setRoomData({ ...roomData, podcastDuration: Number(e.target.value) })}
+                                                        style={{ display: 'none' }}
+                                                    />
+                                                    {option.label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <button type="submit" className="btn btn-primary btn-submit">Tạo phòng ngay</button>
                         </form>

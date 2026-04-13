@@ -16,15 +16,22 @@ const userSchema = new mongoose.Schema({
   lastActiveAt: { type: Date, default: Date.now },
   avatar: { type: String, default: '/images/default-avatar.png' },
 
-  
-  requirePasswordChange: { type: Boolean, default: false }, 
-  passwordChangedAt: { type: Date }, 
 
-  
+  requirePasswordChange: { type: Boolean, default: false },
+  passwordChangedAt: { type: Date },
+
+
   muteExpiresAt: {
     type: Date,
-    default: null, 
-  }
+    default: null,
+  },
+
+  // =============================================
+  // NEW: Gamification for Song Requests
+  // =============================================
+  contributionPoints: { type: Number, default: 0 },
+  totalSongRequests: { type: Number, default: 0 },
+  approvedRequests: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

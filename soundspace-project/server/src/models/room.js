@@ -1,6 +1,88 @@
 const mongoose = require("mongoose");
 
 /**
+ * ✅ FEATURE: Room Management & Strict Duration
+ * Room model with:
+ * - Podcast duration tracking & enforcement
+ * - Room status lifecycle (waiting → live → ended)
+ * - Real-time statistics (members, messages, duration)
+ * - Ban management & reporting system
+ * - Cleanup scheduling & resource tracking
+ * Implementation Date: April 2026
+ */
+
+// =============================================
+// Tags cho Song Request System + AI Learning
+// =============================================
+const GENRE_TAGS = [
+  'vpop', 'kpop', 'us-uk', 'c-pop',
+  'rap', 'hiphop', 'rnb', 'edm', 'remix',
+  'indie', 'ballad', 'pop', 'rock', 'lofi', 'acoustic', 'jazz', 'dance'
+];
+
+const MOOD_TAGS = [
+  'happy', 'sad', 'chill', 'energetic',
+  'romantic', 'focus', 'gaming', 'sleep', 'coffee', 'travel'
+];
+
+// =============================================
+// Song Request Sub-schema
+// =============================================
+const SongRequestSchema = new mongoose.Schema({
+  title: { type: String, required: true, trim: true },
+  artist: { type: String, required: true, trim: true },
+  thumbnail: { type: String, required: true },
+  duration: { type: Number, required: true },
+
+  source: {
+    type: String,
+    enum: ['youtube', 'upload'],
+    required: true
+  },
+
+  // YouTube specific
+  youtube_id: { type: String, sparse: true },
+  url: { type: String },
+
+  // Upload specific
+  cloudinary_url: { type: String },
+  cloudinary_public_id: { type: String },
+  fileSize: { type: Number },
+
+  // Tags (BẮT BUỘC - cho AI sau này)
+  tags: {
+    type: [String],
+    required: true,
+    validate: {
+      validator: (tags) => tags.length >= 1 && tags.length <= 3,
+      message: 'Phải chọn từ 1-3 tags'
+    },
+    enum: GENRE_TAGS
+  },
+
+  // Mood (Optional)
+  mood: { type: [String], enum: MOOD_TAGS },
+
+  // Request metadata
+  requestedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  message: { type: String, maxlength: 200 },
+  votes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+
+  createdAt: { type: Date, default: Date.now },
+  reviewedAt: { type: Date },
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, { _id: true });
+
+/**
  * =============================================
  * TrackSchema - Mô tả chi tiết một bài hát trong phòng
  * =============================================
@@ -41,6 +123,26 @@ const TrackSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+
+    // =============================================
+    // NEW: Tags cho AI learning (Phase 2)
+    // =============================================
+    tags: {
+      type: [String],
+      enum: GENRE_TAGS,
+      default: []
+    },
+    mood: {
+      type: [String],
+      enum: MOOD_TAGS,
+      default: []
+    },
+    addedVia: {
+      type: String,
+      enum: ['host', 'request'],
+      default: 'host'
+    },
+    requestVotes: { type: Number, default: 0 }
   },
   { timestamps: true }
 );
@@ -166,6 +268,11 @@ const roomSchema = new mongoose.Schema(
     // Trình phát nhạc
     // =============================================
     playlist: [TrackSchema], // Danh sách bài hát
+
+    // =============================================
+    // NEW: Song Requests (Feature 1)
+    // =============================================
+    songRequests: [SongRequestSchema],
     currentTrackIndex: {
       type: Number,
       default: -1, // -1 = chưa chọn bài nào
@@ -176,6 +283,23 @@ const roomSchema = new mongoose.Schema(
     },
     playbackStartTime: {
       type: Date, // thời điểm bắt đầu phát bài hiện tại
+    },
+
+    // =============================================
+    // Request Settings (Auto-approve mode)
+    // =============================================
+    requestSettings: {
+      approvalMode: {
+        type: String,
+        enum: ['manual', 'auto'],
+        default: 'manual'
+      },
+      autoApproveThreshold: {
+        type: Number,
+        default: 30,  // 30% of members
+        min: 10,
+        max: 80
+      }
     },
 
     // =============================================
@@ -196,8 +320,15 @@ const roomSchema = new mongoose.Schema(
       ],
       default: [],
     },
+    // =============================================
+    // Podcast / Live Podcast fields
+    // =============================================
+    podcastActive: { type: Boolean, default: false },
+    podcastMode: { type: Boolean, default: false }, // true = this room is a Live Podcast room
+    podcastDuration: { type: Number, default: 0 }, // seconds
+    podcastRecords: [{ type: mongoose.Schema.Types.ObjectId, ref: 'PodcastRecord' }],
   },
-  { 
+  {
     timestamps: true,
     toJSON: { virtuals: true },   // ✅ Cho phép xuất virtual khi chuyển sang JSON
     toObject: { virtuals: true }  // ✅ Cho phép xuất virtual khi chuyển sang Object
@@ -227,4 +358,8 @@ roomSchema.set("toJSON", { virtuals: true });
 roomSchema.set("toObject", { virtuals: true });
 roomSchema.options.minimize = false; // Không ẩn object rỗng
 
-module.exports = mongoose.model("Room", roomSchema);
+const Room = mongoose.model("Room", roomSchema);
+Room.GENRE_TAGS = GENRE_TAGS;
+Room.MOOD_TAGS = MOOD_TAGS;
+
+module.exports = Room;

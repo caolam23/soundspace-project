@@ -5,11 +5,19 @@ import { X, UploadCloud, Music, Image as ImageIcon } from 'react-feather';
 import './UploadModal.css';
 import { toastConfig } from '../services/toastConfig';
 
+const GENRE_TAGS = ['vpop', 'kpop', 'us-uk', 'c-pop', 'rap', 'hiphop', 'rnb', 'edm', 'remix', 'indie', 'ballad', 'pop', 'rock', 'lofi', 'acoustic', 'jazz', 'dance'];
+const MOOD_TAGS = ['happy', 'sad', 'chill', 'energetic', 'romantic', 'focus', 'gaming', 'sleep', 'coffee', 'travel'];
+
 const UploadModal = ({ roomId, onClose }) => {
   const [audioFile, setAudioFile] = useState(null);
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [selectedMoods, setSelectedMoods] = useState([]);
+
+  const toggleGenre = (tag) => setSelectedGenres(p => p.includes(tag) ? p.filter(t => t !== tag) : [...p, tag]);
+  const toggleMood = (mood) => setSelectedMoods(p => p.includes(mood) ? p.filter(m => m !== mood) : [...p, mood]);
 
   const audioInputRef = useRef(null);
   const thumbnailInputRef = useRef(null);
@@ -50,6 +58,8 @@ const UploadModal = ({ roomId, onClose }) => {
     const formData = new FormData();
     formData.append('audio', audioFile);
     formData.append('thumbnail', thumbnailFile);
+    formData.append('tags', JSON.stringify(selectedGenres));
+    formData.append('mood', JSON.stringify(selectedMoods));
 
     try {
       const token = localStorage.getItem("token");
@@ -115,6 +125,34 @@ const UploadModal = ({ roomId, onClose }) => {
           <button type="submit" className="upload-button" disabled={isLoading}>
             {isLoading ? 'Đang tải lên...' : <><UploadCloud size={20} /> Tải lên</>}
           </button>
+
+          {/* Tag Picker */}
+          <div className="upload-tag-picker">
+            <div className="upload-tag-section">
+              <span className="upload-tag-label">🎵 Thể loại (không bắt buộc)</span>
+              <div className="upload-tag-chips">
+                {GENRE_TAGS.map(tag => (
+                  <button
+                    key={tag} type="button"
+                    className={`upload-tag-chip ${selectedGenres.includes(tag) ? 'active' : ''}`}
+                    onClick={() => toggleGenre(tag)}
+                  >{tag}</button>
+                ))}
+              </div>
+            </div>
+            <div className="upload-tag-section">
+              <span className="upload-tag-label">😊 Mood (không bắt buộc)</span>
+              <div className="upload-tag-chips">
+                {MOOD_TAGS.map(mood => (
+                  <button
+                    key={mood} type="button"
+                    className={`upload-tag-chip ${selectedMoods.includes(mood) ? 'active' : ''}`}
+                    onClick={() => toggleMood(mood)}
+                  >{mood}</button>
+                ))}
+              </div>
+            </div>
+          </div>
         </form>
       </div>
     </div>

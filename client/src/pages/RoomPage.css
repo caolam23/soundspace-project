@@ -1,8 +1,8 @@
 :root {
-    --bg-primary: #121212;      /* Màu nền chính tối nhất */
-    --bg-secondary: #1E1E1E;    /* Màu nền cho các cột */
-    --bg-tertiary: #2A2A2A;     /* Màu nền cho các item, input */
-    --accent: #8A2BE2;         /* Màu tím nhấn mạnh */
+    --bg-primary: #121212;
+    --bg-secondary: #1E1E1E;
+    --bg-tertiary: #2A2A2A;
+    --accent: #8A2BE2;
     --accent-hover: #9945FF;
     --text-primary: #FFFFFF;
     --text-secondary: #A0A0A0;
@@ -18,10 +18,22 @@
 }
 
 /* --- Thanh cuộn tùy chỉnh --- */
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: var(--bg-secondary); }
-::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #555; }
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
 
 
 /* ================================== */
@@ -34,7 +46,7 @@
     width: 100vw;
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    font-family: 'Inter', sans-serif; /* Bạn cần import font này, hoặc thay bằng font bạn thích */
+    font-family: 'Inter', sans-serif;
     overflow: hidden;
 }
 
@@ -52,7 +64,7 @@
     display: flex;
     flex-grow: 1;
     overflow: hidden;
-    width: 100%; /* ✅ Thêm dòng này */
+    width: 100%;
 }
 
 /* ================================== */
@@ -62,11 +74,13 @@
     font-size: 1.25rem;
     font-weight: 700;
 }
+
 .roompage-roomcode {
     font-size: 0.8rem;
     color: var(--text-secondary);
     margin-top: 4px;
 }
+
 .roompage-roomcode strong {
     color: var(--accent);
     letter-spacing: 1px;
@@ -86,6 +100,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
 }
+
 .roompage-btn-exit:hover {
     background-color: var(--bg-tertiary);
     color: var(--text-primary);
@@ -102,6 +117,7 @@
     margin-bottom: 16px;
     flex-shrink: 0;
 }
+
 .roompage-queue-list {
     list-style: none;
     overflow-y: auto;
@@ -134,10 +150,12 @@
     border-radius: 6px;
     object-fit: cover;
 }
+
 .roompage-queue-info {
     flex-grow: 1;
     overflow: hidden;
 }
+
 .roompage-queue-info h3 {
     font-size: 0.95rem;
     font-weight: 500;
@@ -145,6 +163,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 .roompage-queue-info p {
     font-size: 0.85rem;
     color: var(--text-secondary);
@@ -155,7 +174,7 @@
 /* CỘT GIỮA - PLAYER        */
 /* ================================== */
 .roompage-center {
-    flex: 1; /* Cho phép cột giữa chiếm hết không gian còn lại */
+    flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -179,6 +198,7 @@
     font-size: 2.5rem;
     font-weight: 900;
 }
+
 .roompage-song-info p {
     font-size: 1.2rem;
     color: var(--text-secondary);
@@ -229,10 +249,12 @@
     align-items: center;
     justify-content: center;
 }
+
 .roompage-btn-icon:disabled {
     cursor: not-allowed;
     opacity: 0.6;
 }
+
 .roompage-btn-play {
     width: 70px;
     height: 70px;
@@ -240,8 +262,9 @@
     background-color: var(--text-primary);
     color: var(--bg-primary);
 }
+
 .roompage-btn-spotify {
-    display: none; /* Ẩn đi nếu không cần thiết, hoặc style nó */
+    display: none;
 }
 
 /* ================================== */
@@ -250,7 +273,7 @@
 .roompage-right {
     width: 25%;
     min-width: 300px;
-    max-width: 400px; /* ✅ Thêm max-width để không bị quá rộng */
+    max-width: 400px;
     background-color: var(--bg-secondary);
     border-left: 1px solid var(--border-color);
     display: flex;
@@ -260,18 +283,18 @@
 /* Layout 3 cột: left (player) + right (chat) */
 .roompage-main.new-layout {
     display: flex;
-    gap: 0; /* Không có khoảng cách thừa */
-    width: 100%; /* ✅ Chiếm full width */
+    gap: 0;
+    width: 100%;
 }
 
 .roompage-left-column {
-    flex: 1; /* Chiếm phần còn lại */
+    flex: 1;
     display: flex;
     flex-direction: column;
-    min-width: 0; /* ✅ Quan trọng: tránh overflow */
+    min-width: 0;
+    overflow: hidden;
 }
 
-/* ✅ Đảm bảo Ghost Mode không làm lệch layout */
 .roompage-container.ghost-mode .roompage-main {
     width: 100%;
 }
@@ -280,6 +303,7 @@
     display: flex;
     flex-shrink: 0;
 }
+
 .roompage-tab {
     flex: 1;
     padding: 16px;
@@ -290,15 +314,18 @@
     transition: all 0.2s ease;
     color: var(--text-secondary);
 }
+
 .roompage-tab:hover {
     background-color: var(--bg-tertiary);
 }
+
 .roompage-tab.active {
     color: var(--accent);
     border-bottom-color: var(--accent);
 }
 
-.roompage-chat, .roompage-participants {
+.roompage-chat,
+.roompage-participants {
     flex-grow: 1;
     overflow-y: auto;
     padding: 24px;
@@ -310,34 +337,43 @@
     gap: 12px;
     margin-bottom: 20px;
 }
+
 .roompage-chat-msg img {
     width: 40px;
     height: 40px;
     border-radius: 50%;
     flex-shrink: 0;
 }
+
 .roompage-chat-body {
     flex-grow: 1;
 }
+
 .roompage-chat-username {
     font-weight: 700;
     font-size: 0.9rem;
     margin-bottom: 4px;
 }
+
 .roompage-chat-msg.is-host .roompage-chat-username {
     color: var(--accent);
 }
+
 .roompage-chat-text {
     font-size: 0.9rem;
     line-height: 1.5;
     word-break: break-word;
 }
-.roompage-chat-actions { display: none; } /* Ẩn đi cho gọn */
+
+.roompage-chat-actions {
+    display: none;
+}
 
 /* --- Phần Thành viên --- */
 .roompage-participant-list {
     list-style: none;
 }
+
 .roompage-participant-item {
     display: flex;
     align-items: center;
@@ -345,16 +381,19 @@
     padding: 12px 8px;
     border-radius: 8px;
 }
+
 .roompage-participant-info {
     display: flex;
     align-items: center;
     gap: 12px;
 }
+
 .roompage-participant-info img {
     width: 40px;
     height: 40px;
     border-radius: 50%;
 }
+
 .roompage-host-tag {
     font-size: 0.75rem;
     font-weight: 700;
@@ -374,6 +413,7 @@
     align-items: center;
     border-top: 1px solid var(--border-color);
 }
+
 .roompage-chat-input input {
     flex-grow: 1;
     padding: 12px 18px;
@@ -384,35 +424,39 @@
     font-size: 0.9rem;
     outline: none;
 }
+
 .roompage-chat-input input:focus {
     border-color: var(--accent);
 }
+
 .roompage-chat-input .roompage-btn-icon {
     color: var(--text-secondary);
     cursor: pointer;
     transition: color 0.2s ease;
 }
+
 .roompage-chat-input .roompage-btn-icon:hover {
     color: var(--text-primary);
 }
+
 .join-requests-container {
-        position: fixed;
-        right: 28px;
-        top: 72px;
-        width: 420px; /* tăng độ rộng để hiển thị thông tin đầy đủ */
-        max-width: calc(100vw - 56px);
-        max-height: 80vh; /* tăng chiều cao tối đa để chứa nhiều yêu cầu hơn */
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    border: 1px solid rgba(255,255,255,0.04);
+    position: fixed;
+    right: 28px;
+    top: 72px;
+    width: 420px;
+    max-width: calc(100vw - 56px);
+    max-height: 80vh;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+    border: 1px solid rgba(255, 255, 255, 0.04);
     backdrop-filter: blur(6px);
     padding: 12px;
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
     overflow-y: auto;
     z-index: 1000;
 }
 
-/* Responsive: nếu cửa sổ nhỏ, làm box chiếm gần hết chiều ngang */
+/* Responsive */
 @media (max-width: 800px) {
     .join-requests-container {
         right: 16px;
@@ -421,12 +465,22 @@
         max-height: 70vh;
     }
 }
+
 .join-requests-container h3 {
     font-size: 1rem;
     margin-bottom: 8px;
     color: var(--accent);
 }
-.join-requests-container ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.join-requests-container ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 .join-request-item {
     display: flex;
     align-items: center;
@@ -434,13 +488,35 @@
     gap: 12px;
     padding: 8px;
     border-radius: 8px;
-    background: rgba(255,255,255,0.01);
+    background: rgba(255, 255, 255, 0.01);
 }
-.join-request-info { display: flex; gap: 8px; align-items: center; }
-.join-request-info img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-.join-request-username { font-weight: 700; }
-.join-request-meta { font-size: 0.8rem; color: var(--text-secondary); }
-.join-request-actions { display: flex; gap: 8px; }
+
+.join-request-info {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.join-request-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.join-request-username {
+    font-weight: 700;
+}
+
+.join-request-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.join-request-actions {
+    display: flex;
+    gap: 8px;
+}
 
 /* Nút Danger Outline Hiện Đại */
 .roompage-container .btn-danger-outline {
@@ -448,13 +524,16 @@
     font-weight: 500;
     font-size: 16px;
     padding: 10px 24px;
-    border: 2px solid #e53935; /* đỏ đậm */
-    border-radius: 8px; /* bo góc mềm mại */
+    border: 2px solid #e53935;
+    /* đỏ đậm */
+    border-radius: 8px;
+    /* bo góc mềm mại */
     color: #e53935;
     background-color: transparent;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* bóng nhẹ */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    /* bóng nhẹ */
     text-align: center;
     text-decoration: none;
 }
@@ -464,7 +543,7 @@
     background-color: #e53935;
     color: #fff;
     transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* Focus: viền nổi */
@@ -479,6 +558,7 @@
     cursor: not-allowed;
     box-shadow: none;
 }
+
 /* Nút Primary Hiện Đại */
 .roompage-container .btn-primary {
     display: inline-block;
@@ -486,12 +566,15 @@
     font-size: 16px;
     padding: 12px 28px;
     border: none;
-    border-radius: 10px; /* bo góc mềm mại */
+    border-radius: 10px;
+    /* bo góc mềm mại */
     color: #fff;
-    background: linear-gradient(135deg, #4f46e5, #6366f1); /* gradient xanh tím hiện đại */
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    /* gradient xanh tím hiện đại */
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* bóng nhẹ nổi */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    /* bóng nhẹ nổi */
     text-align: center;
     text-decoration: none;
 }
@@ -500,7 +583,7 @@
 .roompage-container .btn-primary:hover {
     background: linear-gradient(135deg, #5b4ff5, #7c6dfc);
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
 /* Focus: viền nổi ring */
@@ -512,7 +595,7 @@
 /* Active: nhấn xuống */
 .roompage-container .btn-primary:active {
     transform: translateY(1px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* Disabled */
@@ -521,25 +604,35 @@
     cursor: not-allowed;
     box-shadow: none;
 }
+
 .roompage-header-actions {
     display: flex;
-    justify-content: space-between; /* 2 nút xa nhau nhất có thể */
-    align-items: center; /* canh giữa theo chiều dọc */
-    gap: 16px; /* khoảng cách nếu có nhiều nút hơn */
+    justify-content: space-between;
+    /* 2 nút xa nhau nhất có thể */
+    align-items: center;
+    /* canh giữa theo chiều dọc */
+    gap: 16px;
+    /* khoảng cách nếu có nhiều nút hơn */
 }
+
 /* Nút Accept Nhỏ Gọn */
 .roompage-container .btn-accept {
     display: inline-block;
     font-weight: 600;
-    font-size: 12px; /* nhỏ hơn */
-    padding: 5px 14px; /* gọn hơn */
+    font-size: 12px;
+    /* nhỏ hơn */
+    padding: 5px 14px;
+    /* gọn hơn */
     border: none;
-    border-radius: 6px; /* bo góc nhỏ hơn */
+    border-radius: 6px;
+    /* bo góc nhỏ hơn */
     color: #fff;
-    background-color: #22c55e; /* xanh lá tươi */
+    background-color: #22c55e;
+    /* xanh lá tươi */
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.15); /* bóng nhẹ hơn */
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    /* bóng nhẹ hơn */
     text-align: center;
     text-decoration: none;
 }
@@ -548,19 +641,19 @@
 .roompage-container .btn-accept:hover {
     background-color: #16a34a;
     transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 /* Focus */
 .roompage-container .btn-accept:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(34,197,94,0.4);
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.4);
 }
 
 /* Active */
 .roompage-container .btn-accept:active {
     transform: translateY(1px);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 /* Disabled */
@@ -574,15 +667,20 @@
 .roompage-container .btn-deny {
     display: inline-block;
     font-weight: 600;
-    font-size: 12px; /* nhỏ gọn */
-    padding: 5px 14px; /* nhỏ gọn */
+    font-size: 12px;
+    /* nhỏ gọn */
+    padding: 5px 14px;
+    /* nhỏ gọn */
     border: none;
-    border-radius: 6px; /* bo góc nhẹ */
+    border-radius: 6px;
+    /* bo góc nhẹ */
     color: #fff;
-    background-color: #ef4444; /* đỏ tươi */
+    background-color: #ef4444;
+    /* đỏ tươi */
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.15); /* bóng nhẹ */
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    /* bóng nhẹ */
     text-align: center;
     text-decoration: none;
 }
@@ -591,19 +689,19 @@
 .roompage-container .btn-deny:hover {
     background-color: #b91c1c;
     transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 /* Focus */
 .roompage-container .btn-deny:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(239,68,68,0.4);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4);
 }
 
 /* Active */
 .roompage-container .btn-deny:active {
     transform: translateY(1px);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 /* Disabled */
@@ -612,37 +710,42 @@
     cursor: not-allowed;
     box-shadow: none;
 }
+
 /* Nút Rời Phòng */
 .roompage-container .btn-leave-room {
     display: inline-flex;
     align-items: center;
-    gap: 6px; /* khoảng cách icon & chữ */
+    gap: 6px;
+    /* khoảng cách icon & chữ */
     font-weight: 600;
-    font-size: 12px; /* nhỏ gọn */
-    padding: 5px 14px; /* gọn gàng */
+    font-size: 12px;
+    /* nhỏ gọn */
+    padding: 5px 14px;
+    /* gọn gàng */
     border: none;
     border-radius: 6px;
-    background-color: #ef4444; /* đỏ nổi bật */
+    background-color: #ef4444;
+    /* đỏ nổi bật */
     color: #fff;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 .roompage-container .btn-leave-room:hover {
     background-color: #b91c1c;
     transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .roompage-container .btn-leave-room:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(239,68,68,0.4);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4);
 }
 
 .roompage-container .btn-leave-room:active {
     transform: translateY(1px);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 .roompage-container .btn-leave-room:disabled {
@@ -659,14 +762,19 @@
     font-weight: 600;
     font-size: 12px;
     padding: 5px 12px;
-    border: 1px solid rgba(0,0,0,0.06);
+    border: 1px solid rgba(0, 0, 0, 0.06);
     border-radius: 6px;
     background-color: #fff;
     color: #333;
     cursor: pointer;
     transition: all 0.15s ease;
 }
-.roompage-container .btn-report-room:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+
+.roompage-container .btn-report-room:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
 .roompage-container .btn-report-room.disabled,
 .roompage-container .btn-report-room:disabled {
     opacity: 0.5;
@@ -689,46 +797,63 @@
     align-items: center;
     gap: 8px;
 }
-.join-request-status.pending { background: rgba(255,255,255,0.02); color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.02); }
-.join-request-status.accepted { background: rgba(138,43,226,0.12); color: var(--accent); border: 1px solid rgba(138,43,226,0.18); }
-.join-request-status.denied { background: rgba(200,30,30,0.08); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.12); }
+
+.join-request-status.pending {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.join-request-status.accepted {
+    background: rgba(138, 43, 226, 0.12);
+    color: var(--accent);
+    border: 1px solid rgba(138, 43, 226, 0.18);
+}
+
+.join-request-status.denied {
+    background: rgba(200, 30, 30, 0.08);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 107, 107, 0.12);
+}
 
 /* Host feedback small box */
 .host-feedback {
     position: fixed;
     right: 28px;
     bottom: 28px;
-    background: rgba(255,255,255,0.03);
+    background: rgba(255, 255, 255, 0.03);
     color: var(--text-primary);
     padding: 10px 14px;
     border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.04);
+    border: 1px solid rgba(255, 255, 255, 0.04);
     z-index: 1600;
 }
+
 /* Small transient toast when a user is accepted/joins - bottom-right of chat area */
 .join-toast {
     position: fixed;
     right: 28px;
     bottom: 28px;
     z-index: 1700;
-    pointer-events: none; /* Clicks pass through unless we change */
+    pointer-events: none;
 }
+
 /* Enhanced join toast resembling Google Meet: avatar + name + small subtitle */
 .join-toast-content {
     display: flex;
     align-items: center;
     gap: 12px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
     color: var(--text-primary);
     padding: 8px 12px;
     border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.04);
-    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
     font-weight: 600;
-    pointer-events: auto; /* allow hover interactions if necessary */
+    pointer-events: auto;
     min-width: 220px;
     max-width: 320px;
-    animation: join-toast-in 300ms cubic-bezier(.2,.9,.2,1);
+    animation: join-toast-in 300ms cubic-bezier(.2, .9, .2, 1);
 }
 
 .join-toast-avatar {
@@ -737,7 +862,7 @@
     border-radius: 50%;
     flex-shrink: 0;
     object-fit: cover;
-    border: 2px solid rgba(255,255,255,0.06);
+    border: 2px solid rgba(255, 255, 255, 0.06);
 }
 
 .join-toast-body {
@@ -762,80 +887,95 @@
     color: var(--text-secondary);
     line-height: 1;
 }
+
 @keyframes join-toast-in {
-    from { transform: translateY(12px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from {
+        transform: translateY(12px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
+
 .join-toast .join-toast-content {
-    background: linear-gradient(135deg, rgba(138,43,226,0.1), rgba(46, 125, 50, 0.1)); 
-    border-left: 3px solid var(--accent); /* Đường viền tím */
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.1), rgba(46, 125, 50, 0.1));
+    border-left: 3px solid var(--accent);
+    /* Đường viền tím */
 }
+
 .leave-toast .join-toast-content {
     background: linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(255, 152, 0, 0.1));
-    border-left: 3px solid #F44336; 
+    border-left: 3px solid #F44336;
 }
+
 .leave-toast .join-toast-username {
-    color: #F44336; 
+    color: #F44336;
 }
+
 .roompage-ghost-badge {
-  display: inline-flex; /* ✅ Đổi từ inline-flex sang inline-flex */
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: rgba(138, 43, 226, 0.12);
-  border: 1px solid rgba(138, 43, 226, 0.3);
-  border-radius: 8px;
-  color: #c084fc;
-  font-size: 13px;
-  font-weight: 600;
-  margin-top: 0; /* ✅ Bỏ margin-top */
-  flex-shrink: 0; /* ✅ Không cho badge bị co lại */
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(138, 43, 226, 0.12);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    border-radius: 8px;
+    color: #c084fc;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 0;
+    flex-shrink: 0;
 }
 
 .roompage-ghost-badge svg {
-  color: #c084fc;
+    color: #c084fc;
 }
 
 .roompage-container.ghost-mode .roompage-header {
-  border-bottom: 1px solid rgba(138, 43, 226, 0.25);
+    border-bottom: 1px solid rgba(138, 43, 226, 0.25);
 }
 
 .btn-leave-room.ghost-mode-btn {
-  background: linear-gradient(135deg, #7c3aed, #9333ea);
-  border: 1px solid rgba(147, 51, 234, 0.3);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+    background: linear-gradient(135deg, #7c3aed, #9333ea);
+    border: 1px solid rgba(147, 51, 234, 0.3);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
 }
+
 .roompage-container.ghost-mode .roompage-right {
-  border-left: 1px solid rgba(138, 43, 226, 0.15);
+    border-left: 1px solid rgba(138, 43, 226, 0.15);
 }
 
 .roompage-container.ghost-mode .roompage-tab.active {
-  color: #c084fc;
-  border-bottom-color: #c084fc;
+    color: #c084fc;
+    border-bottom-color: #c084fc;
 }
 
 .ghost-mode-watermark {
-  position: fixed;
-  bottom: 16px;
-  left: 16px;
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(138, 43, 226, 0.25);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  pointer-events: none;
-  user-select: none;
-}
-@media (max-width: 768px) {
-  .roompage-ghost-badge {
-    padding: 6px 12px;
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
     font-size: 11px;
-  }
+    font-weight: 600;
+    color: rgba(138, 43, 226, 0.25);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    pointer-events: none;
+    user-select: none;
+}
 
-  .ghost-mode-watermark {
-    bottom: 12px;
-    left: 12px;
-    font-size: 10px;
-  }
+@media (max-width: 768px) {
+    .roompage-ghost-badge {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+
+    .ghost-mode-watermark {
+        bottom: 12px;
+        left: 12px;
+        font-size: 10px;
+    }
 }

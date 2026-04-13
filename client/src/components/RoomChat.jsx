@@ -144,7 +144,8 @@ export default function RoomChat({
       socket.off('chat-error', handleChatError);
       socket.off('connect', tryJoin);
     };
-  }, [socket, roomId, ownerId, onNewMessage]); // Thêm dependencies để đảm bảo hàm luôn cập nhật
+  }, [socket, roomId, ownerId, onNewMessage]); // ✅ Dependencies added - prevents stale closures
+  // 🚀 OPTIMIZATION: Consider virtualizing message list for 500+ messages
 
   // ==========================
   // Gửi tin nhắn (kết hợp logic từ cả 2 file)

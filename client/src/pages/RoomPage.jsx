@@ -15,10 +15,17 @@ import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import MusicPlayer from "../components/MusicPlayer";
+import PodcastRoom from "../components/PodcastRoom";
 import RoomChat from "../components/RoomChat";
 import ReportRoomModal from "../components/ReportRoomModal";
 import { toastConfig } from "../services/toastConfig";
 import { reportRoom } from "../services/api";
+import RequestsList from "../components/SongRequest/RequestsList";
+import SongRequestModal from "../components/SongRequest/SongRequestModal";
+import useRoomNotifications from "../hooks/useRoomNotifications.jsx";
+import NotificationCenter from "../components/Notifications/NotificationCenter";
+
+
 
 function RoomPage() {
   // ============================================
@@ -38,6 +45,8 @@ function RoomPage() {
   const location = useLocation();
   const { user, socket } = useContext(AuthContext);
 
+  useRoomNotifications(socket);
+
   // ============================================
   // STATES
   // ============================================
@@ -52,6 +61,7 @@ function RoomPage() {
   const [activeTab, setActiveTab] = useState("chat");
   const [isGhostMode, setIsGhostMode] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
 
   // ============================================
   // SYNC ROOM TO REF
@@ -114,7 +124,7 @@ function RoomPage() {
   const handleNewJoinRequest = useCallback(
     ({ requester, roomId: requestedRoomId }) => {
       if (isGhostModeRef.current) return;
-      
+
       if (roomId === requestedRoomId) {
         setJoinRequests((prev) => {
           if (prev.some((r) => r.requester._id === requester._id)) return prev;
@@ -141,6 +151,8 @@ function RoomPage() {
       )
     );
 
+    // 🐛 BUG: Memory leak - setTimeout not cleaned up in useEffect return
+    // TODO: Add cleanup function to clear timer on unmount
     setTimeout(() => {
       setJoinRequests((prev) => prev.filter((r) => r.requester._id !== requesterId));
     }, 5000);
@@ -167,7 +179,11 @@ function RoomPage() {
       setIsGhostMode(true);
       isGhostModeRef.current = true;
     }
-  }, []); // ✅ RUN ONCE
+    // 🎙️ If navigation includes podcastMode, use it as hint
+    if (location.state?.podcastMode) {
+      console.log('🎙️ [RoomPage] Podcast mode detected from navigation state');
+    }
+  }, []);
 
   // ============================================
   // COMMENT DELETED LISTENER
@@ -235,20 +251,20 @@ function RoomPage() {
         if (!isGhostModeNow) {
           const hasVisited = localStorage.getItem(roomKey);
           const isReload = performance.navigation.type === 1 ||
-                           performance.getEntriesByType('navigation')[0]?.type === 'reload';
+            performance.getEntriesByType('navigation')[0]?.type === 'reload';
           const isNewNavigation = !!(location.state?.fromCreate ||
-                           location.state?.fromJoin ||
-                           location.state?.fromApproval ||
-                           location.state?.fromAdmin);
-          
+            location.state?.fromJoin ||
+            location.state?.fromApproval ||
+            location.state?.fromAdmin);
+
           if (isNewNavigation) {
             window.history.replaceState({}, document.title);
           }
-          
+
           if (hasVisited && isReload && !isNewNavigation) {
             const userIsHost = String(user._id) === String(fetchedRoom.owner._id);
             localStorage.removeItem(roomKey);
-            
+
             if (userIsHost) {
               toast.error("Host không được reload khi đang live! Phòng đã bị kết thúc.", {
                 ...toastConfig,
@@ -272,8 +288,21 @@ function RoomPage() {
             localStorage.setItem(roomKey, "true");
           }
         }
-        
+
         hasInitialized.current = true;
+
+        // ============================================
+        // 🔍 DEBUG: LOG PODCAST MODE
+        // ============================================
+        console.log('🎙️ [RoomPage] Fetched room data:', {
+          roomId: fetchedRoom._id,
+          name: fetchedRoom.name,
+          podcastMode: fetchedRoom.podcastMode,
+          podcastActive: fetchedRoom.podcastActive,
+          podcastDuration: fetchedRoom.podcastDuration,
+          status: fetchedRoom.status,
+          privacy: fetchedRoom.privacy
+        });
 
         // ============================================
         // AUTO-JOIN PUBLIC ROOM (SKIP FOR GHOST MODE)
@@ -298,7 +327,7 @@ function RoomPage() {
         }
 
         if (cleanedUp) return;
-        
+
         setRoom(fetchedRoom);
         setChatMessages(fetchedRoom.chat || []);
 
@@ -328,7 +357,7 @@ function RoomPage() {
             socketJoined = true;
           });
         }
-        
+
         if (String(user._id) === String(fetchedRoom.owner?._id)) {
           currentUserIsHost = true;
           socket.on("new-join-request", handleNewJoinRequest);
@@ -338,9 +367,9 @@ function RoomPage() {
         // PLAYLIST/PLAYBACK LISTENERS
         // ============================================
         const handlePlaylistUpdated = (newPlaylist) => {
-          setRoom((prev) => ({ 
-            ...prev, 
-            playlist: Array.isArray(newPlaylist) ? newPlaylist : prev?.playlist || [] 
+          setRoom((prev) => ({
+            ...prev,
+            playlist: Array.isArray(newPlaylist) ? newPlaylist : prev?.playlist || []
           }));
         };
 
@@ -381,7 +410,7 @@ function RoomPage() {
     const handleUpdateMembers = (data) => {
       const updatedMembers = data.members || data;
       if (!updatedMembers || updatedMembers.length === 0) return;
-      
+
       const currentRoom = roomRef.current;
       if (!currentRoom || !currentRoom.owner) {
         setMembers(updatedMembers);
@@ -390,7 +419,7 @@ function RoomPage() {
 
       const ownerId = String(currentRoom.owner._id);
       const ownerObj = updatedMembers.find((m) => String(m._id) === ownerId);
-      
+
       if (ownerObj) {
         const others = updatedMembers.filter((m) => String(m._id) !== ownerId);
         setMembers([ownerObj, ...others]);
@@ -405,9 +434,9 @@ function RoomPage() {
     const handleUserJoined = ({ username, avatar }) => {
       if (isGhostModeRef.current) return;
       if (user && user.username === username) return;
-      
+
       setJoinNotification({ username, avatar: avatar || "/default-avatar.png", id: Date.now() });
-  setTimeout(() => setJoinNotification(null), 15000);
+      setTimeout(() => setJoinNotification(null), 15000);
     };
 
     socket.on("update-members", handleUpdateMembers);
@@ -418,18 +447,18 @@ function RoomPage() {
     // ============================================
     return () => {
       cleanedUp = true;
-      
+
       socket.off("update-members", handleUpdateMembers);
       socket.off("user-joined-notification", handleUserJoined);
       socket.off("new-join-request", handleNewJoinRequest);
       socket.off('playlist-updated');
       socket.off('playback-state-changed');
       socket.off('room-status-changed');
-      
+
       if (!isReloading.current && !isGhostModeNow) {
         localStorage.removeItem(roomKey);
       }
-      
+
       if (socketJoined) {
         if (isGhostModeNow) {
           socket.emit("leave-room-ghost", { roomId });
@@ -440,7 +469,7 @@ function RoomPage() {
         }
       }
     };
-  }, [roomId, user, socket, navigate, endRoomAPI, handleNewJoinRequest]); // ✅ FIXED DEPENDENCIES
+  }, [roomId, user, socket, navigate, endRoomAPI, handleNewJoinRequest]);
 
   // ============================================
   // USER LEFT NOTIFICATION + ROOM BANNED
@@ -453,7 +482,7 @@ function RoomPage() {
       if (user && user._id === userId) return;
 
       setLeaveNotification({ username, avatar: avatar || "/default-avatar.png", id: Date.now() });
-  setTimeout(() => setLeaveNotification(null), 15000);
+      setTimeout(() => setLeaveNotification(null), 15000);
     };
 
     const handleRoomBanned = (data) => {
@@ -482,27 +511,27 @@ function RoomPage() {
     const handleJoinRequestAccepted = async ({ roomId: acceptedRoomId, room: payload }) => {
       if (isGhostModeRef.current) return;
       if (acceptedRoomId !== roomId) return;
-      
+
       try {
         socket.emit("join-room", roomId);
-        
+
         setRoom(payload);
         const owner = payload.owner ? [payload.owner] : [];
         const otherMembers = (payload.members || []).filter(
           (m) => String(m._id) !== String(payload.owner?._id)
         );
         setMembers([...owner, ...otherMembers]);
-        
+
         toast.success("Bạn đã được chủ phòng chấp nhận — đang vào phòng!");
-        
+
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         const token = localStorage.getItem("token");
         const { data: freshRoom } = await axios.get(
           `http://localhost:8800/api/rooms/${roomId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        
+
         if (freshRoom.members.length >= payload.members.length) {
           setRoom(freshRoom);
           const freshOwner = freshRoom.owner ? [freshRoom.owner] : [];
@@ -511,7 +540,7 @@ function RoomPage() {
           );
           setMembers([...freshOwner, ...freshOthers]);
         }
-        
+
       } catch (err) {
         console.error("❌ Lỗi khi xử lý join-request-accepted:", err);
         toast.error("Có lỗi xảy ra khi tải thông tin phòng.");
@@ -659,6 +688,8 @@ function RoomPage() {
     }
   }, [isGhostMode, location.state, navigate, socket, roomId, user]);
 
+
+
   // ============================================
   // HANDLE SUBMIT REPORT
   // ============================================
@@ -684,228 +715,256 @@ function RoomPage() {
   // RENDER
   // ============================================
   return (
-  <div className={`roompage-container ${isGhostMode ? 'ghost-mode' : ''}`}>
-    {isGhostMode && (
-      <div className="ghost-mode-watermark">
-        👻 Ghost Mode
-      </div>
-    )}
-
-    <header className="roompage-header">
-      <div className="roompage-header-info">
-        {/* Bọc tên phòng và mã phòng vào một div chung */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <h1 style={{ margin: 0 }}>{room.name}</h1>
-          
-          {/* Di chuyển Mã phòng vào trong div này */}
-          {room.privacy === "private" && isHost && !isGhostMode && (
-            <div className="roompage-roomcode">
-              Mã phòng: <strong>{room.roomCode}</strong>
-            </div>
-          )}
+    <div className={`roompage-container ${isGhostMode ? 'ghost-mode' : ''}`}>
+      {isGhostMode && (
+        <div className="ghost-mode-watermark">
+          👻 Ghost Mode
         </div>
+      )}
 
-        {/* ✅ BỌC DESCRIPTION VÀ GHOST BADGE TRONG 1 DIV */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
-          {room.description && <p style={{ margin: 0 }}>{room.description}</p>}
+      <header className="roompage-header">
+        <div className="roompage-header-info">
+          {/* Bọc tên phòng và mã phòng vào một div chung */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <h1 style={{ margin: 0 }}>{room.name}</h1>
 
-          {isGhostMode && (
-            <div className="roompage-ghost-badge">
-              <Ghost size={16} />
-              <span>Chế độ Ghost</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="roompage-header-actions">
-        {isHost && !isGhostMode ? (
-          <>
-            <button className="btn btn-danger-outline" onClick={handleEndRoom}>
-              <XCircle size={16} />
-              <span>Kết thúc</span>
-            </button>
-            <button className="btn btn-primary">
-              <UserPlus size={16} />
-              <span>Mời</span>
-            </button>
-          </>
-        ) : (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {!isGhostMode && (
-              <button
-                className={`btn btn-report-room ${!canReport ? 'disabled' : ''}`}
-                onClick={() => canReport && setReportOpen(true)}
-                title={canReport ? 'Báo cáo phòng' : 'Chỉ có thể báo cáo khi phòng đang phát nhạc'}
-                disabled={!canReport}
-              >
-                <Flag size={16} />
-                <span>Báo cáo</span>
-              </button>
+            {/* Di chuyển Mã phòng vào trong div này */}
+            {room.privacy === "private" && isHost && !isGhostMode && (
+              <div className="roompage-roomcode">
+                Mã phòng: <strong>{room.roomCode}</strong>
+              </div>
             )}
-            <button 
-              className={`btn-leave-room ${isGhostMode ? 'ghost-mode-btn' : ''}`}
-              onClick={handleLeaveRoom}
-            >
-              <LogOut size={16} />
-              <span>{isGhostMode ? 'Quay lại' : 'Rời phòng'}</span>
-            </button>
           </div>
-        )}
-      </div>
-    </header>
 
-    <main className="roompage-main new-layout">
-      <div className="roompage-left-column">
-        {isHost && !isGhostMode && joinRequests.length > 0 && (
-          <div className="join-requests-container">
-            <h3>Yêu cầu tham gia</h3>
-            <ul>
-              {joinRequests.map((r) => (
-                <li key={r.requester._id} className="join-request-item">
-                  <div className="join-request-info">
-                    <img
-                      src={r.requester.avatar || "/default-avatar.png"}
-                      alt={r.requester.username}
-                    />
-                    <div>
-                      <div className="join-request-username">
-                        {r.requester.username}
+          {/* ✅ BỌC DESCRIPTION VÀ GHOST BADGE TRONG 1 DIV */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+            {room.description && <p style={{ margin: 0 }}>{room.description}</p>}
+
+            {isGhostMode && (
+              <div className="roompage-ghost-badge">
+                <Ghost size={16} />
+                <span>Chế độ Ghost</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="roompage-header-actions">
+          {isHost && !isGhostMode ? (
+            <>
+              <button className="btn btn-danger-outline" onClick={handleEndRoom}>
+                <XCircle size={16} />
+                <span>Kết thúc</span>
+              </button>
+              <button className="btn btn-primary">
+                <UserPlus size={16} />
+                <span>Mời</span>
+              </button>
+            </>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {!isGhostMode && (
+                <button
+                  className={`btn btn-report-room ${!canReport ? 'disabled' : ''}`}
+                  onClick={() => canReport && setReportOpen(true)}
+                  title={canReport ? 'Báo cáo phòng' : 'Chỉ có thể báo cáo khi phòng đang phát nhạc'}
+                  disabled={!canReport}
+                >
+                  <Flag size={16} />
+                  <span>Báo cáo</span>
+                </button>
+              )}
+
+              {/* ✅ PHASE 5: NOTIFICATION CENTER */}
+              {!isGhostMode && <NotificationCenter />}
+
+              <button
+                className={`btn-leave-room ${isGhostMode ? 'ghost-mode-btn' : ''}`}
+                onClick={handleLeaveRoom}
+              >
+                <LogOut size={16} />
+                <span>{isGhostMode ? 'Quay lại' : 'Rời phòng'}</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <main className="roompage-main new-layout">
+        <div className="roompage-left-column">
+          {isHost && !isGhostMode && joinRequests.length > 0 && (
+            <div className="join-requests-container">
+              <h3>Yêu cầu tham gia</h3>
+              <ul>
+                {joinRequests.map((r) => (
+                  <li key={r.requester._id} className="join-request-item">
+                    <div className="join-request-info">
+                      <img
+                        src={r.requester.avatar || "/default-avatar.png"}
+                        alt={r.requester.username}
+                      />
+                      <div>
+                        <div className="join-request-username">
+                          {r.requester.username}
+                        </div>
+                        <div className="join-request-meta">Yêu cầu vào phòng</div>
                       </div>
-                      <div className="join-request-meta">Yêu cầu vào phòng</div>
                     </div>
-                  </div>
-                  <div className="join-request-actions">
-                    {r.status && r.status !== "pending" ? (
-                      <div className={`join-request-status ${r.status}`}>
-                        {r.status === "accepted" ? "Đã chấp nhận" : "Đã từ chối"}
-                      </div>
-                    ) : (
-                      <>
-                        <button
-                          className="btn btn-accept"
-                          onClick={() => respondToRequest(r.requester._id, true)}
-                        >
-                          Chấp nhận
-                        </button>
-                        <button
-                          className="btn btn-deny"
-                          onClick={() => respondToRequest(r.requester._id, false)}
-                        >
-                          Từ chối
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <MusicPlayer
-          roomData={room}
-          isHost={isHost && !isGhostMode}
-          roomId={roomId}
-          socket={socket}
-        />
-      </div>
-
-      <aside className="roompage-right">
-        <div className="roompage-tabs">
-          <div
-            className={`roompage-tab ${activeTab === "chat" ? "active" : ""}`}
-            onClick={() => setActiveTab("chat")}
-          >
-            Trò chuyện ({chatMessages.length})
-          </div>
-          <div
-            className={`roompage-tab ${activeTab === "participants" ? "active" : ""}`}
-            onClick={() => setActiveTab("participants")}
-          >
-            Thành viên ({members.length})
-          </div>
-        </div>
-
-        {activeTab === "chat" && (
-          <div style={{ height: '570px', display: 'flex', flexDirection: 'column' }}>
-            <RoomChat
-              roomId={roomId}
-              ownerId={room?.owner?._id}
-              initialMessages={chatMessages}
-              onNewMessage={appendChatMessage}
-              isGhostMode={isGhostMode}
-              canReport={canReport}
-              onOpenReport={() => setReportOpen(true)}
-            />
-          </div>
-        )}
-
-        {activeTab === "participants" && (
-          <div className="roompage-participants">
-            <ul className="roompage-participant-list">
-              {members.map((p) => (
-                <li key={p._id} className="roompage-participant-item">
-                  <div className="roompage-participant-info">
-                    <img
-                      src={p.avatar || "/default-avatar.png"}
-                      alt={p.username}
-                    />
-                    <span>
-                      {p.username}
-                      {p._id === room.owner._id && (
-                        <span className="roompage-host-tag">HOST</span>
+                    <div className="join-request-actions">
+                      {r.status && r.status !== "pending" ? (
+                        <div className={`join-request-status ${r.status}`}>
+                          {r.status === "accepted" ? "Đã chấp nhận" : "Đã từ chối"}
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            className="btn btn-accept"
+                            onClick={() => respondToRequest(r.requester._id, true)}
+                          >
+                            Chấp nhận
+                          </button>
+                          <button
+                            className="btn btn-deny"
+                            onClick={() => respondToRequest(r.requester._id, false)}
+                          >
+                            Từ chối
+                          </button>
+                        </>
                       )}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {room?.podcastMode ? (
+              <PodcastRoom 
+                roomId={roomId} 
+                role={isHost ? 'host' : 'listener'} 
+                currentUser={user} 
+                podcastDuration={room.podcastDuration} 
+              />
+            ) : (
+            <MusicPlayer
+              roomData={room}
+              isHost={isHost}
+              roomId={roomId}
+              socket={socket}
+              currentUserId={user?._id}
+              onRequestOpen={() => setIsRequestModalOpen(true)}
+              memberCount={members.length}
+            />
+          )}
+
+          {/* ✅ FEATURE: SONG REQUESTS MODAL (Button & List now in MusicPlayer) */}
+          {!isGhostMode && (
+            <SongRequestModal
+              isOpen={isRequestModalOpen}
+              onClose={() => setIsRequestModalOpen(false)}
+              roomId={roomId}
+            />
+          )}
+
+        </div>
+
+        <aside className="roompage-right">
+          <div className="roompage-tabs">
+            <div
+              className={`roompage-tab ${activeTab === "chat" ? "active" : ""}`}
+              onClick={() => setActiveTab("chat")}
+            >
+              Trò chuyện ({chatMessages.length})
+            </div>
+            <div
+              className={`roompage-tab ${activeTab === "participants" ? "active" : ""}`}
+              onClick={() => setActiveTab("participants")}
+            >
+              Thành viên ({members.length})
+            </div>
+
           </div>
-        )}
-      </aside>
-    </main>
-    
-    {joinNotification && !isGhostMode && (
-      <div className="join-toast" role="status" aria-live="polite">
-        <div className="join-toast-content">
-          <img
-            className="join-toast-avatar"
-            src={joinNotification.avatar || '/default-avatar.png'}
-            alt={joinNotification.username}
-          />
-          <div className="join-toast-body">
-            <div className="join-toast-username">{joinNotification.username}</div>
-            <div className="join-toast-subtitle">vừa vào phòng</div>
+
+          {activeTab === "chat" && (
+            <div style={{ height: '570px', display: 'flex', flexDirection: 'column' }}>
+              <RoomChat
+                roomId={roomId}
+                ownerId={room?.owner?._id}
+                initialMessages={chatMessages}
+                onNewMessage={appendChatMessage}
+                isGhostMode={isGhostMode}
+                canReport={canReport}
+                onOpenReport={() => setReportOpen(true)}
+              />
+            </div>
+          )}
+
+          {activeTab === "participants" && (
+            <div className="roompage-participants">
+              <ul className="roompage-participant-list">
+                {members.map((p) => (
+                  <li key={p._id} className="roompage-participant-item">
+                    <div className="roompage-participant-info">
+                      <img
+                        src={p.avatar || "/default-avatar.png"}
+                        alt={p.username}
+                      />
+                      <span>
+                        {p.username}
+                        {p._id === room.owner._id && (
+                          <span className="roompage-host-tag">HOST</span>
+                        )}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+
+        </aside>
+      </main>
+
+      {joinNotification && !isGhostMode && (
+        <div className="join-toast" role="status" aria-live="polite">
+          <div className="join-toast-content">
+            <img
+              className="join-toast-avatar"
+              src={joinNotification.avatar || '/default-avatar.png'}
+              alt={joinNotification.username}
+            />
+            <div className="join-toast-body">
+              <div className="join-toast-username">{joinNotification.username}</div>
+              <div className="join-toast-subtitle">vừa vào phòng</div>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
 
-    {leaveNotification && !isGhostMode && (
-      <div className="join-toast leave-toast" role="status" aria-live="polite">
-        <div className="join-toast-content">
-          <img
-            className="join-toast-avatar"
-            src={leaveNotification.avatar || '/default-avatar.png'}
-            alt={leaveNotification.username}
-          />
-          <div className="join-toast-body">
-            <div className="join-toast-username">{leaveNotification.username}</div>
-            <div className="join-toast-subtitle">đã rời phòng</div>
+      {leaveNotification && !isGhostMode && (
+        <div className="join-toast leave-toast" role="status" aria-live="polite">
+          <div className="join-toast-content">
+            <img
+              className="join-toast-avatar"
+              src={leaveNotification.avatar || '/default-avatar.png'}
+              alt={leaveNotification.username}
+            />
+            <div className="join-toast-body">
+              <div className="join-toast-username">{leaveNotification.username}</div>
+              <div className="join-toast-subtitle">đã rời phòng</div>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
 
-    <ReportRoomModal
-      open={reportOpen}
-      onClose={() => setReportOpen(false)}
-      onSubmit={handleSubmitReport}
-      roomName={room?.name}
-    />
-  </div>
-);
+      <ReportRoomModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        onSubmit={handleSubmitReport}
+        roomName={room?.name}
+      />
+    </div>
+  );
 }
 
 export default RoomPage;

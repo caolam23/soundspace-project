@@ -1,4 +1,12 @@
 // server/src/services/cleanupService.js
+/**
+ * ✅ FEATURE: Room Management & Strict Duration
+ * - Auto-cleanup room resources 2 hours after session ends
+ * - Delete temporary audio files from Cloudinary
+ * - Finalize room deletion from database
+ * - Restore scheduled cleanups on server restart
+ * Implementation Date: April 2026
+ */
 
 const schedule = require('node-schedule');
 const { cloudinary } = require('../config/uploadConfig');
@@ -96,6 +104,8 @@ const finalizeRoomDeletion = async (roomId) => {
 // 2 tiếng
 const scheduleRoomCleanup = (roomId, delayMs = 2 * 60 * 60 * 1000) => {
   const deletionTime = new Date(Date.now() + delayMs);
+  // 🚀 OPTIMIZATION: Implement job queue/lock to prevent concurrent cleanup on same room
+  // TODO: Add distributed lock (Redis/MongoDB) for concurrent room cleanup prevention
   console.log(`[LỊCH DỌN DẸP] ⏰ Tài nguyên phòng ${roomId} sẽ được xóa lúc ${deletionTime.toLocaleTimeString()}`);
   schedule.scheduleJob(deletionTime, async () => {
     await cleanupRoomResources(roomId);

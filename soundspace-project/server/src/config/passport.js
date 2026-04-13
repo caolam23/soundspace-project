@@ -2,13 +2,15 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
 
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: `${process.env.SERVER_URL || 'http://localhost:8800'}/api/auth/google/callback`
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    const email = profile.emails && profile.emails[0] && profile.emails[0].value;
+// Only initialize GoogleStrategy if credentials are available
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: `${process.env.SERVER_URL || 'http://localhost:8800'}/api/auth/google/callback`
+  }, async (accessToken, refreshToken, profile, done) => {
+    try {
+      const email = profile.emails && profile.emails[0] && profile.emails[0].value;
 
     // tìm theo googleId trước
     let user = await User.findOne({ googleId: profile.id });
@@ -39,6 +41,9 @@ passport.use(new GoogleStrategy({
     return done(err, null);
   }
 }));
+} else {
+  console.warn('⚠️ Warning: Google OAuth credentials not found. OAuth login will be disabled.');
+}
 
 // serialize / deserialize (mặc dù mình xài JWT, nhưng cứ để cho chắc)
 passport.serializeUser((user, done) => done(null, user.id));

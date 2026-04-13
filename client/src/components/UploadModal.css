@@ -3,7 +3,8 @@
 ===================================================== */
 .upload-modal-overlay {
   position: fixed;
-  inset: 0; /* top:0; right:0; bottom:0; left:0; */
+  inset: 0;
+  /* top:0; right:0; bottom:0; left:0; */
   background-color: rgba(0, 0, 0, 0.75);
   display: flex;
   justify-content: center;
@@ -27,8 +28,15 @@
 }
 
 @keyframes modalFadeIn {
-  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .upload-modal-content h2 {
@@ -108,7 +116,7 @@
   max-height: 120px;
   object-fit: cover;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .upload-button {
@@ -125,22 +133,75 @@
   justify-content: center;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .upload-button:hover {
   background: linear-gradient(135deg, #8c8cf2, #6a6ad5);
   transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
 }
 
 .upload-button:active {
   transform: translateY(0);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .upload-button:disabled {
   background-color: #4a4a6a;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+/* ====================================================
+   TAG PICKER - Upload Modal (Cách 3)
+==================================================== */
+.upload-tag-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: #1a1a2e;
+  border-radius: 10px;
+  border: 1px solid #2e2e50;
+}
+
+.upload-tag-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upload-tag-label {
+  font-size: 12px;
+  color: #9090b8;
+  font-weight: 500;
+}
+
+.upload-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.upload-tag-chip {
+  background: #232340;
+  border: 1px solid #3a3a60;
+  color: #b0b0c8;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.upload-tag-chip:hover {
+  border-color: #7b7bf0;
+  color: #7b7bf0;
+}
+
+.upload-tag-chip.active {
+  background: #3d2b80;
+  border-color: #7b7bf0;
+  color: #fff;
 }

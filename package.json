@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "yt-dlp-exec": "^1.0.2"
+  }
+}

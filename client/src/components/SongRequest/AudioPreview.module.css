@@ -1,0 +1,152 @@
+/* =============================================
+   🎵 AudioPreview — Inline Mini Player
+   ============================================= */
+
+.container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    width: 100%;
+}
+
+/* --- Play/Pause Button --- */
+.playBtn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: #8638e9;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(134, 56, 233, 0.3);
+}
+
+.playBtn:hover:not(:disabled) {
+    background: #9d5bf5;
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(134, 56, 233, 0.45);
+}
+
+.playBtn:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.playBtn.playing {
+    background: #6b21a8;
+}
+
+.playBtn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+/* --- Loading Spinner --- */
+.spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* --- Progress Bar --- */
+.progressBar {
+    flex: 1;
+    height: 4px;
+    background: #333;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    overflow: visible;
+    transition: height 0.15s ease;
+}
+
+.progressBar:hover {
+    height: 6px;
+}
+
+.progressFill {
+    height: 100%;
+    background: linear-gradient(90deg, #8638e9, #a855f7);
+    border-radius: 4px;
+    transition: width 0.1s linear;
+    position: relative;
+}
+
+/* --- Seek Knob --- */
+.seekKnob {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+}
+
+.progressBar:hover .seekKnob,
+.container:hover .seekKnob {
+    opacity: 1;
+}
+
+/* --- Time Display --- */
+.time {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    color: #777;
+    min-width: 75px;
+    text-align: right;
+    letter-spacing: 0.02em;
+    user-select: none;
+}
+
+/* --- Duration Badge (YouTube) --- */
+.duration {
+    font-size: 0.7rem;
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    color: #666;
+    user-select: none;
+}
+
+/* --- YouTube Link --- */
+.youtubeLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(255, 0, 0, 0.08);
+    border: 1px solid rgba(255, 0, 0, 0.2);
+    border-radius: 8px;
+    color: #ef4444;
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.youtubeLink:hover {
+    background: rgba(255, 0, 0, 0.15);
+    border-color: rgba(255, 0, 0, 0.35);
+    color: #ff6b6b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255, 0, 0, 0.15);
+}

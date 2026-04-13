@@ -1,7 +1,8 @@
 const Room = require("../models/room");
-const ytdl = require("@distube/ytdl-core");
+const axios = require("axios"); // Đã thay thế ytdl-core bằng axios
 const { cloudinary } = require("../config/uploadConfig");
 const { getAudioDurationInSeconds } = require("get-audio-duration");
+const https = require("https");
 
 // ================== IMPORT CẦN THIẾT CHO REAL-TIME ==================
 const { emitMultipleStatsUpdates } = require('./statsController'); // Import hàm kích hoạt
@@ -9,15 +10,51 @@ const { emitMultipleStatsUpdates } = require('./statsController'); // Import hà
 
 
 // ======================================================
-// ⚙️ HÀM HỖ TRỢ: LẤY THÔNG TIN VIDEO CÓ TIMEOUT AN TOÀN
+// ⚙️ HÀM MỚI: LẤY THÔNG TIN TỪ YOUTUBE API (THAY THẾ YTDL)
 // ======================================================
-const getVideoInfoWithTimeout = (url, timeoutMs = 8000) => {
-    return Promise.race([
-        ytdl.getInfo(url),
-        new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout khi lấy info từ YouTube")), timeoutMs)
-        ),
-    ]);
+const getVideoInfoWithTimeout = async (url) => {
+    try {
+        // 1. Tách lấy ID của video từ Link
+        const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\n]+)/);
+        if (!videoIdMatch) throw new Error("Link YouTube không hợp lệ");
+        const videoId = videoIdMatch[1];
+
+        // 2. Gọi YouTube API
+        const API_KEY = process.env.YOUTUBE_API_KEY; 
+        if (!API_KEY) throw new Error("Thiếu cấu hình YOUTUBE_API_KEY trong file .env");
+
+        const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${API_KEY}`;
+        const response = await axios.get(apiUrl);
+        
+        if (!response.data.items || response.data.items.length === 0) {
+            return null; // Không tìm thấy video
+        }
+
+        const video = response.data.items[0];
+
+        // 3. Xử lý thời lượng (YouTube trả về dạng PT3M20S -> Đổi ra số giây)
+        const durationStr = video.contentDetails.duration;
+        const match = durationStr.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+        const hours = (parseInt(match[1]) || 0);
+        const minutes = (parseInt(match[2]) || 0);
+        const seconds = (parseInt(match[3]) || 0);
+        const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+        // 4. Trả về format Y HỆT code cũ để không bị lỗi đoạn sau
+        return {
+            videoDetails: {
+                videoId: video.id,
+                title: video.snippet.title,
+                ownerChannelName: video.snippet.channelTitle,
+                lengthSeconds: totalSeconds,
+                // Trả về array 1 phần tử để tương thích với at(-1) ở logic cũ
+                thumbnails: [{ url: video.snippet.thumbnails?.high?.url || video.snippet.thumbnails?.default?.url }]
+            }
+        };
+    } catch (error) {
+        console.error("❌ Lỗi khi lấy data YouTube API:", error.message);
+        throw error;
+    }
 };
 
 // ======================================================
@@ -25,7 +62,7 @@ const getVideoInfoWithTimeout = (url, timeoutMs = 8000) => {
 // ======================================================
 exports.addTrack = async (req, res) => {
     const { roomId } = req.params;
-    const { url } = req.body;
+    const { url, tags, mood } = req.body;
     const userId = req.user?.id || req.user?._id;
 
     // 🔍 LOG REQUEST
@@ -42,14 +79,16 @@ exports.addTrack = async (req, res) => {
     }
 
     console.log('[ADD_TRACK_YT] 🔍 Validating YouTube URL...');
-    const isValid = ytdl.validateURL(url);
+    // ✅ Thay thế ytdl.validateURL bằng Regex chuẩn
+    const ytRegex = /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\n]+)/;
+    const isValid = ytRegex.test(url);
     console.log('[ADD_TRACK_YT] Validation result:', isValid);
-    
+
     if (!isValid) {
         console.error('[ADD_TRACK_YT] ❌ Invalid YouTube URL');
         return res.status(400).json({ msg: "URL YouTube không hợp lệ." });
     }
-    
+
     console.log('[ADD_TRACK_YT] ✅ URL is valid');
 
     try {
@@ -58,60 +97,67 @@ exports.addTrack = async (req, res) => {
             console.error('[ADD_TRACK_YT] ❌ Room not found:', roomId);
             return res.status(404).json({ msg: "Không tìm thấy phòng." });
         }
-        
+
         console.log('[ADD_TRACK_YT] ✅ Room found:', room.name);
-        
+
         if (room.owner.toString() !== userId.toString()) {
             console.error('[ADD_TRACK_YT] ❌ Unauthorized');
             return res.status(403).json({ msg: "Chỉ chủ phòng mới được thêm nhạc." });
         }
-        
+
         console.log('[ADD_TRACK_YT] ✅ User authorized');
 
         const ytCount = room.playlist.filter(t => t.source === "youtube").length;
         console.log('[ADD_TRACK_YT] Current YouTube tracks:', ytCount + '/8');
-        
+
         if (ytCount >= 8) {
             console.error('[ADD_TRACK_YT] ❌ YouTube limit reached');
             return res.status(400).json({ msg: "Bạn đã đạt giới hạn 8 bài hát YouTube." });
         }
 
         console.log('[ADD_TRACK_YT] 📥 Fetching video info from YouTube...');
-        console.log('[ADD_TRACK_YT] Timeout: 8000ms');
-        
-        const info = await getVideoInfoWithTimeout(url, 8000).catch(err => {
+
+        // ✅ Gọi hàm lấy info mới (bỏ phần timeoutMs vì axios đã tự xử lý ổn định)
+        const info = await getVideoInfoWithTimeout(url).catch(err => {
             console.error('[ADD_TRACK_YT] ❌ Failed to get video info:', err.message);
             return null;
         });
-        
-        if (!info) {
+
+        if (!details) {
             console.error('[ADD_TRACK_YT] ❌ No video info returned');
             return res.status(400).json({ msg: "Không thể lấy thông tin video. Video có thể bị giới hạn hoặc không tồn tại." });
         }
-        
-        console.log('[ADD_TRACK_YT] ✅ Video info retrieved successfully');
 
-        const details = info.videoDetails;
+        console.log('[ADD_TRACK_YT] ✅ Video info retrieved successfully');
         console.log('[ADD_TRACK_YT] Video ID:', details.videoId);
         console.log('[ADD_TRACK_YT] Title:', details.title);
         console.log('[ADD_TRACK_YT] Duration:', details.lengthSeconds, 'seconds');
-        
+
         if (room.playlist.some(t => t.sourceId === details.videoId)) {
             console.error('[ADD_TRACK_YT] ❌ Video already in playlist');
             return res.status(409).json({ msg: "Bài hát đã tồn tại trong playlist." });
         }
-        
+
         console.log('[ADD_TRACK_YT] ✅ Video not duplicated');
+
+        // Lấy thumbnail độ phân giải cao nhất từ YouTube Data API
+        const thumbnailUrl =
+            details.thumbnails?.maxres?.url ||
+            details.thumbnails?.high?.url ||
+            details.thumbnails?.medium?.url ||
+            details.thumbnails?.default?.url || "";
 
         const newTrack = {
             title: details.title,
             artist: details.ownerChannelName,
-            thumbnail: details.thumbnails?.at(-1)?.url || "",
+            thumbnail: thumbnailUrl,
             duration: parseInt(details.lengthSeconds),
             source: "youtube",
             url,
             sourceId: details.videoId,
             addedBy: userId,
+            tags: Array.isArray(tags) ? tags : [],
+            mood: Array.isArray(mood) ? mood : [],
         };
 
         // ✅ LƯU TRẠNG THÁI CŨ
@@ -124,7 +170,7 @@ exports.addTrack = async (req, res) => {
             room.currentTrackIndex = 0;
             room.isPlaying = true;
             room.playbackStartTime = new Date();
-            
+
             if (room.status === "waiting") {
                 room.status = "live";
                 room.startedAt = new Date();
@@ -132,10 +178,10 @@ exports.addTrack = async (req, res) => {
         }
 
         await room.save();
-        
+
         console.log('[ADD_TRACK_YT] ✅ Track saved to database');
         console.log('[ADD_TRACK_YT] New playlist length:', room.playlist.length);
-        
+
         // ✅ LẤY TRẠNG THÁI MỚI
         const newStatus = room.status;
         const io = req.app.get("io");
@@ -157,11 +203,11 @@ exports.addTrack = async (req, res) => {
                     startedAt: room.startedAt,  // ✅ Từ Code 1
                     memberCount: room.memberCount  // ✅ Từ Code 2
                 };
-                
+
                 // Emit cả 2 event để tương thích với frontend hiện tại
                 io.emit('room-status-changed', statusPayload);  // Event gốc
                 io.emit('room-info-update', statusPayload);      // Event mới
-                
+
                 console.log(`📢 [ADD_TRACK_YT] Broadcasted room status change:`, statusPayload);
             }
         }
@@ -186,8 +232,8 @@ exports.addTrack = async (req, res) => {
         console.error("Message:", error.message);
         console.error("Stack:", error.stack);
         console.error("========================================");
-        return res.status(500).json({ 
-            msg: "Lỗi máy chủ.", 
+        return res.status(500).json({
+            msg: "Lỗi máy chủ.",
             error: error.message,
             details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
@@ -238,39 +284,39 @@ exports.addTrackByUpload = async (req, res) => {
             console.error('[UPLOAD] ❌ Room not found:', roomId);
             return res.status(404).json({ msg: "Không tìm thấy phòng." });
         }
-        
+
         console.log('[UPLOAD] ✅ Room found:', room.name);
-        
+
         if (room.owner.toString() !== userId.toString()) {
             console.error('[UPLOAD] ❌ Unauthorized:', { owner: room.owner, user: userId });
             return res.status(403).json({ msg: "Chỉ chủ phòng mới có thể tải nhạc lên." });
         }
-        
+
         console.log('[UPLOAD] ✅ User authorized');
-            
+
         const uploadCount = room.playlist.filter(t => t.source === "upload").length;
         if (uploadCount >= 5) {
             console.error('[UPLOAD] ❌ Upload limit reached:', uploadCount);
             return res.status(400).json({ msg: "Bạn đã đạt giới hạn 5 bài hát tải lên." });
         }
-        
+
         console.log('[UPLOAD] ✅ Upload limit OK:', uploadCount + '/5');
 
         // ✅ Upload lên Cloudinary
         console.log(`[UPLOAD] 📤 Uploading to Cloudinary...`);
         console.log(`[UPLOAD] Audio path:`, req.files.audio[0].path);
         console.log(`[UPLOAD] Thumbnail path:`, req.files.thumbnail[0].path);
-        
+
         const [audioUpload, thumbnailUpload] = await Promise.all([
-            cloudinary.uploader.upload(req.files.audio[0].path, { 
-                resource_type: "video", 
-                folder: "soundspace-tracks" 
+            cloudinary.uploader.upload(req.files.audio[0].path, {
+                resource_type: "video",
+                folder: "soundspace-tracks"
             }).catch(err => {
                 console.error('[UPLOAD] ❌ Audio upload failed:', err.message);
                 throw new Error(`Audio upload failed: ${err.message}`);
             }),
-            cloudinary.uploader.upload(req.files.thumbnail[0].path, { 
-                folder: "soundspace-thumbnails" 
+            cloudinary.uploader.upload(req.files.thumbnail[0].path, {
+                folder: "soundspace-thumbnails"
             }).catch(err => {
                 console.error('[UPLOAD] ❌ Thumbnail upload failed:', err.message);
                 throw new Error(`Thumbnail upload failed: ${err.message}`);
@@ -283,13 +329,19 @@ exports.addTrackByUpload = async (req, res) => {
         // ✅ Lấy duration
         console.log('[UPLOAD] 🔍 Getting audio duration...');
         console.log('[UPLOAD] getAudioDurationInSeconds type:', typeof getAudioDurationInSeconds);
-        
+
         const durationInSeconds = await getAudioDurationInSeconds(audioUpload.secure_url).catch(err => {
             console.warn(`[UPLOAD] ⚠️ Cannot get duration:`, err.message);
             return 0;
         });
-        
+
         console.log('[UPLOAD] ✅ Duration:', durationInSeconds, 'seconds');
+
+        // Parse tags/mood from FormData (sent as JSON strings)
+        let parsedTags = [];
+        let parsedMood = [];
+        try { parsedTags = JSON.parse(req.body.tags || '[]'); } catch (e) { }
+        try { parsedMood = JSON.parse(req.body.mood || '[]'); } catch (e) { }
 
         const newTrack = {
             title: req.files.audio[0].originalname.replace(/\.[^/.]+$/, ""),
@@ -300,28 +352,30 @@ exports.addTrackByUpload = async (req, res) => {
             url: audioUpload.secure_url,
             sourceId: audioUpload.public_id,
             addedBy: userId,
+            tags: parsedTags,
+            mood: parsedMood,
         };
 
         // ✅ LƯU TRẠNG THÁI CŨ
         const oldStatus = room.status;
 
         room.playlist.push(newTrack);
-    
+
         // 🎵 Tự động phát nếu là bài đầu tiên
         if (room.playlist.length === 1 && !room.isPlaying) {
             room.currentTrackIndex = 0;
             room.isPlaying = true;
             room.playbackStartTime = new Date();
-            
+
             if (room.status === "waiting") {
                 room.status = "live";
                 room.startedAt = new Date();
             }
         }
-    
+
         await room.save();
         console.log(`[UPLOAD] Đã lưu track vào DB, playlist length: ${room.playlist.length}`);
-        
+
         // ✅ LẤY TRẠNG THÁI MỚI
         const newStatus = room.status;
         const io = req.app.get("io");
@@ -345,11 +399,11 @@ exports.addTrackByUpload = async (req, res) => {
                     startedAt: room.startedAt,  // ✅ Từ Code 1
                     memberCount: room.memberCount  // ✅ Từ Code 2
                 };
-                
+
                 // Emit cả 2 event để tương thích với frontend hiện tại
                 io.emit('room-status-changed', statusPayload);  // Event gốc
                 io.emit('room-info-update', statusPayload);      // Event mới
-                
+
                 console.log(`📢 [UPLOAD_TRACK] Broadcasted room status change:`, statusPayload);
             }
         }
@@ -374,8 +428,8 @@ exports.addTrackByUpload = async (req, res) => {
         console.error("Message:", err.message);
         console.error("Stack:", err.stack);
         console.error("========================================");
-        return res.status(500).json({ 
-            msg: "Lỗi máy chủ.", 
+        return res.status(500).json({
+            msg: "Lỗi máy chủ.",
             error: err.message,
             details: process.env.NODE_ENV === 'development' ? err.stack : undefined
         });

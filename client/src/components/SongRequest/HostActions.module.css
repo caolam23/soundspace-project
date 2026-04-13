@@ -1,0 +1,75 @@
+.container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    white-space: nowrap;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.iconSvg {
+    width: 13px;
+    height: 13px;
+    transition: transform 0.2s ease;
+}
+
+/* --- TONE MÀU 10%: TÍM NỔI BẬT DÀNH CHO ACTION CHÍNH --- */
+.approve {
+    background-color: #a855f7;
+    color: #ffffff;
+    border: 1px solid #a855f7;
+}
+
+.approve:hover:not(:disabled) {
+    background-color: #9333ea;
+    /* Tím đậm hơn một chút khi hover */
+    border-color: #9333ea;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.25);
+}
+
+.approve:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* --- TONE MÀU 60-30: ĐEN / TRẮNG DÀNH CHO ACTION PHỤ --- */
+.reject {
+    background-color: #ffffff;
+    /* 30% Trắng */
+    color: #0f0f0f;
+    /* 60% Đen */
+    border: 1px solid #e5e5e5;
+}
+
+.reject:hover:not(:disabled) {
+    background-color: #0f0f0f;
+    color: #ffffff;
+    border-color: #0f0f0f;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.reject:active:not(:disabled) {
+    transform: translateY(0);
+}
