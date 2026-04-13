@@ -103,6 +103,8 @@ export default function PodcastHostControls({ roomId, currentUser, podcastDurati
           });
         }
         
+        // 🐛 BUG: Timer may not clear if component unmounts during recording
+        // TODO: Ensure interval cleanup in component useEffect return
         timerRef.current = setInterval(() => {
           setRecordingTime((prev) => {
             const nextTime = prev + 1;

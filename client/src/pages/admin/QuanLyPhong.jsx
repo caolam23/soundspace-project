@@ -187,6 +187,8 @@ const QuanLyPhong = () => {
   // FETCH WHEN FILTERS CHANGE
   // =============================================
   useEffect(() => {
+    // 🐛 BUG: Memory leak - debounce timer not cleared on component unmount
+    // TODO: Add cleanup function in useEffect return to clear timeout
     const delayDebounceFn = setTimeout(() => {
         fetchRooms();
     }, 300); // Thêm một chút delay để tránh gọi API liên tục khi filter

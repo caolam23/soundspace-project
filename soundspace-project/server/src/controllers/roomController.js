@@ -62,6 +62,8 @@ exports.reportRoom = async (req, res) => {
 // ==========================
 exports.createRoom = async (req, res) => {
   try {
+    // 🚀 OPTIMIZATION: Move console.log to debug module for production
+    // TODO: Use conditional logging based on NODE_ENV
     console.log('📥 Create room request body:', req.body);
     console.log('📥 Uploaded file:', req.file);
     console.log('📥 User ID:', req.user?.id);

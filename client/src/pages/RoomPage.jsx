@@ -151,6 +151,8 @@ function RoomPage() {
       )
     );
 
+    // 🐛 BUG: Memory leak - setTimeout not cleaned up in useEffect return
+    // TODO: Add cleanup function to clear timer on unmount
     setTimeout(() => {
       setJoinRequests((prev) => prev.filter((r) => r.requester._id !== requesterId));
     }, 5000);
