@@ -3,6 +3,16 @@ import { Mic, MicOff, Square, Clock, Radio, UploadCloud, Info, AlertCircle, Chec
 import { useSocket } from '../contexts/SocketContext';
 import styles from './PodcastHostControls.module.css';
 
+/**
+ * ✅ FEATURE: Strict Room Duration Management
+ * Host recording controls with:
+ * - Auto-stop when duration limit reached
+ * - Real-time timer countdown
+ * - Force-stop signal handling from server
+ * - Audio chunk streaming & chunked upload
+ * Implementation Date: April 2026
+ */
+
 export default function PodcastHostControls({ roomId, currentUser, podcastDuration }) {
   const socket = useSocket();
   const [isRecording, setIsRecording] = useState(false);

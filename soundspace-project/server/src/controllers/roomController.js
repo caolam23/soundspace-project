@@ -1,3 +1,14 @@
+/**
+ * ✅ FEATURE: Room Management & Strict Duration
+ * Room controller handling:
+ * - Create room with podcast duration configuration
+ * - Start/end session with duration tracking
+ * - Join/leave room with member management
+ * - Schedule cleanup on room end
+ * - Track room lifecycle & statistics
+ * Implementation Date: April 2026
+ */
+
 const Room = require('../models/room.js');
 const RoomReport = require('../models/RoomReport'); // ✅ THÊM DÒNG NÀY
 const { customAlphabet } = require('nanoid');

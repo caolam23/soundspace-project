@@ -8,6 +8,17 @@ import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import ModalPhong from '../../components/ModalPhong';
 
+/**
+ * ✅ FEATURE: Room Management & Strict Duration
+ * Admin dashboard for room management:
+ * - View all rooms with pagination & filtering
+ * - Track room status (waiting/live/ended)
+ * - Monitor member count & session duration
+ * - View room statistics & analytics
+ * - Ban/unban rooms via modal
+ * Implementation Date: April 2026
+ */
+
 // Helper object để dịch status (loại bỏ 'banned' vì không còn dùng)
 const statusMap = {
   waiting: "Đang chờ",

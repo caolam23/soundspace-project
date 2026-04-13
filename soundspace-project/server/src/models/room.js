@@ -1,5 +1,16 @@
 const mongoose = require("mongoose");
 
+/**
+ * ✅ FEATURE: Room Management & Strict Duration
+ * Room model with:
+ * - Podcast duration tracking & enforcement
+ * - Room status lifecycle (waiting → live → ended)
+ * - Real-time statistics (members, messages, duration)
+ * - Ban management & reporting system
+ * - Cleanup scheduling & resource tracking
+ * Implementation Date: April 2026
+ */
+
 // =============================================
 // Tags cho Song Request System + AI Learning
 // =============================================

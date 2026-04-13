@@ -1,3 +1,13 @@
+/**
+ * ✅ FEATURE: Room Management & Strict Duration
+ * User home page with:
+ * - Room creation form with duration selector (2min, 30min, 1hr, 2hrs)
+ * - Room listing & discovery
+ * - Real-time room status updates
+ * - Join/create room management
+ * Implementation Date: April 2026
+ */
+
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { Plus, X, LogOut, UploadCloud, ArrowRight, Radio, Clock } from 'react-feather';

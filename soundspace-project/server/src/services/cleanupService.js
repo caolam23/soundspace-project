@@ -1,4 +1,12 @@
 // server/src/services/cleanupService.js
+/**
+ * ✅ FEATURE: Room Management & Strict Duration
+ * - Auto-cleanup room resources 2 hours after session ends
+ * - Delete temporary audio files from Cloudinary
+ * - Finalize room deletion from database
+ * - Restore scheduled cleanups on server restart
+ * Implementation Date: April 2026
+ */
 
 const schedule = require('node-schedule');
 const { cloudinary } = require('../config/uploadConfig');
